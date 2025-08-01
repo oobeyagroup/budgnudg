@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h2>Welcome to the Finance Tool</h2>
+<p>This is your personal transaction categorization and analysis tool.</p>
+
+<ul>
+    <li><a href="{% url 'uncategorized_transactions' %}">View Uncategorized Transactions</a></li>
+    <li><a href="{% url 'transactions_list' %}">View Transactions</a></li>
+    <li><a href="{% url 'categories_list' %}">View All Categories</a></li>
+    <li><a href="/admin/">Admin Panel</a></li>
+</ul>
+{% endblock %}
