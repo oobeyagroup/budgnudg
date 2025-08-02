@@ -1,13 +1,29 @@
 {% extends "base.html" %}
 
+{% block title %}Uncategorized Transactions{% endblock %}
+
 {% block content %}
 <h2>Uncategorized Transactions</h2>
+
 <ul>
     {% for txn in transactions %}
-        <li>
-            {{ txn.date }} - {{ txn.description }} - {{ txn.amount }}
-            [<a href="{% url 'categorize_transaction' txn.pk %}">Categorize</a>]
-        </li>
+    <li>
+        {{ txn.date }} - {{ txn.description }} - {{ txn.amount }} |
+        {% if txn.subcategory %}
+            SubCategory: {{ txn.subcategory.name }}
+        {% else %}
+            SubCategory: None
+        {% endif %}
+        |
+        {% if txn.subcategory and txn.subcategory.parent %}
+            Category: {{ txn.subcategory.parent.name }}
+        {% else %}
+            Category: —
+        {% endif %}
+        [<a href="{% url 'categorize_transaction' txn.pk %}">Categorize</a>]
+    </li>
+    {% empty %}
+    <li>No uncategorized transactions found.</li>
     {% endfor %}
 </ul>
 {% endblock %}

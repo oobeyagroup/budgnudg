@@ -1,28 +1,32 @@
 {% extends "base.html" %}
 
-{% block title %}Categories{% endblock %}
+{% block title %}Categories and Subcategories{% endblock %}
 
 {% block content %}
-<h2>Categories</h2>
+<h2>Categories and Subcategories</h2>
 
-<table border="1" cellpadding="8" cellspacing="0">
-    <thead>
-        <tr>
-            <th>Category Name</th>
-            <th># of Transactions</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for category in categories %}
-        <tr>
-            <td>{{ category.name }}</td>
-            <td>{{ category.transaction_set.count }}</td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="2">No categories found.</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<ul>
+    {% for category in categories %}
+        {% if category.parent == None %}
+            <li>
+                <strong>{{ category.name }}</strong>
+                {% with category.subcategories.all as subcats %}
+                    {% if subcats %}
+                        <ul>
+                            {% for sub in subcats %}
+                                <li>{{ sub.name }}</li>
+                            {% empty %}
+                                <li>No subcategories</li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <em>No subcategories</em>
+                    {% endif %}
+                {% endwith %}
+            </li>
+        {% endif %}
+    {% empty %}
+        <li>No categories found.</li>
+    {% endfor %}
+</ul>
 {% endblock %}

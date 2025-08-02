@@ -5,7 +5,7 @@ from .forms import TransactionForm
 # Create your views here.
 
 def uncategorized_transactions(request):
-    transactions = Transaction.objects.filter(category__isnull=True)
+    transactions = Transaction.objects.filter(subcategory__isnull=True)
     return render(request, "transactions/uncategorized_list.html", {"transactions": transactions})
 
 def categorize_transaction(request, pk):
@@ -24,8 +24,15 @@ def categories_list(request):
     return render(request, "transactions/categories_list.html", {"categories": categories})
 
 def transactions_list(request):
-    transactions = Transaction.objects.all()
-    return render(request, "transactions/transactions_list.html", {"transactions": transactions})   
-
+    sort_field = request.GET.get('sort', 'date')  # Default sort by date
+    valid_fields = [
+        'source', 'bank_account', 'sheet_account', 'date', 'description',
+        'amount', 'account_type', 'check_num', 'payoree'
+    ]
+    if sort_field not in valid_fields:
+        sort_field = 'date'
+    transactions = Transaction.objects.all().order_by(sort_field)
+    return render(request, "transactions/transactions_list.html", {"transactions": transactions})
+    
 def home(request):
     return render(request, "home.html")

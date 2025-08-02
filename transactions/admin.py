@@ -1,15 +1,21 @@
 from django.contrib import admin
 from .models import Transaction, Category
 
-# Register your models here.
-
-
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ("id", "date", "description", "amount", "category",)
-    search_fields = ("description",)
-    list_filter = ("category",)
+    list_display = ['date', 'description', 'amount', 'subcategory', 'parent_category', 'payoree']
+    search_fields = ['description', 'payoree']
+    list_filter = ['subcategory']
+
+    def parent_category(self, obj):
+        if obj.subcategory and obj.subcategory.parent:
+            return obj.subcategory.parent.name
+        return "—"
+    parent_category.short_description = "Category"
+
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    search_fields = ("name",)
+    list_display = ['name', 'parent']
+    search_fields = ['name']
+    list_filter = ['parent']

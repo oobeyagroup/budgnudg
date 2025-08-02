@@ -43,7 +43,8 @@ reports/*
 # Logs and databases
 *.log
 *.sql
-*.sqlite
+*.sqlite*
+db.sqlite3
 
 # OS generated files
 .DS_Store
@@ -65,3 +66,4 @@ Thumbs.db
 
 # Exclude specific directories if needed
 reports/
+/data/*

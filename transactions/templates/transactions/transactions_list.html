@@ -1,41 +1,66 @@
 {% extends "base.html" %}
-
+{% load humanize %}
 {% block title %}All Transactions{% endblock %}
 
 {% block content %}
 <h2>All Transactions</h2>
 
-<table border="1" cellpadding="8" cellspacing="0">
+
+<p>Sort by:
+    <a href="?sort=date">Date ↑</a> |
+    <a href="?sort=-date">Date ↓</a> |
+    <a href="?sort=amount">Amount ↑</a> |
+    <a href="?sort=-amount">Amount ↓</a>
+</p>
+<table  class="table table-striped table-hover table-sm py-0">
     <thead>
         <tr>
+            <!-- <th>Source</th> -->
+            <th>Bank Account</th>
+            <th>Sheet Account</th>
             <th>Date</th>
             <th>Description</th>
             <th>Amount</th>
+            <th>Account Type</th>
+            <th>Check Number</th>
+            <th>SubCategory</th>
             <th>Category</th>
+            <th>Payoree</th>
+            <th>Memo</th>
             <th>Actions</th>
         </tr>
     </thead>
     <tbody>
         {% for txn in transactions %}
         <tr>
-            <td>{{ txn.date }}</td>
-            <td>{{ txn.description }}</td>
-            <td>{{ txn.amount }}</td>
+            <!-- <td>{{ txn.source }}</td> -->
+            <td>{{ txn.bank_account }}</td>
+            <td>{{ txn.sheet_account }}</td>
+            <td>{{ txn.date|date:"n/j/y" }}</td>
+            <td>{{ txn.description|truncatechars:40 }}</td>
+            <td class="text-end">${{ txn.amount|floatformat:2|intcomma }}</td>
+            <td>{{ txn.account_type }}</td>
+            <td>{{ txn.check_num }}</td>
             <td>
-                {% if txn.category %}
-                    {{ txn.category.name }}
-               {% else %}
-                    Uncategorized
+                {% if txn.subcategory %}
+                    {{ txn.subcategory.name }}
+                {% else %}
+                    —
                 {% endif %}
-                </td>            
-                <td>
-                <a href="{% url 'categorize_transaction' txn.pk %}">Edit</a>
             </td>
+            <td>
+                {% if txn.subcategory and txn.subcategory.parent %}
+                    {{ txn.subcategory.parent.name }}
+                {% else %}
+                    —
+                {% endif %}
+            </td>
+            <td>{{ txn.payoree }}</td>
+            <td>{{ txn.memo }}</td>
+            <td><a href="{% url 'categorize_transaction' txn.pk %}">Edit</a></td>
         </tr>
         {% empty %}
-        <tr>
-            <td colspan="5">No transactions found.</td>
-        </tr>
+        <tr><td colspan="13">No transactions found.</td></tr>
         {% endfor %}
     </tbody>
 </table>
