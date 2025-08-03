@@ -24,6 +24,12 @@
         nav a:hover {
             text-decoration: underline;
         }
+         .table-responsive thead th {
+        position: sticky;
+        top: 0; /* Ensures the header sticks to the top of its scrolling container */
+        background-color: #f8f9fa; /* Optional: Add a background color to the sticky header */
+        z-index: 1; /* Ensures the header appears above scrolling content */
+        }
     </style>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-LN+7fdVzj6u52u30Kp6M/trliBMCMKTyK833zpbD+pXdCLuTusPj697FH4R/5mcr" crossorigin="anonymous">
 </head>

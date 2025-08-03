@@ -57,11 +57,11 @@ class Command(BaseCommand):
         skipped_count = 0
         duplicates_found = []
 
-        existing = Transaction.objects.all()
-        for e in existing:
-            print(f"Existing: date={e.date}, amount={e.amount}, "
-                f"description='{e.description}', bank_account='{e.bank_account}'")
-            print("" + "-" * 50)
+        # existing = Transaction.objects.all()
+        # for e in existing:
+        #     print(f"Existing: date={e.date}, amount={e.amount}, "
+        #         f"description='{e.description}', bank_account='{e.bank_account}'")
+        #     print("" + "-" * 50)
 
         with open(csv_file, newline='') as f:
             reader = csv.DictReader(f)
@@ -83,11 +83,11 @@ class Command(BaseCommand):
                     description=txn_data.get('description'),
                     bank_account=txn_data.get('bank_account')
                 )
-                print(f"Checking for duplicates with: "
-                     f"date={txn_data.get('date')}, "
-                     f"amount={txn_data.get('amount')}, "
-                     f"description='{txn_data.get('description')}', "
-                     f"bank_account='{txn_data.get('bank_account')}'")
+                # print(f"Checking for duplicates with: "
+                #      f"date={txn_data.get('date')}, "
+                #      f"amount={txn_data.get('amount')}, "
+                #      f"description='{txn_data.get('description')}', "
+                #      f"bank_account='{txn_data.get('bank_account')}'")
                 
                 if potential_duplicates.exists():
                     duplicates_found.append((txn_data, list(potential_duplicates)))
