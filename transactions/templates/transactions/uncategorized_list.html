@@ -21,6 +21,7 @@
             Category: —
         {% endif %}
         [<a href="{% url 'categorize_transaction' txn.pk %}">Categorize</a>]
+        [<a href="{% url 'resolve_transaction' txn.pk %}">Suggest</a>]
     </li>
     {% empty %}
     <li>No uncategorized transactions found.</li>

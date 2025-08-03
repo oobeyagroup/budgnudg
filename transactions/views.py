@@ -1,8 +1,47 @@
-from django.shortcuts import render, redirect
-from .models import Transaction, Category, Payoree
+from django.shortcuts import render, get_object_or_404, redirect
+from .models import Transaction, Payoree, Category
+from rapidfuzz import process
 from .forms import TransactionForm
 
-# Create your views here.
+def resolve_transaction(request, pk):
+    transaction = get_object_or_404(Transaction, pk=pk)
+
+    # Fuzzy suggestions
+    payoree_matches = []
+    category_matches = []
+
+    if not transaction.payoree:
+        payoree_names = Payoree.objects.values_list('name', flat=True)
+        payoree_matches = process.extract(transaction.description, payoree_names, limit=5)
+
+    if not transaction.subcategory:
+        category_names = Category.objects.values_list('name', flat=True)
+        category_matches = process.extract(transaction.description, category_names, limit=5)
+
+    # Find similar transactions
+    norm_desc = Payoree.normalize_name(transaction.description)
+    all_other = Transaction.objects.exclude(id=transaction.id)
+    similar_transactions = [t for t in all_other if Payoree.normalize_name(t.description) == norm_desc]
+
+    # Form submission
+    if request.method == 'POST':
+        payoree_id = request.POST.get('payoree')
+        subcategory_id = request.POST.get('subcategory')
+        if payoree_id:
+            transaction.payoree = Payoree.objects.get(id=payoree_id)
+        if subcategory_id:
+            transaction.subcategory = Category.objects.get(id=subcategory_id)
+        transaction.save()
+        return redirect('resolve_transaction', pk=transaction.id)
+
+    return render(request, 'transactions/resolve_transaction.html', {
+        'transaction': transaction,
+        'payoree_matches': payoree_matches,
+        'category_matches': category_matches,
+        'payorees': Payoree.objects.all(),
+        'categories': Category.objects.all(),
+        'similar_transactions': similar_transactions,  # ✅ Important
+    })
 
 def uncategorized_transactions(request):
     transactions = Transaction.objects.filter(subcategory__isnull=True)
@@ -40,3 +79,42 @@ def transactions_list(request):
     
 def home(request):
     return render(request, "home.html")
+
+
+def set_transaction_field(request, transaction_id, field, value_id):
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+
+    if field == 'payoree':
+        payoree = get_object_or_404(Payoree, id=value_id)
+        transaction.payoree = payoree
+    elif field == 'subcategory':
+        subcategory = get_object_or_404(Category, id=value_id)
+        transaction.subcategory = subcategory
+    else:
+        return redirect('resolve_transaction', pk=transaction_id)  # Invalid field, redirect back
+
+    transaction.save()
+    return redirect('resolve_transaction', pk=transaction_id)
+
+def apply_current_to_similar(request, transaction_id):
+    transaction = get_object_or_404(Transaction, id=transaction_id)
+
+    if not transaction.payoree and not transaction.subcategory:
+        return redirect('resolve_transaction', pk=transaction_id)  # Nothing to apply
+
+    # Normalize description
+    from transactions.models import Payoree, Category
+    norm_desc = Payoree.normalize_name(transaction.description)
+
+    # Find similar transactions
+    similar = Transaction.objects.exclude(id=transaction_id)
+    similar = [t for t in similar if Payoree.normalize_name(t.description) == norm_desc]
+
+    for t in similar:
+        if transaction.payoree and not t.payoree:
+            t.payoree = transaction.payoree
+        if transaction.subcategory and not t.subcategory:
+            t.subcategory = transaction.subcategory
+        t.save()
+
+    return redirect('resolve_transaction', pk=transaction_id)

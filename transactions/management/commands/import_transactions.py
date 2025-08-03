@@ -94,10 +94,17 @@ class Command(BaseCommand):
                             skipped_count += 1
                             continue
                         txn_data['subcategory'] = subcat
+                    elif model_field == 'payoree':
+                        from transactions.models import Payoree
+                        payoree_name = value
+                        payoree = Payoree.get_existing(payoree_name)
+                        if not payoree:
+                            payoree = Payoree.objects.create(name=payoree_name)
+                        txn_data['payoree'] = payoree
                     else:
                         txn_data[model_field] = value
 
-                txn_data['bank_account'] = selected_account  # set selected bank account
+                    txn_data['bank_account'] = selected_account  # set selected bank account
 
                 # Duplicate detection
                 potential_duplicates = Transaction.objects.filter(

@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2 class="mb-4">Resolve Transaction</h2>
+
+    <table class="table table-bordered">
+        <tr>
+            <th>Description</th>
+            <td>{{ transaction.description }}</td>
+        </tr>
+        <tr>
+            <th>Date</th>
+            <td>{{ transaction.date }}</td>
+        </tr>
+        <tr>
+            <th>Amount</th>
+            <td>${{ transaction.amount }}</td>
+        </tr>
+    </table>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% if not transaction.payoree %}
+            <h4>Payoree Suggestions</h4>
+            <div class="form-group">
+                <label for="payoree">Select Payoree</label>
+                <select name="payoree" id="payoree" class="form-control">
+                    <option value="">-- Select Payoree --</option>
+                    {% for name, score, _ in payoree_matches %}
+                        {% for pay in payorees %}
+                            {% if pay.name == name %}
+                                <option value="{{ pay.id }}">{{ pay.name }} (Score: {{ score|floatformat:0 }})</option>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="payoree_full">Or Select Any Payoree</label>
+                <select name="payoree" id="payoree_full" class="form-control">
+                    <option value="">-- Select Payoree --</option>
+                    {% for pay in payorees %}
+                        <option value="{{ pay.id }}">{{ pay.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        {% else %}
+            <p><strong>Payoree:</strong> {{ transaction.payoree }}</p>
+        {% endif %}
+
+        {% if not transaction.subcategory %}
+            <h4>SubCategory Suggestions</h4>
+            <div class="form-group">
+                <label for="subcategory">Select SubCategory</label>
+                <select name="subcategory" id="subcategory" class="form-control">
+                    <option value="">-- Select SubCategory --</option>
+                    {% for name, score, _ in category_matches %}
+                        {% for cat in categories %}
+                            {% if cat.name == name %}
+                                <option value="{{ cat.id }}">{{ cat.name }} (Score: {{ score|floatformat:0 }})</option>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="subcategory_full">Or Select Any SubCategory</label>
+                <select name="subcategory" id="subcategory_full" class="form-control">
+                    <option value="">-- Select Subcategory --</option>
+                    {% for cat in categories %}
+                        <option value="{{ cat.id }}">{{ cat.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+        {% else %}
+            <p><strong>SubCategory:</strong> {{ transaction.subcategory }}</p>
+        {% endif %}
+
+        <button type="submit" class="btn btn-primary mt-3">Save</button>
+        <a href="{% url 'uncategorized_transactions' %}" class="btn btn-secondary mt-3 ml-2">Back to list</a>
+    </form>
+
+
+<hr>
+<h3>Similar Transactions</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th>Payoree</th>
+            <th>SubCategory</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in similar_transactions %}
+            <tr>
+                <td>{{ t.date }}</td>
+                <td>{{ t.description }}</td>
+                <td>${{ t.amount }}</td>
+                <td>
+                    {% if t.payoree %}
+                        <a href="{% url 'set_transaction_field' transaction.id 'payoree' t.payoree.id %}">{{ t.payoree.name }}</a>
+                    {% else %} - {% endif %}
+                </td>
+                <td>
+                    {% if t.subcategory %}
+                        <a href="{% url 'set_transaction_field' transaction.id 'subcategory' t.subcategory.id %}">{{ t.subcategory.name }}</a>
+                    {% else %} - {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<a href="{% url 'apply_current_to_similar' transaction.id %}" class="btn btn-warning mt-3">Apply Current Values to All Similar</a>
+</div>
+{% endblock %}

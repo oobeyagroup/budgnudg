@@ -59,6 +59,10 @@ class Category(models.Model):
         related_name='subcategories'
     )
 
+    @staticmethod
+    def normalize_name(name):
+        return re.sub(r'[^a-z0-9]', '', name.lower())
+
     def __str__(self):
         return self.name
 
@@ -85,7 +89,12 @@ class Transaction(models.Model):
 
     account_type = models.CharField(max_length=50)  # Checking, savings, etc.
     check_num = models.CharField(max_length=50, blank=True, null=True)
-    payoree = models.CharField(max_length=255)  # Who it went to/from
+    payoree = models.ForeignKey(
+        Payoree,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL
+    ) 
     memo = models.TextField(blank=True, null=True)
 
     subcategory = models.ForeignKey(
