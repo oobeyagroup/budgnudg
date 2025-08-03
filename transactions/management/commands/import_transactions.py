@@ -1,22 +1,13 @@
 import csv
 import json
 import os
-from django.db import IntegrityError
 from decimal import Decimal
 from datetime import datetime
 from django.core.management.base import BaseCommand
 from transactions.models import Transaction
+from django.db import IntegrityError
 
 MAPPING_FILE = "csv_mappings.json"
-
-def parse_date(value):
-    date_formats = ["%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y", "%d/%m/%Y"]
-    for fmt in date_formats:
-        try:
-            return datetime.strptime(value, fmt).date()
-        except ValueError:
-            continue
-    raise ValueError(f"Unrecognized date format: '{value}'")
 
 class Command(BaseCommand):
     help = "Import transactions from a CSV file using saved header mapping and duplicate detection."
@@ -53,15 +44,34 @@ class Command(BaseCommand):
         mapping = all_mappings[selected_profile]['mapping']
         self.stdout.write(f"Using mapping profile: {selected_profile}")
 
+        existing_accounts = Transaction.objects.values_list('bank_account', flat=True).distinct()
+        existing_accounts = sorted(set(filter(None, existing_accounts)))
+
+        self.stdout.write("\nExisting bank accounts:")
+        for idx, acct in enumerate(existing_accounts, start=1):
+            self.stdout.write(f"{idx}. {acct}")
+        self.stdout.write(f"{len(existing_accounts)+1}. Enter a new account name")
+
+        while True:
+            acct_choice = input("Select bank account by number or enter a new name: ").strip()
+            if acct_choice.isdigit():
+                acct_choice = int(acct_choice)
+                if 1 <= acct_choice <= len(existing_accounts):
+                    selected_account = existing_accounts[acct_choice - 1]
+                    break
+                elif acct_choice == len(existing_accounts) + 1:
+                    selected_account = input("Enter new bank account name: ").strip()
+                    break
+            elif acct_choice:
+                selected_account = acct_choice
+                break
+            self.stdout.write("Invalid selection. Try again.")
+
+        self.stdout.write(f"Using bank account: {selected_account}")
+
         imported_count = 0
         skipped_count = 0
         duplicates_found = []
-
-        # existing = Transaction.objects.all()
-        # for e in existing:
-        #     print(f"Existing: date={e.date}, amount={e.amount}, "
-        #         f"description='{e.description}', bank_account='{e.bank_account}'")
-        #     print("" + "-" * 50)
 
         with open(csv_file, newline='') as f:
             reader = csv.DictReader(f)
@@ -70,12 +80,25 @@ class Command(BaseCommand):
                 for csv_col, model_field in mapping.items():
                     value = (row.get(csv_col) or '').strip()
                     if model_field == 'date':
-                        txn_data['date'] = parse_date(value)
+                        txn_data['date'] = self.parse_date(value)
                     elif model_field == 'amount':
                         txn_data['amount'] = Decimal(value)
+
+                    elif model_field == 'subcategory':
+                        from transactions.models import Category
+                        category_name = value
+                        try:
+                            subcat = Category.objects.get(name=category_name)
+                        except Category.DoesNotExist:
+                            self.stderr.write(f"Subcategory '{category_name}' not found. Skipping row.")
+                            skipped_count += 1
+                            continue
+                        txn_data['subcategory'] = subcat
                     else:
                         txn_data[model_field] = value
- 
+
+                txn_data['bank_account'] = selected_account  # set selected bank account
+
                 # Duplicate detection
                 potential_duplicates = Transaction.objects.filter(
                     date=txn_data.get('date'),
@@ -83,24 +106,20 @@ class Command(BaseCommand):
                     description=txn_data.get('description'),
                     bank_account=txn_data.get('bank_account')
                 )
-                # print(f"Checking for duplicates with: "
-                #      f"date={txn_data.get('date')}, "
-                #      f"amount={txn_data.get('amount')}, "
-                #      f"description='{txn_data.get('description')}', "
-                #      f"bank_account='{txn_data.get('bank_account')}'")
-                
+
                 if potential_duplicates.exists():
                     duplicates_found.append((txn_data, list(potential_duplicates)))
                     skipped_count += 1
-                else:
-                    txn = Transaction(**txn_data)
-                    txn.source = csv_file  # Save source filename
-                    try:
-                        txn.save()
-                        imported_count += 1
-                    except IntegrityError:
-                        skipped_count += 1
-                        duplicates_found.append((txn_data, ['DB constraint violation']))
+                    continue  # Skip this transaction
+
+                txn = Transaction(**txn_data)
+                txn.source = csv_file  # Save source filename
+                try:
+                    txn.save()
+                    imported_count += 1
+                except IntegrityError:
+                    skipped_count += 1
+                    duplicates_found.append((txn_data, ['DB constraint violation']))
 
         self.stdout.write(self.style.SUCCESS(f"Import complete: {imported_count} imported, {skipped_count} skipped."))
         if duplicates_found:
@@ -109,3 +128,12 @@ class Command(BaseCommand):
                 self.stdout.write(f"CSV Data: {dup[0]}")
                 for existing in dup[1]:
                     self.stdout.write(f" - Existing: {existing}")
+
+    def parse_date(self, value):
+        date_formats = ["%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y", "%d/%m/%Y"]
+        for fmt in date_formats:
+            try:
+                return datetime.strptime(value, fmt).date()
+            except ValueError:
+                continue
+        raise ValueError(f"Unrecognized date format: '{value}'")

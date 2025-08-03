@@ -32,7 +32,7 @@
     "mapping": {
       "Transaction Date": "date",
       "Description": "description",
-      "Category": "memo",
+      "Category": "subcategory",
       "Type": "sheet_account",
       "Amount": "amount",
       "Memo": "memo"

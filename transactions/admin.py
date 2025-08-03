@@ -1,9 +1,9 @@
 from django.contrib import admin
-from .models import Transaction, Category
+from .models import Transaction, Category, Payoree
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ['date', 'description', 'amount', 'subcategory', 'parent_category', 'payoree']
+    list_display = ['bank_account','date', 'description', 'amount', 'subcategory', 'parent_category', 'account_type','payoree']
     search_fields = ['description', 'payoree']
     list_filter = ['subcategory']
 
@@ -16,6 +16,12 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'parent']
+    list_display = ['name', 'parent', 'type']
+    search_fields = ['name',type]
+    list_filter = ['parent','type']
+
+@admin.register(Payoree)
+class PayoreeAdmin(admin.ModelAdmin):
+    list_display = ['name']
     search_fields = ['name']
-    list_filter = ['parent']
+    ordering = ['name']

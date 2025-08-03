@@ -1,7 +1,56 @@
+import re
 from django.db import models
+from django.db.models import Q
+
+
+class Payoree(models.Model):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['name'], name='unique_payoree')
+    ]
+        indexes = [
+            models.Index(fields=['name']),
+    ]
+        
+    name = models.CharField(max_length=255, unique=True)
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def normalize_name(name):
+        """Convert name to lowercase and remove spaces and special characters."""
+        return re.sub(r'[^a-z0-9]', '', name.lower())
+
+    @classmethod
+    def get_existing(cls, name):
+        """Find existing Payoree with normalized name."""
+        normalized = cls.normalize_name(name)
+        for payoree in cls.objects.all():
+            if cls.normalize_name(payoree.name) == normalized:
+                return payoree
+        return None        
+    
 
 class Category(models.Model):
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['parent', 'name'], name='unique_subcategory_per_parent'),
+            models.UniqueConstraint(fields=['name'], condition=Q(parent__isnull=True), name='unique_top_level_category')
+    ]
+        indexes = [
+            models.Index(fields=['name']),
+    ]
+
     name = models.CharField(max_length=100)
+    type = models.CharField(max_length=30, choices=[
+        ('income', 'Income'),
+        ('expense', 'Expense'),
+        ('transfer', 'Transfer'),
+        ('asset', 'Asset'),
+        ('liability', 'Liability'),
+        ('equity', 'Equity')
+    ], default='expense')
     parent = models.ForeignKey(
         'self',
         null=True,

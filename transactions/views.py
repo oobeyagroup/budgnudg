@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from .models import Transaction, Category
+from .models import Transaction, Category, Payoree
 from .forms import TransactionForm
 
 # Create your views here.
@@ -22,6 +22,10 @@ def categorize_transaction(request, pk):
 def categories_list(request):
     categories = Category.objects.all()
     return render(request, "transactions/categories_list.html", {"categories": categories})
+
+def payorees_list(request):
+    payorees = Payoree.objects.all()
+    return render(request, "transactions/payoree_list.html", {"payorees": payorees})
 
 def transactions_list(request):
     sort_field = request.GET.get('sort', 'date')  # Default sort by date
