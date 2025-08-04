@@ -1,7 +1,14 @@
+import re
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Transaction, Payoree, Category
-from rapidfuzz import process
+from rapidfuzz import fuzz, process
 from .forms import TransactionForm
+
+def normalize_description(desc):
+    # Remove 11-digit numbers and WEB ID numbers
+    cleaned = re.sub(r'\b\d{11}\b', '', desc)
+    cleaned = re.sub(r'WEB ID[:]? \d+', '', cleaned, flags=re.IGNORECASE)
+    return cleaned.lower().strip()
 
 def resolve_transaction(request, pk):
     transaction = get_object_or_404(Transaction, pk=pk)
@@ -11,18 +18,32 @@ def resolve_transaction(request, pk):
     category_matches = []
 
     if not transaction.payoree:
-        payoree_names = Payoree.objects.values_list('name', flat=True)
-        payoree_matches = process.extract(transaction.description, payoree_names, limit=5)
+        payoree_names = list(Payoree.objects.values_list('name', flat=True))
+        payoree_matches = process.extract(
+            transaction.description,
+            payoree_names,
+            scorer=fuzz.partial_ratio,  # Favors beginning matches
+            limit=5
+        )
 
     if not transaction.subcategory:
-        category_names = Category.objects.values_list('name', flat=True)
-        category_matches = process.extract(transaction.description, category_names, limit=5)
+        category_names = list(Category.objects.values_list('name', flat=True))
+        category_matches = process.extract(
+            transaction.description,
+            category_names,
+            scorer=fuzz.partial_ratio,  # Favors prefix
+            limit=5
+        )
 
     # Find similar transactions
-    norm_desc = Payoree.normalize_name(transaction.description)
-    all_other = Transaction.objects.exclude(id=transaction.id)
-    similar_transactions = [t for t in all_other if Payoree.normalize_name(t.description) == norm_desc]
-
+    similar = Transaction.objects.exclude(id=transaction.id)
+    similar = [
+        t for t in similar
+        if fuzz.token_set_ratio(
+            normalize_description(transaction.description),
+            normalize_description(t.description)
+        ) >= 85
+    ]
     # Form submission
     if request.method == 'POST':
         payoree_id = request.POST.get('payoree')
@@ -40,7 +61,7 @@ def resolve_transaction(request, pk):
         'category_matches': category_matches,
         'payorees': Payoree.objects.all(),
         'categories': Category.objects.all(),
-        'similar_transactions': similar_transactions,  # ✅ Important
+        'similar_transactions': similar, 
     })
 
 def uncategorized_transactions(request):
@@ -107,9 +128,14 @@ def apply_current_to_similar(request, transaction_id):
     norm_desc = Payoree.normalize_name(transaction.description)
 
     # Find similar transactions
-    similar = Transaction.objects.exclude(id=transaction_id)
-    similar = [t for t in similar if Payoree.normalize_name(t.description) == norm_desc]
-
+    similar = Transaction.objects.exclude(id=transaction.id)
+    similar = [
+        t for t in similar
+        if fuzz.token_set_ratio(
+            normalize_description(transaction.description),
+            normalize_description(t.description)
+        ) >= 85
+    ]
     for t in similar:
         if transaction.payoree and not t.payoree:
             t.payoree = transaction.payoree

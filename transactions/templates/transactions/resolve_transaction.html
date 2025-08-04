@@ -23,58 +23,73 @@
         {% csrf_token %}
 
         {% if not transaction.payoree %}
-            <h4>Payoree Suggestions</h4>
-            <div class="form-group">
-                <label for="payoree">Select Payoree</label>
-                <select name="payoree" id="payoree" class="form-control">
-                    <option value="">-- Select Payoree --</option>
-                    {% for name, score, _ in payoree_matches %}
-                        {% for pay in payorees %}
-                            {% if pay.name == name %}
-                                <option value="{{ pay.id }}">{{ pay.name }} (Score: {{ score|floatformat:0 }})</option>
-                            {% endif %}
-                        {% endfor %}
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label for="payoree_full">Or Select Any Payoree</label>
-                <select name="payoree" id="payoree_full" class="form-control">
-                    <option value="">-- Select Payoree --</option>
-                    {% for pay in payorees %}
-                        <option value="{{ pay.id }}">{{ pay.name }}</option>
-                    {% endfor %}
-                </select>
+            <h4 class="pt-4">Payor/ee</h4>
+            <div class="container text-center">
+                <div class="row align-items-start">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="payoree">Select Suggested Payor/ee</label>
+                            <select name="payoree" id="payoree" class="form-control">
+                            <option value="">-- Select Payoree --</option>
+                            {% for name, score, _ in payoree_matches %}
+                                {% for pay in payorees %}
+                                    {% if pay.name == name %}
+                                        <option value="{{ pay.id }}">{{ pay.name }} (Score: {{ score|floatformat:0 }})</option>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="payoree_full">Or Select Any Payor/ee</label>
+                            <select name="payoree" id="payoree_full" class="form-control">
+                            <option value="">-- Select Payoree --</option>
+                            {% for pay in payorees %}
+                                <option value="{{ pay.id }}">{{ pay.name }}</option>
+                            {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
         {% else %}
-            <p><strong>Payoree:</strong> {{ transaction.payoree }}</p>
+            <p><strong>Payor/ee:</strong> {{ transaction.payoree }}</p>
         {% endif %}
 
         {% if not transaction.subcategory %}
-            <h4>SubCategory Suggestions</h4>
-            <div class="form-group">
-                <label for="subcategory">Select SubCategory</label>
-                <select name="subcategory" id="subcategory" class="form-control">
-                    <option value="">-- Select SubCategory --</option>
-                    {% for name, score, _ in category_matches %}
-                        {% for cat in categories %}
-                            {% if cat.name == name %}
-                                <option value="{{ cat.id }}">{{ cat.name }} (Score: {{ score|floatformat:0 }})</option>
-                            {% endif %}
-                        {% endfor %}
-                    {% endfor %}
-                </select>
+            <h4 class="pt-4">SubCategory Suggestions</h4>
+            <div class="container text-center">
+                <div class="row align-items-start">
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="subcategory">Select SubCategory</label>
+                            <select name="subcategory" id="subcategory" class="form-control">
+                                <option value="">-- Select SubCategory --</option>
+                                {% for name, score, _ in category_matches %}
+                                    {% for cat in categories %}
+                                        {% if cat.name == name %}
+                                            <option value="{{ cat.id }}">{{ cat.name }} (Score: {{ score|floatformat:0 }})</option>
+                                        {% endif %}
+                                    {% endfor %}
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col">
+                        <div class="form-group">
+                            <label for="subcategory_full">Or Select Any SubCategory</label>
+                            <select name="subcategory" id="subcategory_full" class="form-control">
+                                <option value="">-- Select Subcategory --</option>
+                                {% for cat in categories %}
+                                    <option value="{{ cat.id }}">{{ cat.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="subcategory_full">Or Select Any SubCategory</label>
-                <select name="subcategory" id="subcategory_full" class="form-control">
-                    <option value="">-- Select Subcategory --</option>
-                    {% for cat in categories %}
-                        <option value="{{ cat.id }}">{{ cat.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
         {% else %}
             <p><strong>SubCategory:</strong> {{ transaction.subcategory }}</p>
         {% endif %}
