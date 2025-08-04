@@ -59,8 +59,8 @@ def resolve_transaction(request, pk):
         'transaction': transaction,
         'payoree_matches': payoree_matches,
         'category_matches': category_matches,
-        'payorees': Payoree.objects.all(),
-        'categories': Category.objects.all(),
+        'payorees': Payoree.objects.order_by('name'),
+        'categories': Category.objects.order_by('name'),
         'similar_transactions': similar, 
     })
 
@@ -80,11 +80,11 @@ def categorize_transaction(request, pk):
     return render(request, "transactions/categorize.html", {"form": form})
 
 def categories_list(request):
-    categories = Category.objects.all()
+    categories = Category.objects.order_by('name')
     return render(request, "transactions/categories_list.html", {"categories": categories})
 
 def payorees_list(request):
-    payorees = Payoree.objects.all()
+    payorees = Payoree.objects.order_by('name')
     return render(request, "transactions/payoree_list.html", {"payorees": payorees})
 
 def transactions_list(request):

@@ -43,13 +43,13 @@
                     </div>
                     <div class="col">
                         <div class="form-group">
-                            <label for="payoree_full">Or Select Any Payor/ee</label>
-                            <select name="payoree" id="payoree_full" class="form-control">
+                          <label for="payoree_full">Select Any Payoree</label>
+                          <select name="payoree" id="payoree_full" class="form-control select2">
                             <option value="">-- Select Payoree --</option>
                             {% for pay in payorees %}
-                                <option value="{{ pay.id }}">{{ pay.name }}</option>
+                              <option value="{{ pay.id }}">{{ pay.name }}</option>
                             {% endfor %}
-                            </select>
+                          </select>
                         </div>
                     </div>
                 </div>
@@ -80,13 +80,12 @@
                     <div class="col">
                         <div class="form-group">
                             <label for="subcategory_full">Or Select Any SubCategory</label>
-                            <select name="subcategory" id="subcategory_full" class="form-control">
-                                <option value="">-- Select Subcategory --</option>
-                                {% for cat in categories %}
-                                    <option value="{{ cat.id }}">{{ cat.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
+                            <select name="subcategory" id="subcategory_full" class="form-control select2">
+                              <option value="">-- Select SubCategory --</option>
+                              {% for cat in categories %}
+                                <option value="{{ cat.id }}">{{ cat.name }}</option>
+                              {% endfor %}
+                            </select>                        </div>
                     </div>
                 </div>
             </div>
