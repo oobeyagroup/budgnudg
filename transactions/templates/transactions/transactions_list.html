@@ -4,16 +4,11 @@
 
 {% block content %}
 <h2>All Transactions</h2>
+<style>.fs-14 { font-size: 14px; }</style> <!-- for transaction list -->
 
-
-<p>Sort by:
-    <a href="?sort=date">Date ↑</a> |
-    <a href="?sort=-date">Date ↓</a> |
-    <a href="?sort=amount">Amount ↑</a> |
-    <a href="?sort=-amount">Amount ↓</a>
-</p>
-<table  class="table table-responsive table-striped table-hover table-sm py-0">
-    <thead>
+<div class="table-responsive"></div>
+<table id="transactionTable" class="table table-striped table-bordered">
+    <thead class="table-dark">
         <tr>
             <!-- <th>Source</th> -->
             <th>Bank Account</th>
@@ -32,7 +27,7 @@
     </thead>
     <tbody>
         {% for txn in transactions %}
-        <tr>
+        <tr class="fs-14">
             <!-- <td>{{ txn.source }}</td> -->
             <td>{{ txn.bank_account }}</td>
             <td>{{ txn.sheet_account }}</td>

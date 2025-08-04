@@ -101,6 +101,16 @@ def transactions_list(request):
 def home(request):
     return render(request, "home.html")
 
+from django.shortcuts import render
+from .models import Transaction
+
+def bank_accounts_list(request):
+    # Get distinct bank_account values, exclude empty/null
+    accounts = Transaction.objects.exclude(bank_account__isnull=True).exclude(bank_account='') \
+                                  .values_list('bank_account', flat=True).distinct().order_by('bank_account')
+
+    return render(request, 'transactions/bank_accounts_list.html', {'accounts': accounts})
+
 
 def set_transaction_field(request, transaction_id, field, value_id):
     transaction = get_object_or_404(Transaction, id=transaction_id)

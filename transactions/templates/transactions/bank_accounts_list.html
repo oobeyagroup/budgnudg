@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Bank Accounts</h2>
+  <ul class="list-group">
+    {% for account in accounts %}
+      <li class="list-group-item">{{ account }}</li>
+    {% empty %}
+      <li class="list-group-item text-muted">No accounts found.</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endblock %}

@@ -9,4 +9,5 @@ urlpatterns = [
     path("categories/", views.categories_list, name="categories_list"),
     path('resolve/<int:pk>/', views.resolve_transaction, name='resolve_transaction'),
     path('set/<int:transaction_id>/<str:field>/<int:value_id>/', views.set_transaction_field, name='set_transaction_field'),
-    path('apply_current/<int:transaction_id>/', views.apply_current_to_similar, name='apply_current_to_similar'),]
+    path('apply_current/<int:transaction_id>/', views.apply_current_to_similar, name='apply_current_to_similar'),
+    path('bank-accounts/', views.bank_accounts_list, name='bank_accounts_list'),]
