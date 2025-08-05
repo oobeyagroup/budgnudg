@@ -4,9 +4,17 @@
 
 {% block content %}
 <h2>Uncategorized Transactions</h2>
-
 <div class="table-responsive">
   <table id="transactionTable" class="table table-striped table-bordered">
+    <colgroup>
+        <col style="width: 5%;">
+        <col style="width: 40%;">
+        <col style="width: 10%;">
+        <col style="width: 15%;">
+        <col style="width: 15%;">
+        <col style="width: 10%;">
+    </colgroup>
+
     <thead class="table-dark">
       <tr>
         <th>Date</th>
@@ -38,7 +46,7 @@
           {% endif %}
         </td>
         <td>
-          <a href="{% url 'categorize_transaction' txn.pk %}">Categorize    </a> |
+          <a href="{% url 'categorize_transaction' txn.pk %}">Edit</a> |
           <a href="{% url 'resolve_transaction' txn.pk %}">Suggest</a>
         </td>
       </tr>

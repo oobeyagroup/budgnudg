@@ -3,6 +3,8 @@ from django.shortcuts import render, get_object_or_404, redirect
 from .models import Transaction, Payoree, Category
 from rapidfuzz import fuzz, process
 from .forms import TransactionForm
+from django.db.models import Min, Max, Count, Prefetch
+
 
 def normalize_description(desc):
     # Remove 11-digit numbers and WEB ID numbers
@@ -80,12 +82,28 @@ def categorize_transaction(request, pk):
     return render(request, "transactions/categorize.html", {"form": form})
 
 def categories_list(request):
-    categories = Category.objects.order_by('name')
-    return render(request, "transactions/categories_list.html", {"categories": categories})
+    # Get all categories
+    subcats = Category.objects.annotate(transaction_count=Count('transaction'))
+    
+    categories = Category.objects.filter(parent__isnull=True).prefetch_related(
+        Prefetch('subcategories', queryset=subcats)
+    )
+
+    return render(request, 'transactions/categories_list.html', {'categories': categories})
+
+from django.db.models import Count
+from .models import Payoree
 
 def payorees_list(request):
-    payorees = Payoree.objects.order_by('name')
-    return render(request, "transactions/payoree_list.html", {"payorees": payorees})
+    payorees = Payoree.objects.annotate(transaction_count=Count('transaction')).order_by('name')
+
+    if request.GET.get('nonzero'):
+        payorees = payorees.filter(transaction_count__gt=0)
+
+    return render(request, 'transactions/payoree_list.html', {
+        'payorees': payorees,
+        'request': request  # Pass request to template for checkbox state
+    })
 
 def transactions_list(request):
     sort_field = request.GET.get('sort', 'date')  # Default sort by date
@@ -154,3 +172,32 @@ def apply_current_to_similar(request, transaction_id):
         t.save()
 
     return redirect('resolve_transaction', pk=transaction_id)
+
+
+def report_account_time_span(request):
+    report = (
+        Transaction.objects
+        .exclude(bank_account__isnull=True)
+        .exclude(bank_account='')
+        .values('bank_account')
+        .annotate(
+            first_date=Min('date'),
+            last_date=Max('date')
+        )
+        .order_by('bank_account')
+    )
+
+    return render(request, 'transactions/report_account_time_span.html', {'report': report})
+
+def report_income_statement(request):
+    transactions = Transaction.objects.all().order_by('date')
+    income_statement = {}
+
+    for transaction in transactions:
+        if transaction.subcategory:
+            category_name = transaction.subcategory.name
+            if category_name not in income_statement:
+                income_statement[category_name] = 0
+            income_statement[category_name] += transaction.amount
+
+    return render(request, 'transactions/report_income_statement.html', {'income_statement': income_statement})

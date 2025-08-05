@@ -1,17 +1,69 @@
 {% extends "base.html" %}
 
-{% block title %}Payor/ee's{% endblock %}
-
 {% block content %}
-<h2>Payor/ee's</h2>
+<div class="container mt-4">
+  <h2>Payorees</h2>
 
-<ul>
-    {% for payoree in  payorees %}
-            <li>
-                {{ payoree.name }}
-            </li>
-    {% empty %}
-        <li>No payor/ee's found.</li>
+  <div class="mb-3">
+    <strong>Jump to:</strong>
+    {% for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" %}
+      <a href="#section-{{ letter }}">{{ letter }}</a>{% if not forloop.last %} | {% endif %}
     {% endfor %}
-</ul>
+  </div>
+
+
+ <form method="get" class="mb-3">
+  <div class="form-check">
+    <input class="form-check-input" type="checkbox" name="nonzero" id="nonzeroCheck" value="1"
+           {% if request.GET.nonzero %}checked{% endif %}>
+    <label class="form-check-label" for="nonzeroCheck">
+      Show only payorees with non-zero transactions
+    </label>
+  </div>
+  <button type="submit" class="btn btn-primary btn-sm mt-2">Apply Filter</button>
+</form>
+
+  <div class="table-responsive">
+    <table id="payoreeTable" class="table table-striped table-bordered">
+      <thead class="table-dark">
+        <tr>
+          <th>Payoree</th>
+          <th>Transaction Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% regroup payorees by name.0|upper as payoree_sections %}
+        {% for section in payoree_sections %}
+          <tr id="section-{{ section.grouper }}">
+            <td colspan="2"><strong>{{ section.grouper }}</strong></td>
+          </tr>
+          {% for pay in section.list %}
+            <tr>
+              <td>{{ pay.name }}</td>
+              <td>{{ pay.transaction_count }}</td>
+            </tr>
+          {% endfor %}
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+
+  <div class="mb-3">
+    <strong>Jump to:</strong>
+    {% for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" %}
+      <a href="#section-{{ letter }}">{{ letter }}</a>{% if not forloop.last %} | {% endif %}
+    {% endfor %}
+  </div>
+</div>
+
+<script>
+  $(document).ready(function () {
+    $('#payoreeTable').DataTable({
+      pageLength: 25,
+      order: [[1, 'desc']],
+      responsive: true
+    });
+  });
+</script>
 {% endblock %}

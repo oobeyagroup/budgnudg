@@ -1,32 +1,46 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Categories and Subcategories{% endblock %}
 
 {% block content %}
-<h2>Categories and Subcategories</h2>
-
-<ul>
-    {% for category in categories %}
-        {% if category.parent == None %}
-            <li>
-                <strong>{{ category.name }}</strong>
-                {% with category.subcategories.all as subcats %}
-                    {% if subcats %}
-                        <ul>
-                            {% for sub in subcats %}
-                                <li>{{ sub.name }}</li>
-                            {% empty %}
-                                <li>No subcategories</li>
-                            {% endfor %}
-                        </ul>
-                    {% else %}
-                        <em>No subcategories</em>
-                    {% endif %}
-                {% endwith %}
-            </li>
-        {% endif %}
-    {% empty %}
-        <li>No categories found.</li>
-    {% endfor %}
-</ul>
+<div class="container mt-4">
+  <h2>Categories</h2>
+  <div class="table-responsive">
+    <table id="categoryTable" class="table table-striped table-bordered">
+    <colgroup>
+        <col style="width: 5%;">
+        <col style="width: 40%;">
+        <col style="width: 10%;">
+        <col style="width: 15%;">
+        <col style="width: 15%;">
+        <col style="width: 10%;">
+    </colgroup>
+      <thead class="table-dark">
+        <tr>
+          <th>Category</th>
+          <th>Subcategory</th>
+          <th>Transaction Count</th>
+        </tr>
+      </thead>
+        <tbody>
+          {% for cat in categories %}
+            {% for sub in cat.subcategories.all %}
+              <tr>
+                <td>{{ cat.name }}</td>
+                <td>{{ sub.name }}</td>
+                <td>{{ sub.transaction_count }}</td>
+              </tr>
+            {% empty %}
+              <tr>
+                <td>{{ cat.name }}</td>
+                <td>-</td>
+                <td>0</td>
+              </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}
