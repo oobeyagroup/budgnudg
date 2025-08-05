@@ -2,9 +2,10 @@ import re
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Transaction, Payoree, Category
 from rapidfuzz import fuzz, process
-from .forms import TransactionForm
+from .forms import TransactionForm, FileUploadForm, TransactionImportForm
 from django.db.models import Min, Max, Count, Prefetch
-
+from django.contrib import messages
+from .utils import parse_transactions_file, map_csv_file_to_transactions, load_mapping_profiles
 
 def normalize_description(desc):
     # Remove 11-digit numbers and WEB ID numbers
@@ -201,3 +202,128 @@ def report_income_statement(request):
             income_statement[category_name] += transaction.amount
 
     return render(request, 'transactions/report_income_statement.html', {'income_statement': income_statement})
+
+
+
+def handle_file_upload(file, import_type):
+    # Placeholder for actual processing logic
+    # import_type: 'transactions', 'categories', 'payoree'
+    # Implement parsing here
+    pass
+
+def import_transactions(request):
+    if request.method == 'POST':
+        form = FileUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            handle_file_upload(request.FILES['file'], 'transactions')
+            messages.success(request, 'Transactions imported successfully.')
+            return redirect('import_transactions')
+    else:
+        form = FileUploadForm()
+    return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Transactions'})
+
+def import_categories(request):
+    if request.method == 'POST':
+        form = FileUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            handle_file_upload(request.FILES['file'], 'categories')
+            messages.success(request, 'Categories imported successfully.')
+            return redirect('import_categories')
+    else:
+        form = FileUploadForm()
+    return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Categories'})
+
+def import_payoree(request):
+    if request.method == 'POST':
+        form = FileUploadForm(request.POST, request.FILES)
+        if form.is_valid():
+            handle_file_upload(request.FILES['file'], 'payoree')
+            messages.success(request, 'Payoree imported successfully.')
+            return redirect('import_payoree')
+    else:
+        form = FileUploadForm()
+    return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Payoree'})
+
+
+
+# def import_transactions(request):
+#     # Build choices for mapping profile and bank account
+#     mapping_profiles = [('default', 'Default Profile')]  # TODO: pull real profiles if stored
+#     existing_accounts = Transaction.objects.values_list('bank_account', flat=True).distinct()
+#     account_choices = [(acct, acct) for acct in existing_accounts]
+
+#     if request.method == 'POST':
+#         form = TransactionImportForm(request.POST, request.FILES, profile_choices=mapping_profiles, account_choices=account_choices)
+#         if form.is_valid():
+#             file = request.FILES['file']
+#             profile = form.cleaned_data['mapping_profile']
+#             bank_account = form.cleaned_data['bank_account']
+
+#             try:
+#                 # Parse and transform the uploaded file
+#                 imported_transactions = parse_transactions_file(file, profile, bank_account)
+
+#                 # Display them using your existing list template
+#                 return render(request, 'transaction_list.html', {
+#                     'transactions': imported_transactions,
+#                     'import_mode': True  # So you can hide edit/resolve buttons if needed
+#                 })
+
+#             except Exception as e:
+#                 messages.error(request, f'Import failed: {str(e)}')
+#     else:
+#         form = TransactionImportForm(profile_choices=mapping_profiles, account_choices=account_choices)
+
+#     return render(request, 'transactions/import_transaction_preview.html', {  'transactions': import_transactions})
+
+def import_transactions_upload(request):
+    # Load real profiles from csv_mappings.json
+    profiles_dict = load_mapping_profiles()
+    profile_choices = [(name, name.capitalize()) for name in profiles_dict.keys()]
+    
+    # Extract existing bank accounts for dropdown
+    existing_accounts = Transaction.objects.values_list('bank_account', flat=True).distinct()
+    account_choices = [(acct, acct) for acct in existing_accounts]
+
+    if request.method == 'POST':
+        form = TransactionImportForm(
+            request.POST,
+            request.FILES,
+            profile_choices=profile_choices,
+            account_choices=account_choices
+        )
+        if form.is_valid():
+            file = request.FILES['file']
+            profile = form.cleaned_data['mapping_profile']
+            bank_account = form.cleaned_data['bank_account']
+
+            request.session['import_profile'] = profile
+            request.session['import_bank_account'] = bank_account
+            request.session['import_file'] = file.read().decode('utf-8')
+
+            return redirect('import_transactions_preview')
+    else:
+        form = TransactionImportForm(
+            profile_choices=profile_choices,
+            account_choices=account_choices
+        )
+
+    return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Transactions'})
+
+def import_transactions_preview(request):
+    try:
+        profile_name = request.session['import_profile']
+        bank_account = request.session['import_bank_account']
+        file_data = request.session['import_file']
+    except KeyError:
+        messages.error(request, "Import session data missing. Please re-upload.")
+        return redirect('import_transactions_upload')
+
+    from io import StringIO
+    parsed_file = StringIO(file_data)
+
+    transactions = map_csv_file_to_transactions(parsed_file, profile_name, bank_account)
+
+    return render(request, 'transactions/import_transaction_preview.html', {
+        'transactions': transactions
+    })

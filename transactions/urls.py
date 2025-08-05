@@ -12,4 +12,9 @@ urlpatterns = [
     path('apply_current/<int:transaction_id>/', views.apply_current_to_similar, name='apply_current_to_similar'),
     path('bank-accounts/', views.bank_accounts_list, name='bank_accounts_list'),
     path('report_account_time_span/', views.report_account_time_span, name='report_account_time_span'),
-    path('report_income_statement/', views.report_income_statement, name='report_income_statement'),]
+    path('report_income_statement/', views.report_income_statement, name='report_income_statement'),
+    path('import/categories/', views.import_categories, name='import_categories'),
+    path('import/payoree/', views.import_payoree, name='import_payoree'),
+    path('import/transactions/', views.import_transactions_upload, name='import_transactions_upload'),
+    path('import/transactions/preview/', views.import_transactions_preview, name='import_transactions_preview'),
+]

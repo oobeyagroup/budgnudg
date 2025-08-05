@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>{{ title }}</h2>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.file.label_tag }} {{ form.file }}<br><br>
+    
+      {{ form.mapping_profile.label_tag }} {{ form.mapping_profile }}<br><br>
+    
+      {{ form.bank_account_choice.label_tag }} {{ form.bank_account_choice }}<br><br>
+    
+      {{ form.new_bank_account.label_tag }} {{ form.new_bank_account }}<br><br>
+    
+      <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+</div>
+
+<script>
+  const bankSelect = document.querySelector('#id_bank_account_choice');
+  const newBankInput = document.querySelector('#id_new_bank_account');
+
+  function toggleNewBankInput() {
+    if (bankSelect.value === '__new__') {
+      newBankInput.parentElement.style.display = 'block';
+    } else {
+      newBankInput.parentElement.style.display = 'none';
+    }
+  }
+
+  bankSelect.addEventListener('change', toggleNewBankInput);
+  document.addEventListener('DOMContentLoaded', toggleNewBankInput);
+</script>
+{% endblock %}

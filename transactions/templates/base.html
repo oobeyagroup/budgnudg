@@ -79,6 +79,16 @@
             <li class="nav-item">
               <a class="nav-link" href="{% url 'payoree_list' %}">Payor/ee</a>
             </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="importDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Import
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="importDropdown">
+                <li><a class="dropdown-item" href="{% url 'import_transactions_upload' %}">Transactions</a></li>
+                <li><a class="dropdown-item" href="{% url 'import_categories' %}">Categories</a></li>
+                <li><a class="dropdown-item" href="{% url 'import_payoree' %}">Payoree</a></li>
+              </ul>
+            </li>
             <li class="nav-item">
               <a class="nav-link" href="/admin/">Admin</a>
             </li>
@@ -113,6 +123,9 @@
   $(document).ready(function() {
     // Initialize DataTables
     $('#transactionTable').DataTable({
+      language: {
+        emptyTable: "No transactions found."
+    },
       autoWidth: false,
       pageLength: 50,
       order: [[0, 'desc']],
