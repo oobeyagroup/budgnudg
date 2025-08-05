@@ -59,7 +59,7 @@ Thumbs.db
 *.bak
 
 # Temporary analysis files
-*.txt
+
 
 # Intermediate outputs
 *.csv
