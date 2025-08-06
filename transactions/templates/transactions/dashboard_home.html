@@ -1,34 +1,55 @@
 {% extends "base.html" %}
-
+{% load custom_filters %}
 {% block content %}
 <div class="container mt-4">
-  <div class="row mb-3">
-    <div class="col"><h3>Dashboard</h3></div>
-  </div>
+    <div class="row mb-3">
+        <div class="col">
+            <h3>Dashboard</h3>
+        </div>
+    </div>
 
-  <div class="row">
-    <div class="col-md-4">
-      <h5>Recurring Transactions</h5>
-      <!-- Render recurring table -->
+    <div class="row">
+        <div class="col-md-4">
+            <h5>Recurring Transactions</h5>
+            <!-- Render recurring table -->
+        </div>
+        <div class="col-md-4">
+            <h5>Accounts Summary</h5>
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Acct</th>
+                        <th>No Sub</th>
+                        <th>No Pay</th>
+                        {% for month in months %}
+                        <th>{{ month|slice:"5:7" }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for acct, month_counts in summary_dict.items %}
+                    <tr>
+                        <td>{{ acct }}</td>
+                        <td>{{ uncategorized_map|get_item:acct|default:"0" }}</td>
+                        <td>{{ no_payoree_map|get_item:acct|default:"0" }}</td>
+                        {% for month in months %}
+                        <td>{{ month_counts|get_item:month|default:"0" }}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
-    <div class="col-md-4">
-      <h5>Accounts Summary</h5>
-      <!-- Render accounts summary table -->
-    </div>
-    <div class="col-md-4">
-      <h5>Tagged: Monitor</h5>
-      <!-- Render tagged transactions -->
-    </div>
-  </div>
 
-  <hr>
+    <hr>
 
-  <div class="row">
-    <div class="col">
-      <h5>All Transactions (Recent)</h5>
-      <!-- Reuse existing transactions table -->
-      {% include "transactions/transactions_list_partial.html" with transactions=all_transactions %}
+    <div class="row">
+        <div class="col">
+            <h5>All Transactions (Recent)</h5>
+            <!-- Reuse existing transactions table -->
+            {% include "transactions/transactions_list_partial.html" with transactions=all_transactions %}
+        </div>
     </div>
-  </div>
 </div>
 {% endblock %}

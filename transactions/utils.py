@@ -26,10 +26,7 @@ def parse_transaction_row(row, mapping, bank_account):
     for csv_col, model_field in mapping.items():
         value = (row.get(csv_col) or '').strip()
         if model_field == 'date':
-            try:
-                txn_data['date'] = parse_date(value)
-            except ValueError:
-                txn_data['date'] = "(Invalid date)"
+            txn_data['date'] = parse_date(value)
         elif model_field == 'amount':
             try:
                 txn_data['amount'] = float(Decimal(value))
@@ -59,7 +56,7 @@ def parse_date(value):
             return datetime.strptime(value, fmt).date()
         except ValueError:
             continue
-    return "(Invalid date)"
+    return None
 
 @trace
 def parse_transactions_file(file, profile_name, bank_account):
@@ -155,5 +152,3 @@ def read_uploaded_file(uploaded_file, encoding='utf-8-sig'):
     Returns decoded string.
     """
     return uploaded_file.read().decode(encoding)
-
-

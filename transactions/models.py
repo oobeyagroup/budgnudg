@@ -2,7 +2,7 @@ import re
 from django.db import models
 from django.db.models import Q
 
-
+# -----------------------------------------------------
 class Payoree(models.Model):
     class Meta:
         constraints = [
@@ -34,7 +34,7 @@ class Payoree(models.Model):
                 return payoree
         return None   
     
-
+# -----------------------------------------------------
 class Category(models.Model):
     class Meta:
         constraints = [
@@ -71,14 +71,30 @@ class Category(models.Model):
 
     def is_top_level(self):
         return self.parent is None
-
+# -----------------------------------------------------
 class Tag(models.Model):
     name = models.CharField(max_length=50, unique=True)
 
     def __str__(self):
         return self.name
-    
+
+# -----------------------------------------------------    
 class Transaction(models.Model):
+    '''Model representing a financial transaction.
+        Attributes:
+        - source: Filename of the CSV file this transaction was imported from.
+        - bank_account: Financial institution or account name.
+        - sheet_account: Type of account (e.g., income, expense).
+        - date: Date of the transaction.
+        - description: Description of the transaction.
+        - amount: Amount of the transaction.
+        - account_type: Type of account (e.g., checking, savings).
+        - check_num: Check number if applicable.
+        - memo: Additional notes or memo for the transaction.
+        - payoree: **Foreign key to Payoree model. 
+        - subcategory: **Foreign key to Category model for categorization.
+        - tags: **Many-to-many relationship with Tag model for tagging transactions.    
+    '''
     class Meta:
        constraints = [
         models.UniqueConstraint(fields=['date', 'amount', 'description', 'bank_account'], name='unique_transaction')

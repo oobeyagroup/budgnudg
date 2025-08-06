@@ -44,3 +44,15 @@ class TransactionImportForm(forms.Form):
             cleaned_data['bank_account'] = account_choice
 
         return cleaned_data
+    
+class TransactionReviewForm(forms.Form):
+    bank_account = forms.CharField()
+    date = forms.DateField()
+    description = forms.CharField(widget=forms.Textarea)
+    amount = forms.DecimalField()
+    account_type = forms.CharField(required=False)
+    sheet_account = forms.CharField(required=False)
+    check_num = forms.CharField(required=False)
+    memo = forms.CharField(required=False)
+    payoree = forms.CharField(required=False)
+    subcategory = forms.CharField(required=False)

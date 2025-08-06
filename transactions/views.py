@@ -2,7 +2,7 @@ import re
 from django.shortcuts import render, get_object_or_404, redirect
 from .models import Transaction, Payoree, Category, Tag
 from rapidfuzz import fuzz, process
-from .forms import TransactionForm, FileUploadForm, TransactionImportForm
+from .forms import TransactionForm, FileUploadForm, TransactionImportForm, TransactionReviewForm
 from django.db.models import Min, Max, Count, Prefetch
 from django.contrib import messages
 from .utils import parse_transactions_file, map_csv_file_to_transactions, load_mapping_profiles, read_uploaded_file, trace
@@ -303,24 +303,27 @@ def import_transactions_preview(request):
         file_data = request.session['import_file']
         file_name = request.session.get('import_file_name', 'unknown.csv')
     except KeyError:
+        logger.warning("Import preview failed due to missing session data.")
         messages.error(request, "Import session data missing. Please re-upload.")
         return redirect('import_transactions_upload')
 
     from io import StringIO
     parsed_file = StringIO(file_data)
 
-    mapped_transactions = map_csv_file_to_transactions(parsed_file, profile_name, bank_account)
+    transactions = map_csv_file_to_transactions(parsed_file, profile_name, bank_account)
+    logger.debug("Parsed %d transactions for preview.", len(transactions))
 
-    # Serialize transactions for session (ensure dates are strings)
-    for txn in mapped_transactions:
+    # Ensure serializable data
+    for txn in transactions:
         if isinstance(txn.get('date'), datetime.date):
             txn['date'] = txn['date'].isoformat()
 
-    request.session['parsed_transactions'] = mapped_transactions
+    request.session['parsed_transactions'] = transactions
     request.session['import_file_name'] = file_name
+    request.session['review_index'] = 0
 
     return render(request, 'transactions/import_transaction_preview.html', {
-        'mapped_transactions': mapped_transactions
+        'transactions': transactions
     })
 
 @trace
@@ -337,10 +340,20 @@ def import_transactions_confirm(request):
     skipped = []
 
     for txn in transactions:
+        raw_date = txn.get('date')
+        try:
+            parsed_date = datetime.date.fromisoformat(raw_date)
+        except (ValueError, TypeError):
+            parsed_date = None
+
+        if not parsed_date:
+            skipped.append(txn)
+            continue
+
         txn_data = {
             'source': source_file,
             'bank_account': bank_account,
-            'date': txn.get('date'),
+            'date': parsed_date,
             'description': txn.get('description'),
             'amount': txn.get('amount'),
             'sheet_account': txn.get('sheet_account'),
@@ -382,9 +395,14 @@ def import_transactions_confirm(request):
                 payoree = Payoree.objects.create(name=payoree_name)
         
         txn_data['payoree'] = payoree
+        # Ensure empty strings for nullable text fields to avoid IntegrityError
+        for field in ['account_type', 'sheet_account', 'check_num', 'memo']:
+            if txn_data.get(field) is None:
+                txn_data[field] = ''
 
         # Save transaction
         try:
+            
             saved_txn = Transaction.objects.create(**txn_data)
             assign_default_tags(saved_txn)
             imported.append(saved_txn)
@@ -454,10 +472,80 @@ def dashboard_home(request):
     # Full Transaction List (recent first)
     all_transactions = Transaction.objects.all().order_by('-date')[:50]
 
+    uncategorized_counts = Transaction.objects.filter(subcategory__isnull=True)\
+        .values('bank_account')\
+        .annotate(uncategorized_count=Count('id'))
+    uncategorized_map = {item['bank_account']: item['uncategorized_count'] for item in uncategorized_counts}
+
+    no_payoree_counts = Transaction.objects.filter(payoree__isnull=True)\
+        .values('bank_account')\
+        .annotate(no_payoree_count=Count('id'))
+    no_payoree_map = {item['bank_account']: item['no_payoree_count'] for item in no_payoree_counts}
+
+    months = sorted(
+        {item['month'].strftime('%Y-%m') for item in accounts_summary},
+        reverse=True
+    )
+
+    summary_dict = {}
+    for item in accounts_summary:
+        acct = item['bank_account']
+        month = item['month'].strftime('%Y-%m')
+        count = item['txn_count']
+        if acct not in summary_dict:
+            summary_dict[acct] = {}
+        summary_dict[acct][month] = count
+
+
+
     return render(request, 'transactions/dashboard_home.html', {
         'recurring': recurring,
         'accounts_summary': accounts_summary,
         'tagged': tagged,
-        'all_transactions': all_transactions
+        'all_transactions': all_transactions,
+        'uncategorized_map': uncategorized_map,
+        'no_payoree_map': no_payoree_map,
+        'months': months,
+        'summary_dict': summary_dict,
     })
+
+
+# Step-by-step transaction review after import preview
+@trace
+def review_transaction(request):
+    session_txns = request.session.get('parsed_transactions')
+    current_index = request.session.get('review_index', 0)
+
+    if not session_txns:
+        logger.warning("Review transaction failed: no transactions in session.")
+        return redirect('import_transactions_preview')
+
+    if current_index >= len(session_txns):
+        return redirect('import_transactions_confirm')
+
+    txn = session_txns[current_index]
+
+    if request.method == 'POST':
+        form = TransactionReviewForm(request.POST)
+        if form.is_valid():
+            txn_data = form.cleaned_data
+            from decimal import Decimal
+            for key, value in txn_data.items():
+                if isinstance(value, (datetime.date, datetime.datetime)):
+                    txn_data[key] = value.isoformat()
+                elif isinstance(value, Decimal):
+                    txn_data[key] = str(value)
+            session_txns[current_index] = txn_data
+            request.session['parsed_transactions'] = session_txns
+            request.session['review_index'] = current_index + 1
+            return redirect('review_transaction')
+    else:
+        form = TransactionReviewForm(initial=txn)
+
+    return render(request, 'transactions/review_transaction.html', {
+        'form': form,
+        'current_index': current_index + 1,
+        'total': len(session_txns)
+    })
+
 
