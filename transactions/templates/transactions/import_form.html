@@ -10,26 +10,30 @@
       {{ form.mapping_profile.label_tag }} {{ form.mapping_profile }}<br><br>
     
       {{ form.bank_account_choice.label_tag }} {{ form.bank_account_choice }}<br><br>
-    
-      {{ form.new_bank_account.label_tag }} {{ form.new_bank_account }}<br><br>
+
+      <div id="new-bank-account-row">
+        {{ form.new_bank_account.label_tag }} {{ form.new_bank_account }}<br><br>
+      </div>
     
       <button type="submit" class="btn btn-primary">Upload</button>
     </form>
 </div>
 
 <script>
-  const bankSelect = document.querySelector('#id_bank_account_choice');
-  const newBankInput = document.querySelector('#id_new_bank_account');
+  document.addEventListener('DOMContentLoaded', function() {
+    const bankSelect = document.querySelector('#id_bank_account_choice');
+    const newBankRow = document.querySelector('#new-bank-account-row');
 
-  function toggleNewBankInput() {
-    if (bankSelect.value === '__new__') {
-      newBankInput.parentElement.style.display = 'block';
-    } else {
-      newBankInput.parentElement.style.display = 'none';
+    function toggleNewBankInput() {
+      if (bankSelect.value === '__new__') {
+        newBankRow.style.display = 'block';
+      } else {
+        newBankRow.style.display = 'none';
+      }
     }
-  }
 
-  bankSelect.addEventListener('change', toggleNewBankInput);
-  document.addEventListener('DOMContentLoaded', toggleNewBankInput);
+    bankSelect.addEventListener('change', toggleNewBankInput);
+    toggleNewBankInput();  // Initial check
+  });
 </script>
 {% endblock %}

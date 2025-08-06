@@ -131,3 +131,10 @@ def map_csv_file_to_transactions(file_obj, profile_name, bank_account):
         transactions.append(txn)
 
     return transactions
+
+def read_uploaded_file(uploaded_file, encoding='utf-8-sig'):
+    """
+    Safely read uploaded file content, handling BOM and decoding.
+    Returns decoded string.
+    """
+    return uploaded_file.read().decode(encoding)

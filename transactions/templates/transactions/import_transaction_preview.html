@@ -50,6 +50,10 @@
         {% endfor %}
     </tbody>
 </table>
+<form method="post" action="{% url 'import_transactions_confirm' %}">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-success mt-3">Confirm and Import</button>
+</form>
   </div>
 </div>
 

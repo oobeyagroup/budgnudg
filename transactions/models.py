@@ -25,11 +25,14 @@ class Payoree(models.Model):
     @classmethod
     def get_existing(cls, name):
         """Find existing Payoree with normalized name."""
+        if not name:  # Return None early if name is empty or None
+            return None
+    
         normalized = cls.normalize_name(name)
         for payoree in cls.objects.all():
             if cls.normalize_name(payoree.name) == normalized:
                 return payoree
-        return None        
+        return None   
     
 
 class Category(models.Model):

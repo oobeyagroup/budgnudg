@@ -5,7 +5,8 @@ from rapidfuzz import fuzz, process
 from .forms import TransactionForm, FileUploadForm, TransactionImportForm
 from django.db.models import Min, Max, Count, Prefetch
 from django.contrib import messages
-from .utils import parse_transactions_file, map_csv_file_to_transactions, load_mapping_profiles
+from .utils import parse_transactions_file, map_csv_file_to_transactions, load_mapping_profiles, read_uploaded_file
+import datetime
 
 def normalize_description(desc):
     # Remove 11-digit numbers and WEB ID numbers
@@ -245,37 +246,6 @@ def import_payoree(request):
     return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Payoree'})
 
 
-
-# def import_transactions(request):
-#     # Build choices for mapping profile and bank account
-#     mapping_profiles = [('default', 'Default Profile')]  # TODO: pull real profiles if stored
-#     existing_accounts = Transaction.objects.values_list('bank_account', flat=True).distinct()
-#     account_choices = [(acct, acct) for acct in existing_accounts]
-
-#     if request.method == 'POST':
-#         form = TransactionImportForm(request.POST, request.FILES, profile_choices=mapping_profiles, account_choices=account_choices)
-#         if form.is_valid():
-#             file = request.FILES['file']
-#             profile = form.cleaned_data['mapping_profile']
-#             bank_account = form.cleaned_data['bank_account']
-
-#             try:
-#                 # Parse and transform the uploaded file
-#                 imported_transactions = parse_transactions_file(file, profile, bank_account)
-
-#                 # Display them using your existing list template
-#                 return render(request, 'transaction_list.html', {
-#                     'transactions': imported_transactions,
-#                     'import_mode': True  # So you can hide edit/resolve buttons if needed
-#                 })
-
-#             except Exception as e:
-#                 messages.error(request, f'Import failed: {str(e)}')
-#     else:
-#         form = TransactionImportForm(profile_choices=mapping_profiles, account_choices=account_choices)
-
-#     return render(request, 'transactions/import_transaction_preview.html', {  'transactions': import_transactions})
-
 def import_transactions_upload(request):
     # Load real profiles from csv_mappings.json
     profiles_dict = load_mapping_profiles()
@@ -297,9 +267,10 @@ def import_transactions_upload(request):
             profile = form.cleaned_data['mapping_profile']
             bank_account = form.cleaned_data['bank_account']
 
+            request.session['import_file_name'] = file.name 
             request.session['import_profile'] = profile
             request.session['import_bank_account'] = bank_account
-            request.session['import_file'] = file.read().decode('utf-8')
+            request.session['import_file'] = read_uploaded_file(file)
 
             return redirect('import_transactions_preview')
     else:
@@ -315,6 +286,7 @@ def import_transactions_preview(request):
         profile_name = request.session['import_profile']
         bank_account = request.session['import_bank_account']
         file_data = request.session['import_file']
+        file_name = request.session.get('import_file_name', 'unknown.csv')
     except KeyError:
         messages.error(request, "Import session data missing. Please re-upload.")
         return redirect('import_transactions_upload')
@@ -324,6 +296,110 @@ def import_transactions_preview(request):
 
     transactions = map_csv_file_to_transactions(parsed_file, profile_name, bank_account)
 
+    # Serialize transactions for session (ensure dates are strings)
+    for txn in transactions:
+        if isinstance(txn.get('date'), datetime.date):
+            txn['date'] = txn['date'].isoformat()
+
+    request.session['parsed_transactions'] = transactions
+    request.session['import_file_name'] = file_name
+
     return render(request, 'transactions/import_transaction_preview.html', {
         'transactions': transactions
     })
+
+def import_transactions_confirm(request):
+    from io import StringIO
+    from decimal import Decimal, InvalidOperation
+
+    transactions = request.session.get('parsed_transactions', [])
+    source_file = request.session.get('import_file_name', 'unknown.csv')
+    bank_account = request.session.get('import_bank_account')
+
+    imported = []
+    duplicates = []
+    skipped = []
+
+    for txn in transactions:
+        txn_data = {
+            'source': source_file,
+            'bank_account': bank_account,
+            'date': txn.get('date'),
+            'description': txn.get('description'),
+            'amount': txn.get('amount'),
+            'sheet_account': txn.get('sheet_account'),
+            'account_type': txn.get('account_type'),
+            'check_num': txn.get('check_num'),
+            'memo': txn.get('memo'),
+        }
+
+        # Duplicate check
+        existing = Transaction.objects.filter(
+            date=txn_data['date'],
+            amount=txn_data['amount'],
+            description=txn_data['description'],
+            bank_account=bank_account
+        )
+
+        if existing.exists():
+            duplicates.append((txn_data, list(existing)))
+            continue  # For now, skip; later allow user override
+
+        # Suggest subcategory if not mapped
+        subcat_name = txn.get('subcategory')
+        if not subcat_name:
+            subcat_name = suggest_subcategory(txn_data['description'])
+        subcat = Category.objects.filter(name=subcat_name).first()
+        txn_data['subcategory'] = subcat
+
+        # Suggest payoree if not mapped
+        payoree_name = txn.get('payoree')
+        if not payoree_name:
+            payoree_name = suggest_payoree(txn_data['description'])
+        
+        if not payoree_name:
+            payoree = None  # Still None after suggestion — skip
+        else:
+            payoree = Payoree.get_existing(payoree_name)
+            if not payoree:
+                payoree = Payoree.objects.create(name=payoree_name)
+        
+        txn_data['payoree'] = payoree
+
+        # Save transaction
+        try:
+            saved_txn = Transaction.objects.create(**txn_data)
+            assign_default_tags(saved_txn)
+            imported.append(saved_txn)
+        except Exception:
+            skipped.append(txn_data)
+
+    context = {
+        'imported_count': len(imported),
+        'duplicate_count': len(duplicates),
+        'skipped_count': len(skipped),
+        'duplicates': duplicates
+    }
+
+    return render(request, 'transactions/transactions_list.html', context)
+
+# Helper functions for suggestions and tagging
+def suggest_subcategory(description):
+    known = Category.objects.values_list('name', flat=True)
+    for name in known:
+        if name.lower() in description.lower():
+            return name
+    return None
+
+def suggest_payoree(description):
+    known = Payoree.objects.values_list('name', flat=True)
+    for name in known:
+        if name.lower() in description.lower():
+            return name
+    return None
+
+def assign_default_tags(transaction):
+    tag_names = ['day2day', 'monitor']  # Placeholder logic
+    for name in tag_names:
+        tag, _ = Tag.objects.get_or_create(name=name)
+        transaction.tags.add(tag)

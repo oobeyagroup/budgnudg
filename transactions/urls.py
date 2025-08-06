@@ -17,4 +17,5 @@ urlpatterns = [
     path('import/payoree/', views.import_payoree, name='import_payoree'),
     path('import/transactions/', views.import_transactions_upload, name='import_transactions_upload'),
     path('import/transactions/preview/', views.import_transactions_preview, name='import_transactions_preview'),
+    path('import/transactions/confirm/', views.import_transactions_confirm, name='import_transactions_confirm'),
 ]
