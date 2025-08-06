@@ -45,14 +45,44 @@ class TransactionImportForm(forms.Form):
 
         return cleaned_data
     
+from django import forms
+
+from django import forms
+
 class TransactionReviewForm(forms.Form):
-    bank_account = forms.CharField()
-    date = forms.DateField()
-    description = forms.CharField(widget=forms.Textarea)
-    amount = forms.DecimalField()
-    account_type = forms.CharField(required=False)
-    sheet_account = forms.CharField(required=False)
-    check_num = forms.CharField(required=False)
-    memo = forms.CharField(required=False)
-    payoree = forms.CharField(required=False)
-    subcategory = forms.CharField(required=False)
+    date = forms.DateField(
+        widget=forms.DateInput(attrs={'class': 'form-control', 'type': 'date'})
+    )
+    description = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    amount = forms.DecimalField(
+        widget=forms.NumberInput(attrs={'class': 'form-control'})
+    )
+    bank_account = forms.CharField(
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    payoree = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    subcategory = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    sheet_account = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    account_type = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    check_num = forms.CharField(
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'})
+    )
+    memo = forms.CharField(
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 2})
+    )

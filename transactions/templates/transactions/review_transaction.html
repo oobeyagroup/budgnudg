@@ -1,26 +1,66 @@
-
-
 {% extends "base.html" %}
-{% load static %}
-
 {% block content %}
 <div class="container mt-4">
   <h2>Review Transaction {{ current_index }} of {{ total }}</h2>
+  <p class="text-muted">Confirm or adjust this transaction before saving.</p>
+
   <form method="post">
     {% csrf_token %}
-    <div class="mb-3">
-      {{ form.non_field_errors }}
-      {% for field in form %}
-        <div class="mb-3">
-          <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
-          {{ field }}
-          {% if field.errors %}
-            <div class="text-danger">{{ field.errors }}</div>
-          {% endif %}
-        </div>
-      {% endfor %}
+
+    <div class="row">
+      <div class="col-md-3 mb-3">
+        <label for="{{ form.date.id_for_label }}" class="form-label">Date</label>
+        {{ form.date }}
+      </div>
+      <div class="col-md-6 mb-3">
+        <label for="{{ form.description.id_for_label }}" class="form-label">Description</label>
+        {{ form.description }}
+      </div>
+      <div class="col-md-3 mb-3">
+        <label for="{{ form.amount.id_for_label }}" class="form-label">Amount</label>
+        {{ form.amount }}
+      </div>
     </div>
-    <button type="submit" class="btn btn-primary">Save and Next</button>
+
+    <div class="row">
+      <div class="col-md-3 mb-3">
+        <label for="{{ form.bank_account.id_for_label }}" class="form-label">Bank Account</label>
+        {{ form.bank_account }}
+      </div>
+      <div class="col-md-3 mb-3">
+        <label for="{{ form.payoree.id_for_label }}" class="form-label">Payoree</label>
+        {{ form.payoree }}
+      </div>
+      <div class="col-md-3 mb-3">
+        <label for="{{ form.subcategory.id_for_label }}" class="form-label">Subcategory</label>
+        {{ form.subcategory }}
+      </div>
+      <div class="col-md-3 mb-3">
+        <label for="{{ form.sheet_account.id_for_label }}" class="form-label">Sheet Account</label>
+        {{ form.sheet_account }}
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col-md-4 mb-3">
+        <label for="{{ form.account_type.id_for_label }}" class="form-label">Account Type</label>
+        {{ form.account_type }}
+      </div>
+      <div class="col-md-4 mb-3">
+        <label for="{{ form.check_num.id_for_label }}" class="form-label">Check Number</label>
+        {{ form.check_num }}
+      </div>
+    </div>
+
+    <div class="mb-3">
+      <label for="{{ form.memo.id_for_label }}" class="form-label">Memo</label>
+      {{ form.memo }}
+    </div>
+
+    <div class="d-flex justify-content-between">
+      <a href="{% url 'import_transactions_preview' %}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-success">Save and Next</button>
+    </div>
   </form>
 </div>
 {% endblock %}
