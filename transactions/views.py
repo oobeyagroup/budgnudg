@@ -1,19 +1,25 @@
 import re
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Transaction, Payoree, Category
+from .models import Transaction, Payoree, Category, Tag
 from rapidfuzz import fuzz, process
 from .forms import TransactionForm, FileUploadForm, TransactionImportForm
 from django.db.models import Min, Max, Count, Prefetch
 from django.contrib import messages
-from .utils import parse_transactions_file, map_csv_file_to_transactions, load_mapping_profiles, read_uploaded_file
+from .utils import parse_transactions_file, map_csv_file_to_transactions, load_mapping_profiles, read_uploaded_file, trace
 import datetime
+import logging
+import functools
 
+logger = logging.getLogger(__name__)
+
+@trace
 def normalize_description(desc):
     # Remove 11-digit numbers and WEB ID numbers
     cleaned = re.sub(r'\b\d{11}\b', '', desc)
     cleaned = re.sub(r'WEB ID[:]? \d+', '', cleaned, flags=re.IGNORECASE)
     return cleaned.lower().strip()
 
+@trace
 def resolve_transaction(request, pk):
     transaction = get_object_or_404(Transaction, pk=pk)
 
@@ -68,10 +74,12 @@ def resolve_transaction(request, pk):
         'similar_transactions': similar, 
     })
 
+@trace
 def uncategorized_transactions(request):
     transactions = Transaction.objects.filter(subcategory__isnull=True)
     return render(request, "transactions/uncategorized_list.html", {"transactions": transactions})
 
+@trace
 def categorize_transaction(request, pk):
     transaction = Transaction.objects.get(pk=pk)
     if request.method == "POST":
@@ -83,6 +91,7 @@ def categorize_transaction(request, pk):
         form = TransactionForm(instance=transaction)
     return render(request, "transactions/categorize.html", {"form": form})
 
+@trace
 def categories_list(request):
     # Get all categories
     subcats = Category.objects.annotate(transaction_count=Count('transaction'))
@@ -96,6 +105,7 @@ def categories_list(request):
 from django.db.models import Count
 from .models import Payoree
 
+@trace
 def payorees_list(request):
     payorees = Payoree.objects.annotate(transaction_count=Count('transaction')).order_by('name')
 
@@ -107,6 +117,7 @@ def payorees_list(request):
         'request': request  # Pass request to template for checkbox state
     })
 
+@trace
 def transactions_list(request):
     sort_field = request.GET.get('sort', 'date')  # Default sort by date
     valid_fields = [
@@ -115,15 +126,17 @@ def transactions_list(request):
     ]
     if sort_field not in valid_fields:
         sort_field = 'date'
-    transactions = Transaction.objects.all().order_by(sort_field)
-    return render(request, "transactions/transactions_list.html", {"transactions": transactions})
+    all_transactions = Transaction.objects.all().order_by(sort_field)
+    return render(request, "transactions/transactions_list.html", {"all_transactions": all_transactions})
     
+@trace
 def home(request):
     return render(request, "home.html")
 
 from django.shortcuts import render
 from .models import Transaction
 
+@trace
 def bank_accounts_list(request):
     # Get distinct bank_account values, exclude empty/null
     accounts = Transaction.objects.exclude(bank_account__isnull=True).exclude(bank_account='') \
@@ -132,6 +145,7 @@ def bank_accounts_list(request):
     return render(request, 'transactions/bank_accounts_list.html', {'accounts': accounts})
 
 
+@trace
 def set_transaction_field(request, transaction_id, field, value_id):
     transaction = get_object_or_404(Transaction, id=transaction_id)
 
@@ -147,6 +161,7 @@ def set_transaction_field(request, transaction_id, field, value_id):
     transaction.save()
     return redirect('resolve_transaction', pk=transaction_id)
 
+@trace
 def apply_current_to_similar(request, transaction_id):
     transaction = get_object_or_404(Transaction, id=transaction_id)
 
@@ -176,6 +191,7 @@ def apply_current_to_similar(request, transaction_id):
     return redirect('resolve_transaction', pk=transaction_id)
 
 
+@trace
 def report_account_time_span(request):
     report = (
         Transaction.objects
@@ -191,6 +207,7 @@ def report_account_time_span(request):
 
     return render(request, 'transactions/report_account_time_span.html', {'report': report})
 
+@trace
 def report_income_statement(request):
     transactions = Transaction.objects.all().order_by('date')
     income_statement = {}
@@ -205,13 +222,7 @@ def report_income_statement(request):
     return render(request, 'transactions/report_income_statement.html', {'income_statement': income_statement})
 
 
-
-def handle_file_upload(file, import_type):
-    # Placeholder for actual processing logic
-    # import_type: 'transactions', 'categories', 'payoree'
-    # Implement parsing here
-    pass
-
+@trace
 def import_transactions(request):
     if request.method == 'POST':
         form = FileUploadForm(request.POST, request.FILES)
@@ -223,6 +234,7 @@ def import_transactions(request):
         form = FileUploadForm()
     return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Transactions'})
 
+@trace
 def import_categories(request):
     if request.method == 'POST':
         form = FileUploadForm(request.POST, request.FILES)
@@ -234,6 +246,7 @@ def import_categories(request):
         form = FileUploadForm()
     return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Categories'})
 
+@trace
 def import_payoree(request):
     if request.method == 'POST':
         form = FileUploadForm(request.POST, request.FILES)
@@ -246,6 +259,7 @@ def import_payoree(request):
     return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Payoree'})
 
 
+@trace
 def import_transactions_upload(request):
     # Load real profiles from csv_mappings.json
     profiles_dict = load_mapping_profiles()
@@ -281,6 +295,7 @@ def import_transactions_upload(request):
 
     return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Transactions'})
 
+@trace
 def import_transactions_preview(request):
     try:
         profile_name = request.session['import_profile']
@@ -294,20 +309,21 @@ def import_transactions_preview(request):
     from io import StringIO
     parsed_file = StringIO(file_data)
 
-    transactions = map_csv_file_to_transactions(parsed_file, profile_name, bank_account)
+    mapped_transactions = map_csv_file_to_transactions(parsed_file, profile_name, bank_account)
 
     # Serialize transactions for session (ensure dates are strings)
-    for txn in transactions:
+    for txn in mapped_transactions:
         if isinstance(txn.get('date'), datetime.date):
             txn['date'] = txn['date'].isoformat()
 
-    request.session['parsed_transactions'] = transactions
+    request.session['parsed_transactions'] = mapped_transactions
     request.session['import_file_name'] = file_name
 
     return render(request, 'transactions/import_transaction_preview.html', {
-        'transactions': transactions
+        'mapped_transactions': mapped_transactions
     })
 
+@trace
 def import_transactions_confirm(request):
     from io import StringIO
     from decimal import Decimal, InvalidOperation
@@ -342,6 +358,7 @@ def import_transactions_confirm(request):
         )
 
         if existing.exists():
+            logging.info("Duplicate transaction found: %s %50s",txn_data['date'], txn_data['description'])
             duplicates.append((txn_data, list(existing)))
             continue  # For now, skip; later allow user override
 
@@ -371,19 +388,24 @@ def import_transactions_confirm(request):
             saved_txn = Transaction.objects.create(**txn_data)
             assign_default_tags(saved_txn)
             imported.append(saved_txn)
+            logger.debug("Imported transaction: %60s", saved_txn)
         except Exception:
+            logging.exception("Failed to save transaction: %s %30s",txn_data['date'], txn_data['description'])
             skipped.append(txn_data)
 
+    all_transactions = Transaction.objects.all().order_by('-date')[:50]
     context = {
         'imported_count': len(imported),
         'duplicate_count': len(duplicates),
         'skipped_count': len(skipped),
-        'duplicates': duplicates
+        'duplicates': duplicates,
+        'all_transactions': all_transactions  
     }
 
     return render(request, 'transactions/transactions_list.html', context)
 
 # Helper functions for suggestions and tagging
+@trace
 def suggest_subcategory(description):
     known = Category.objects.values_list('name', flat=True)
     for name in known:
@@ -391,6 +413,7 @@ def suggest_subcategory(description):
             return name
     return None
 
+@trace
 def suggest_payoree(description):
     known = Payoree.objects.values_list('name', flat=True)
     for name in known:
@@ -398,8 +421,43 @@ def suggest_payoree(description):
             return name
     return None
 
+@trace
 def assign_default_tags(transaction):
     tag_names = ['day2day', 'monitor']  # Placeholder logic
     for name in tag_names:
         tag, _ = Tag.objects.get_or_create(name=name)
         transaction.tags.add(tag)
+
+@trace
+def dashboard_home(request):
+    from datetime import date, timedelta
+    from transactions.models import Transaction, Tag
+
+    # Panel 1: Recurring Transactions (placeholder logic)
+    today = date.today()
+    recurring = Transaction.objects.filter(tags__name='recurring')\
+                .annotate(last_paid_date=Max('date'))\
+                .order_by('date')[:10]
+
+    # Panel 2: Accounts Summary (past 6 months)
+    from django.db.models.functions import TruncMonth
+    six_months_ago = today - timedelta(days=180)
+    accounts_summary = Transaction.objects.filter(date__gte=six_months_ago)\
+                          .annotate(month=TruncMonth('date'))\
+                          .values('bank_account', 'month')\
+                          .annotate(txn_count=Count('id'))\
+                          .order_by('-month')
+
+    # Panel 3: Tagged Transactions (hardcoded tag)
+    tagged = Transaction.objects.filter(tags__name='monitor').order_by('-date')[:10]
+
+    # Full Transaction List (recent first)
+    all_transactions = Transaction.objects.all().order_by('-date')[:50]
+
+    return render(request, 'transactions/dashboard_home.html', {
+        'recurring': recurring,
+        'accounts_summary': accounts_summary,
+        'tagged': tagged,
+        'all_transactions': all_transactions
+    })
+

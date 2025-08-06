@@ -72,7 +72,12 @@ class Category(models.Model):
     def is_top_level(self):
         return self.parent is None
 
+class Tag(models.Model):
+    name = models.CharField(max_length=50, unique=True)
 
+    def __str__(self):
+        return self.name
+    
 class Transaction(models.Model):
     class Meta:
        constraints = [
@@ -106,6 +111,7 @@ class Transaction(models.Model):
         blank=True,
         on_delete=models.SET_NULL
     )
+    tags = models.ManyToManyField(Tag, blank=True, related_name='transactions')
 
     def __str__(self):
         truncated = self.description
@@ -115,3 +121,4 @@ class Transaction(models.Model):
 
     def category(self):
         return self.subcategory.parent if self.subcategory else None
+    

@@ -24,7 +24,6 @@
         <td class="text-end">${{ txn.amount|floatformat:2|intcomma }}</td>
         <td class="truncate" title="{{ txn.subcategory.name|default:"None" }}">{{ txn.subcategory.name|default:"None" }}</td>
         <td class="truncate" title="{{ txn.subcategory.parent.name|default:"None" }}">{{ txn.subcategory.parent.name|default:"None" }}</td>
-        <td>{{ txn.subcategory.parent.name|default:"None" }}</td>
         <td>
           <a href="{% url 'categorize_transaction' txn.pk %}">Edit</a> |
           <a href="{% url 'resolve_transaction' txn.pk %}">Suggest</a>

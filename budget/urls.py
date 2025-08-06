@@ -19,7 +19,7 @@ from django.urls import path, include
 from transactions import views as transaction_views
 
 urlpatterns = [
-    path('', transaction_views.home, name='home'),  # root URL
+    path('', transaction_views.dashboard_home, name='home'),  # root URL
     path('admin/', admin.site.urls),
     path('transactions/', include('transactions.urls')),
 ]
