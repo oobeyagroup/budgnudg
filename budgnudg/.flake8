@@ -1,0 +1,9 @@
+[flake8]
+max-line-length = 100
+exclude = venv, migrations
+extend-select = B, G # bugbear, logging-format
+# G001: logging statement uses string interpolation
+# G002: logging statement uses percent-formatting
+# G003: logging statement uses f-string formatting
+# G004: logging statement uses non-lazy % formatting
+logging-format-style = new
