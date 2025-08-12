@@ -8,6 +8,7 @@ import logging
 import functools
 
 logger = logging.getLogger(__name__)
+
 def trace(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):

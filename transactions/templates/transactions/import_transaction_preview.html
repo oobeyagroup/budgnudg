@@ -39,12 +39,10 @@
       <a href="{% url 'review_transaction' %}" class="btn btn-outline-primary me-2">Review One by One</a>
     </div>
 
-    <form method="post" action="{% url 'import_transactions_confirm' %}">
-      {% csrf_token %}
-      <div class="d-flex justify-content-end mt-3">
-        <button type="submit" class="btn btn-success">Import All</button>
-      </div>
-    </form>
+<form method="post" action="{% url 'import_transactions_confirm' %}">
+  {% csrf_token %}
+  <button type="submit" class="btn btn-success">Import All</button>
+</form>
 
   {% else %}
     <p>No transactions to display.</p>

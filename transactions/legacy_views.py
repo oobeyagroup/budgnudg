@@ -9,15 +9,11 @@ from .utils import parse_transactions_file, map_csv_file_to_transactions, load_m
 import datetime
 import logging
 import functools
+from .categorization import suggest_subcategory
 
 logger = logging.getLogger(__name__)
 
-@trace
-def normalize_description(desc):
-    # Remove 11-digit numbers and WEB ID numbers
-    cleaned = re.sub(r'\b\d{11}\b', '', desc)
-    cleaned = re.sub(r'WEB ID[:]? \d+', '', cleaned, flags=re.IGNORECASE)
-    return cleaned.lower().strip()
+
 
 @trace
 def resolve_transaction(request, pk):
@@ -259,177 +255,173 @@ def import_payoree(request):
     return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Payoree'})
 
 
-@trace
-def import_transactions_upload(request):
-    # Load real profiles from csv_mappings.json
-    profiles_dict = load_mapping_profiles()
-    profile_choices = [(name, name.capitalize()) for name in profiles_dict.keys()]
+# @trace
+# def import_transactions_upload(request):
+#     # Load real profiles from csv_mappings.json
+#     profiles_dict = load_mapping_profiles()
+#     profile_choices = [(name, name.capitalize()) for name in profiles_dict.keys()]
     
-    # Extract existing bank accounts for dropdown
-    existing_accounts = Transaction.objects.values_list('bank_account', flat=True).distinct()
-    account_choices = [(acct, acct) for acct in existing_accounts]
+#     # Extract existing bank accounts for dropdown
+#     existing_accounts = Transaction.objects.values_list('bank_account', flat=True).distinct()
+#     account_choices = [(acct, acct) for acct in existing_accounts]
 
-    if request.method == 'POST':
-        form = TransactionImportForm(
-            request.POST,
-            request.FILES,
-            profile_choices=profile_choices,
-            account_choices=account_choices
-        )
-        if form.is_valid():
-            file = request.FILES['file']
-            profile = form.cleaned_data['mapping_profile']
-            bank_account = form.cleaned_data['bank_account']
+#     if request.method == 'POST':
+#         form = TransactionImportForm(
+#             request.POST,
+#             request.FILES,
+#             profile_choices=profile_choices,
+#             account_choices=account_choices
+#         )
+#         if form.is_valid():
+#             file = request.FILES['file']
+#             profile = form.cleaned_data['mapping_profile']
+#             bank_account = form.cleaned_data['bank_account']
 
-            request.session['import_file_name'] = file.name 
-            request.session['import_profile'] = profile
-            request.session['import_bank_account'] = bank_account
-            request.session['import_file'] = read_uploaded_file(file)
+#             request.session['import_file_name'] = file.name 
+#             request.session['import_profile'] = profile
+#             request.session['import_bank_account'] = bank_account
+#             request.session['import_file'] = read_uploaded_file(file)
 
-            return redirect('import_transactions_preview')
-    else:
-        form = TransactionImportForm(
-            profile_choices=profile_choices,
-            account_choices=account_choices
-        )
+#             return redirect('import_transactions_preview')
+#     else:
+#         form = TransactionImportForm(
+#             profile_choices=profile_choices,
+#             account_choices=account_choices
+#         )
 
-    return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Transactions'})
+#     return render(request, 'transactions/import_form.html', {'form': form, 'title': 'Import Transactions'})
 
-@trace
-def import_transactions_preview(request):
-    try:
-        profile_name = request.session['import_profile']
-        bank_account = request.session['import_bank_account']
-        file_data = request.session['import_file']
-        file_name = request.session.get('import_file_name', 'unknown.csv')
-    except KeyError:
-        logger.warning("Import preview failed due to missing session data.")
-        messages.error(request, "Import session data missing. Please re-upload.")
-        return redirect('import_transactions_upload')
+# @trace
+# def import_transactions_preview(request):
+#     try:
+#         profile_name = request.session['import_profile']
+#         bank_account = request.session['import_bank_account']
+#         file_data = request.session['import_file']
+#         file_name = request.session.get('import_file_name', 'unknown.csv')
+#     except KeyError:
+#         logger.warning("Import preview failed due to missing session data.")
+#         messages.error(request, "Import session data missing. Please re-upload.")
+#         return redirect('import_transactions_upload')
 
-    from io import StringIO
-    parsed_file = StringIO(file_data)
+#     from io import StringIO
+#     parsed_file = StringIO(file_data)
 
-    transactions = map_csv_file_to_transactions(parsed_file, profile_name, bank_account)
-    logger.debug("Parsed %d transactions for preview.", len(transactions))
+#     transactions = map_csv_file_to_transactions(parsed_file, profile_name, bank_account)
+#     logger.debug("Parsed %d transactions for preview.", len(transactions))
 
-    # Ensure serializable data
-    for txn in transactions:
-        if isinstance(txn.get('date'), datetime.date):
-            txn['date'] = txn['date'].isoformat()
+#     # 🚨 Warn if large import
+#     if len(transactions) > 400:
+#         logger.warning(f"Large import detected: {len(transactions)} transactions from {file_name}")
 
-    request.session['parsed_transactions'] = transactions
-    request.session['import_file_name'] = file_name
-    request.session['review_index'] = 0
+#     # Ensure serializable data
+#     for txn in transactions:
+#         if isinstance(txn.get('date'), datetime.date):
+#             txn['date'] = txn['date'].isoformat()
 
-    return render(request, 'transactions/import_transaction_preview.html', {
-        'transactions': transactions
-    })
+#     request.session['parsed_transactions'] = transactions
+#     request.session['import_file_name'] = file_name
+#     request.session['review_index'] = 0
 
-@trace
-def import_transactions_confirm(request):
-    from io import StringIO
-    from decimal import Decimal, InvalidOperation
+#     return render(request, 'transactions/import_transaction_preview.html', {
+#         'transactions': transactions
+#     })
 
-    transactions = request.session.get('parsed_transactions', [])
-    source_file = request.session.get('import_file_name', 'unknown.csv')
-    bank_account = request.session.get('import_bank_account')
+# @trace
+# def import_transactions_confirm(request):
+#     from io import StringIO
+#     from decimal import Decimal, InvalidOperation
 
-    imported = []
-    duplicates = []
-    skipped = []
+#     transactions = request.session.get('parsed_transactions', [])
+#     source_file = request.session.get('import_file_name', 'unknown.csv')
+#     bank_account = request.session.get('import_bank_account')
 
-    for txn in transactions:
-        raw_date = txn.get('date')
-        try:
-            parsed_date = datetime.date.fromisoformat(raw_date)
-        except (ValueError, TypeError):
-            parsed_date = None
+#     imported = []
+#     duplicates = []
+#     skipped = []
 
-        if not parsed_date:
-            skipped.append(txn)
-            continue
+#     for txn in transactions:
+#         raw_date = txn.get('date')
+#         try:
+#             parsed_date = datetime.date.fromisoformat(raw_date)
+#         except (ValueError, TypeError):
+#             parsed_date = None
 
-        txn_data = {
-            'source': source_file,
-            'bank_account': bank_account,
-            'date': parsed_date,
-            'description': txn.get('description'),
-            'amount': txn.get('amount'),
-            'sheet_account': txn.get('sheet_account'),
-            'account_type': txn.get('account_type'),
-            'check_num': txn.get('check_num'),
-            'memo': txn.get('memo'),
-        }
+#         if not parsed_date:
+#             skipped.append(txn)
+#             continue
 
-        # Duplicate check
-        existing = Transaction.objects.filter(
-            date=txn_data['date'],
-            amount=txn_data['amount'],
-            description=txn_data['description'],
-            bank_account=bank_account
-        )
+#         txn_data = {
+#             'source': source_file,
+#             'bank_account': bank_account,
+#             'date': parsed_date,
+#             'description': txn.get('description'),
+#             'amount': txn.get('amount'),
+#             'sheet_account': txn.get('sheet_account'),
+#             'account_type': txn.get('account_type'),
+#             'check_num': txn.get('check_num'),
+#             'memo': txn.get('memo'),
+#         }
 
-        if existing.exists():
-            logging.info("Duplicate transaction found: %s %50s",txn_data['date'], txn_data['description'])
-            duplicates.append((txn_data, list(existing)))
-            continue  # For now, skip; later allow user override
+#         # Duplicate check
+#         existing = Transaction.objects.filter(
+#             date=txn_data['date'],
+#             amount=txn_data['amount'],
+#             description=txn_data['description'],
+#             bank_account=bank_account
+#         )
 
-        # Suggest subcategory if not mapped
-        subcat_name = txn.get('subcategory')
-        if not subcat_name:
-            subcat_name = suggest_subcategory(txn_data['description'])
-        subcat = Category.objects.filter(name=subcat_name).first()
-        txn_data['subcategory'] = subcat
+#         if existing.exists():
+#             logging.info("Duplicate transaction found: %s %50s",txn_data['date'], txn_data['description'])
+#             duplicates.append((txn_data, list(existing)))
+#             continue  # For now, skip; later allow user override
 
-        # Suggest payoree if not mapped
-        payoree_name = txn.get('payoree')
-        if not payoree_name:
-            payoree_name = suggest_payoree(txn_data['description'])
+#         # Suggest subcategory if not mapped
+#         subcat_name = txn.get('subcategory')
+#         if not subcat_name:
+#             subcat_name = suggest_subcategory(txn_data['description'])
+#         subcat = Category.objects.filter(name=subcat_name).first()
+#         txn_data['subcategory'] = subcat
+
+#         # Suggest payoree if not mapped
+#         payoree_name = txn.get('payoree')
+#         if not payoree_name:
+#             payoree_name = suggest_payoree(txn_data['description'])
         
-        if not payoree_name:
-            payoree = None  # Still None after suggestion — skip
-        else:
-            payoree = Payoree.get_existing(payoree_name)
-            if not payoree:
-                payoree = Payoree.objects.create(name=payoree_name)
+#         if not payoree_name:
+#             payoree = None  # Still None after suggestion — skip
+#         else:
+#             payoree = Payoree.get_existing(payoree_name)
+#             if not payoree:
+#                 payoree = Payoree.objects.create(name=payoree_name)
         
-        txn_data['payoree'] = payoree
-        # Ensure empty strings for nullable text fields to avoid IntegrityError
-        for field in ['account_type', 'sheet_account', 'check_num', 'memo']:
-            if txn_data.get(field) is None:
-                txn_data[field] = ''
+#         txn_data['payoree'] = payoree
+#         # Ensure empty strings for nullable text fields to avoid IntegrityError
+#         for field in ['account_type', 'sheet_account', 'check_num', 'memo']:
+#             if txn_data.get(field) is None:
+#                 txn_data[field] = ''
 
-        # Save transaction
-        try:
+#         # Save transaction
+#         try:
             
-            saved_txn = Transaction.objects.create(**txn_data)
-            assign_default_tags(saved_txn)
-            imported.append(saved_txn)
-            logger.debug("Imported transaction: %60s", saved_txn)
-        except Exception:
-            logging.exception("Failed to save transaction: %s %30s",txn_data['date'], txn_data['description'])
-            skipped.append(txn_data)
+#             saved_txn = Transaction.objects.create(**txn_data)
+#             assign_default_tags(saved_txn)
+#             imported.append(saved_txn)
+#             logger.debug("Imported transaction: %60s", saved_txn)
+#         except Exception:
+#             logging.exception("Failed to save transaction: %s %30s",txn_data['date'], txn_data['description'])
+#             skipped.append(txn_data)
 
-    all_transactions = Transaction.objects.all().order_by('-date')[:50]
-    context = {
-        'imported_count': len(imported),
-        'duplicate_count': len(duplicates),
-        'skipped_count': len(skipped),
-        'duplicates': duplicates,
-        'all_transactions': all_transactions  
-    }
+#     all_transactions = Transaction.objects.all().order_by('-date')[:50]
+#     context = {
+#         'imported_count': len(imported),
+#         'duplicate_count': len(duplicates),
+#         'skipped_count': len(skipped),
+#         'duplicates': duplicates,
+#         'all_transactions': all_transactions  
+#     }
 
-    return render(request, 'transactions/transactions_list.html', context)
+#     return render(request, 'transactions/transactions_list.html', context)
 
-# Helper functions for suggestions and tagging
-@trace
-def suggest_subcategory(description):
-    known = Category.objects.values_list('name', flat=True)
-    for name in known:
-        if name.lower() in description.lower():
-            return name
-    return None
 
 @trace
 def suggest_payoree(description):
@@ -447,9 +439,7 @@ def assign_default_tags(transaction):
         transaction.tags.add(tag)
 
 @trace
-def dashboard_home(request):
-    from datetime import date, timedelta
-    from transactions.models import Transaction, Tag
+def legacy_dashboard_home(request):
 
     # Panel 1: Recurring Transactions (placeholder logic)
     today = date.today()
@@ -509,8 +499,6 @@ def dashboard_home(request):
         'summary_dict': summary_dict,
     })
 
-
-# Step-by-step transaction review after import preview
 @trace
 def review_transaction(request):
     session_txns = request.session.get('parsed_transactions')
@@ -524,6 +512,12 @@ def review_transaction(request):
         return redirect('import_transactions_confirm')
 
     txn = session_txns[current_index]
+
+    # Auto-suggest subcategory if missing
+    if not txn.get('subcategory'):
+        suggested = suggest_subcategory(txn.get('description', ''))
+        if suggested:
+            txn['subcategory'] = suggested
 
     if request.method == 'POST':
         form = TransactionReviewForm(request.POST)
@@ -549,3 +543,57 @@ def review_transaction(request):
     })
 
 
+def normalize_description(desc):
+    # Remove 11-digit numbers and WEB ID numbers
+    cleaned = re.sub(r'\b\d{11}\b', '', desc)
+    cleaned = re.sub(r'WEB ID[:]? \d+', '', cleaned, flags=re.IGNORECASE)
+    return cleaned.lower().strip()
+
+
+@trace
+def normalize_text(text):
+    text = re.sub(r'\W+', ' ', text)
+    return text.lower().strip()
+
+@trace
+def review_transaction(request):
+    session_txns = request.session.get('parsed_transactions')
+    current_index = request.session.get('review_index', 0)
+
+    if not session_txns:
+        logger.warning("Review transaction failed: no transactions in session.")
+        return redirect('import_transactions_preview')
+
+    if current_index >= len(session_txns):
+        return redirect('import_transactions_confirm')
+
+    txn = session_txns[current_index]
+
+    # Auto-suggest subcategory if missing
+    if not txn.get('subcategory'):
+        suggested = suggest_subcategory(txn.get('description', ''))
+        if suggested:
+            txn['subcategory'] = suggested
+
+    if request.method == 'POST':
+        form = TransactionReviewForm(request.POST)
+        if form.is_valid():
+            txn_data = form.cleaned_data
+            from decimal import Decimal
+            for key, value in txn_data.items():
+                if isinstance(value, (datetime.date, datetime.datetime)):
+                    txn_data[key] = value.isoformat()
+                elif isinstance(value, Decimal):
+                    txn_data[key] = str(value)
+            session_txns[current_index] = txn_data
+            request.session['parsed_transactions'] = session_txns
+            request.session['review_index'] = current_index + 1
+            return redirect('review_transaction')
+    else:
+        form = TransactionReviewForm(initial=txn)
+
+    return render(request, 'transactions/review_transaction.html', {
+        'form': form,
+        'current_index': current_index + 1,
+        'total': len(session_txns)
+    })

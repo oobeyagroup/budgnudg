@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block content %}
+<h2>Apply Profile to Batch #{{ batch.pk }}</h2>
+<form method="post">
+  {% csrf_token %}
+  <div class="mb-3">{{ form.profile.label_tag }} {{ form.profile|add_class:"form-select" }}</div>
+  <button class="btn btn-primary">Apply & Preview</button>
+</form>
+{% endblock %}

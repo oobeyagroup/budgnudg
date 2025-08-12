@@ -1,4 +1,27 @@
 {
+  "history": {
+    "headers": [
+      "Statement Account",
+      "Date",
+      "Description",
+      "Amount",
+      "Type",
+      "Check or Slip #",
+      "Category",
+      "SubCategory",
+      "Description Consolidation"
+    ],
+    "mapping": {
+      "Statement Account": "sheet_account",
+      "Date": "date",
+      "Description": "description",
+      "Amount": "amount",
+      "Type": "account_type",
+      "Check or Slip #": "check_num",
+      "SubCategory": "subcategory",
+      "Description Consolidation": "payoree"
+    }
+  },
   "chase": {
     "headers": [
       "Details",

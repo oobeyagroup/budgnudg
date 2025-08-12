@@ -52,7 +52,10 @@
             <li class="nav-item">
               <a class="nav-link active" aria-current="page" href="{% url 'home' %}">Home</a>
             </li>
-           <li class="nav-item dropdown">
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'ingest:batch_list' %}">Ingest</a>
+            </li>
+            <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 Transactions
               </a>
@@ -75,9 +78,9 @@
             </li> 
             <li class="nav-item">
               <a class="nav-link" href="{% url 'report_account_time_span' %}">Accounts</a>
-            </li 
+            </li> 
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'payoree_list' %}">Payor/ee</a>
+              <a class="nav-link" href="{% url 'payorees_list' %}">Payor/ee</a>
             </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="importDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -100,6 +103,7 @@
 
 <main>
   <div class="container-fluid mx-2">
+    {% include "partials/_messages.html" %}
     {% block content %}
     <!-- Page-specific content goes here -->
     {% endblock %}

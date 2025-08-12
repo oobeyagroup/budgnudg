@@ -1,17 +1,36 @@
 from django import forms
 from .models import Transaction
+from django.utils.decorators import method_decorator
+from transactions.utils import trace
+import logging
+
+logger = logging.getLogger(__name__)
+
+class CategoryImportForm(forms.Form):
+    file = forms.FileField(
+        label="Categories CSV",
+        widget=forms.ClearableFileInput(attrs={"class": "form-control"}),
+        help_text="CSV with headers: Category, SubCategory"
+    )
 
 class TransactionForm(forms.ModelForm):
     class Meta:
         model = Transaction
         fields = ['date', 'description', 'amount', 'subcategory']
 
-
 class FileUploadForm(forms.Form):
-    file = forms.FileField(label='Select file to import')
+    file = forms.FileField()
+    mapping_profile = forms.ChoiceField(choices=[])        # will set in __init__
+    bank_account_choice = forms.ChoiceField(choices=[])    # existing accounts + __new__
+    new_bank_account = forms.CharField(required=False)
 
-from django import forms
-
+    def __init__(self, *args, profile_choices=None, account_choices=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if profile_choices is not None:
+            self.fields["mapping_profile"].choices = profile_choices
+        if account_choices is not None:
+            self.fields["bank_account_choice"].choices = account_choices
+            
 class TransactionImportForm(forms.Form):
     file = forms.FileField(label='Select file to import')
     mapping_profile = forms.ChoiceField(label='Mapping Profile')
@@ -21,7 +40,7 @@ class TransactionImportForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={'placeholder': 'Enter new account name'})
     )
-
+    @method_decorator(trace)
     def __init__(self, *args, **kwargs):
         profile_choices = kwargs.pop('profile_choices', [])
         account_choices = kwargs.pop('account_choices', [])
@@ -45,9 +64,6 @@ class TransactionImportForm(forms.Form):
 
         return cleaned_data
     
-from django import forms
-
-from django import forms
 
 class TransactionReviewForm(forms.Form):
     date = forms.DateField(

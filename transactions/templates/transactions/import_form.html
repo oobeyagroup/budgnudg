@@ -1,20 +1,27 @@
 {% extends 'base.html' %}
+{% load widget_tweaks %}
 
 {% block content %}
 <div class="container mt-4">
     <h2>{{ title }}</h2>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
-      {{ form.file.label_tag }} {{ form.file }}<br><br>
-    
-      {{ form.mapping_profile.label_tag }} {{ form.mapping_profile }}<br><br>
-    
-      {{ form.bank_account_choice.label_tag }} {{ form.bank_account_choice }}<br><br>
-
-      <div id="new-bank-account-row">
-        {{ form.new_bank_account.label_tag }} {{ form.new_bank_account }}<br><br>
+      <div class="mb-3">
+        <label for="{{ form.file.id_for_label }}" class="form-label">{{ form.file.label }}</label>
+        {{ form.file|add_class:"form-control" }}
       </div>
-    
+      <div class="mb-3">
+        <label for="{{ form.mapping_profile.id_for_label }}" class="form-label">{{ form.mapping_profile.label }}</label>
+        {{ form.mapping_profile|add_class:"form-control" }}
+      </div>
+      <div class="mb-3">
+        <label for="{{ form.bank_account_choice.id_for_label }}" class="form-label">{{ form.bank_account_choice.label }}</label>
+        {{ form.bank_account_choice|add_class:"form-control" }}
+      </div>
+      <div class="mb-3" id="new-bank-account-row">
+        <label for="{{ form.new_bank_account.id_for_label }}" class="form-label">{{ form.new_bank_account.label }}</label>
+        {{ form.new_bank_account|add_class:"form-control" }}
+      </div>
       <button type="submit" class="btn btn-primary">Upload</button>
     </form>
 </div>

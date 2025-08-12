@@ -138,3 +138,21 @@ class Transaction(models.Model):
     def category(self):
         return self.subcategory.parent if self.subcategory else None
     
+# transactions/models.py
+class LearnedSubcat(models.Model):
+    key = models.CharField(max_length=200, db_index=True)   # normalized merchant or signature
+    subcategory = models.ForeignKey(Category, on_delete=models.CASCADE)
+    count = models.PositiveIntegerField(default=0)
+    last_seen = models.DateField(auto_now=True)
+
+    class Meta:
+        unique_together = ('key', 'subcategory')
+
+class LearnedPayoree(models.Model):
+    key = models.CharField(max_length=200, db_index=True)
+    payoree = models.ForeignKey(Payoree, on_delete=models.CASCADE)
+    count = models.PositiveIntegerField(default=0)
+    last_seen = models.DateField(auto_now=True)
+
+    class Meta:
+        unique_together = ('key', 'payoree')

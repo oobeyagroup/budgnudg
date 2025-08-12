@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+{% block content %}
+<h2>Commit Batch #{{ batch.pk }}</h2>
+<form method="post">
+  {% csrf_token %}
+  <div class="mb-3">{{ form.bank_account.label_tag }} {{ form.bank_account|add_class:"form-control" }}</div>
+  <button class="btn btn-success">Commit</button>
+</form>
+{% endblock %}

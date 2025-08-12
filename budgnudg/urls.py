@@ -22,4 +22,5 @@ urlpatterns = [
     path("", DashboardView.as_view(), name="home"),  # root → dashboard
     path("admin/", admin.site.urls),
     path("transactions/", include("transactions.urls")),
+    path("ingest/", include("ingest.urls", namespace="ingest")),
 ]

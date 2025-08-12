@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block content %}
+  {% url 'payorees_list' as cancel_url %}
+  {% with desc="Upload a CSV with a header named 'Payoree' (case-insensitive)." %}
+    {% include "transactions/_import_form_base.html" with heading="Import Payorees" description=desc cancel_url=cancel_url %}
+  {% endwith %}
+{% endblock %}

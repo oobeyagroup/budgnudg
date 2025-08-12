@@ -1,0 +1,21 @@
+{% if messages %}
+  <div class="mt-3">
+    {% for message in messages %}
+      {% with tag=message.level_tag|default:"info" %}
+        {% if tag == "error" %}
+          {% with bs_tag="danger" %}
+            <div class="alert alert-{{ bs_tag }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+          {% endwith %}
+        {% else %}
+          <div class="alert alert-{{ tag }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endif %}
+      {% endwith %}
+    {% endfor %}
+  </div>
+{% endif %}

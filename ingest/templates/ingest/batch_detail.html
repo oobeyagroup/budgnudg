@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load ingest_extras %}
+{% block content %}
+<h2>Batch #{{ batch.pk }} — {{ batch.source_filename }}</h2>
+<p>Status: <strong>{{ batch.status }}</strong>, Rows: {{ batch.row_count }}</p>
+
+<div class="mb-3">
+  <a class="btn btn-outline-secondary" href="{% url 'ingest:batch_apply_profile' batch.pk %}">Apply/Change Profile</a>
+  <a class="btn btn-success" href="{% url 'ingest:batch_commit' batch.pk %}">Commit…</a>
+</div>
+
+<h5>Header</h5>
+<pre>{{ batch.header|safe }}</pre>
+
+<h5>Sample rows</h5>
+<table class="table table-sm table-bordered">
+<thead>
+  <tr>
+    {% for h in batch.header %}<th>{{ h }}</th>{% endfor %}
+    <th>Norm Date</th><th>Norm Amount</th><th>Duplicate</th><th>Errors</th>
+  </tr>
+</thead>
+<tbody>
+  {% for r in batch.rows.all|slice:":25" %}
+    <tr>
+      {% for h in batch.header %}
+        <td>{{ r.raw|get_item:h }}</td>
+      {% endfor %}
+      <td>{{ r.norm_date|default:"" }}</td>
+      <td>{{ r.norm_amount|default:"" }}</td>
+      <td>{{ r.is_duplicate }}</td>
+      <td>{{ r.errors }}</td>
+    </tr>
+  {% endfor %}
+</tbody>
+</table>
+{% endblock %}
