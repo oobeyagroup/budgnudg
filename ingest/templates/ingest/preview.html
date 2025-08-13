@@ -1,10 +1,40 @@
 {% extends "base.html" %}
 {% load ingest_extras %}
+
 {% block content %}
 <div class="container mt-4">
   <h2>Import Preview</h2>
   <p class="text-muted">Review transactions before confirming import.</p>
   <p class="text-info">Found {{ batch.row_count }} row(s) in batch #{{ batch.pk }}.</p>
+
+  {# Transposed Mapping Preview Table #}
+  {% if mapping_table %}
+  <div class="mb-4">
+    <h4>Mapping Preview</h4>
+    <table class="table table-bordered table-sm w-auto">
+      <tbody>
+        <tr>
+          <th class="text-end">Details</th>
+          {% for mapping in mapping_table %}
+            <td class="text-end">{{ mapping.csv_field }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <th class="text-center">1st Row</th>
+          {% for mapping in mapping_table %}
+            <td class="text-center">{{ mapping.sample_value }}</td>
+          {% endfor %}
+        </tr>
+        <tr>
+          <th class="text-danger">Transaction</th>
+          {% for mapping in mapping_table %}
+            <td class="text-danger">{{ mapping.txn_field }}</td>
+          {% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
 
   {% if batch.rows.exists %}
     <div class="table-responsive">
@@ -65,7 +95,7 @@
 
     <div class="d-flex justify-content-between mt-3">
       <div>
-        <a href="{% url 'ingest:batch_detail' batch.pk %}" class="btn btn-secondary">Back to Mapping</a>
+  <!-- Back to Mapping button removed -->
       </div>
       <div>
         <form method="post" action="{% url 'ingest:batch_commit' batch.pk %}" class="d-inline">
@@ -79,7 +109,7 @@
     <div class="alert alert-warning">
       <p class="mb-0">No rows to display in this batch.</p>
     </div>
-    <a href="{% url 'ingest:batch_detail' batch.pk %}" class="btn btn-secondary">Back to Mapping</a>
+  <!-- Back to Mapping button removed -->
   {% endif %}
 </div>
 {% endblock %}

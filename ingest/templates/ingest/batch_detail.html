@@ -70,39 +70,10 @@
   </div>
 </div>
 
+
 {% if mapping_table %}
-<div class="card mt-4">
-  <div class="card-header">
-    <h4 class="mb-0">Data Format Settings</h4>
-  </div>
-  <div class="card-body">
-    <form method="post" action="{% url 'ingest:batch_preview' batch.pk %}" class="row g-3">
-      {% csrf_token %}
-      <div class="col-md-6">
-        <label for="date_format" class="form-label">Date Format</label>
-        <select name="date_format" id="date_format" class="form-select">
-          <option value="%m/%d/%Y">MM/DD/YYYY (e.g., 08/13/2025)</option>
-          <option value="%Y-%m-%d">YYYY-MM-DD (e.g., 2025-08-13)</option>
-          <option value="%d/%m/%Y">DD/MM/YYYY (e.g., 13/08/2025)</option>
-          <option value="%b %d, %Y">MMM DD, YYYY (e.g., Aug 13, 2025)</option>
-        </select>
-      </div>
-      <div class="col-md-6">
-        <label for="amount_format" class="form-label">Amount Format</label>
-        <select name="amount_format" id="amount_format" class="form-select">
-          <option value="standard">Standard ($123.45)</option>
-          <option value="negative">Negative (-123.45)</option>
-          <option value="parentheses">Parentheses ((123.45))</option>
-        </select>
-      </div>
-      <div class="col-12">
-        <div class="d-flex justify-content-end gap-2">
-          <button type="submit" name="action" value="validate" class="btn btn-primary">Preview & Validate</button>
-          <a href="{% url 'ingest:batch_preview' batch.pk %}" class="btn btn-success">Preview As Is</a>
-        </div>
-      </div>
-    </form>
-  </div>
+<div class="d-flex justify-content-end mt-3">
+  <a href="{% url 'ingest:batch_preview' batch.pk %}" class="btn btn-primary">Continue to Preview</a>
 </div>
 {% endif %}
 

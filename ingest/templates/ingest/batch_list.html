@@ -9,7 +9,7 @@
   <tbody>
     {% for b in batches %}
       <tr>
-        <td><a href="{% url 'ingest:batch_detail' b.pk %}">{{ b.pk }}</a></td>
+        <td><a href="{% url 'ingest:batch_preview' b.pk %}">{{ b.pk }}</a></td>
         <td>{{ b.source_filename }}</td>
         <td>{{ b.status }}</td>
         <td>{{ b.row_count }}</td>
