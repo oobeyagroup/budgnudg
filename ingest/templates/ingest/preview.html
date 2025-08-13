@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load ingest_extras %}
+{% block content %}
+<div class="container mt-4">
+  <h2>Import Preview</h2>
+  <p class="text-muted">Review transactions before confirming import.</p>
+  <p class="text-info">Found {{ batch.row_count }} row(s) in batch #{{ batch.pk }}.</p>
+
+  {% if batch.rows.exists %}
+    <div class="table-responsive">
+      <table class="table table-striped table-bordered">
+        <thead class="table-dark">
+          <tr>
+            <th>Date</th>
+            <th>Description</th>
+            <th class="text-end">Amount</th>
+            <th>Bank Account</th>
+            <th>Payoree</th>
+            <th>Subcategory</th>
+            <th>Memo</th>
+            <th>Check #</th>
+            <th>Source</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in batch.rows.all %}
+          <tr>
+            <td>
+              {{ row.raw|get_item:date_field|default:"-" }}
+              {% if row.norm_date %}
+                <br><small class="text-success">→ {{ row.norm_date|date:"Y-m-d" }}</small>
+              {% elif 'date' in row.errors %}
+                <br><small class="text-danger">Invalid date format</small>
+              {% endif %}
+            </td>
+            <td>{{ row.raw|get_item:description_field|default:"-" }}</td>
+            <td class="text-end">
+              {{ row.raw|get_item:amount_field|default:"-" }}
+              {% if row.norm_amount %}
+                <br><small class="text-success">→ ${{ row.norm_amount|floatformat:2 }}</small>
+              {% elif 'amount' in row.errors %}
+                <br><small class="text-danger">Invalid amount format</small>
+              {% endif %}
+            </td>
+            <td>{{ row.raw|get_item:account_field|default:"-" }}</td>
+            <td>{{ row.raw|get_item:payoree_field|default:"-" }}</td>
+            <td>{{ row.raw|get_item:subcategory_field|default:"-" }}</td>
+            <td>{{ row.raw|get_item:memo_field|default:"-" }}</td>
+            <td>{{ row.raw|get_item:check_num_field|default:"-" }}</td>
+            <td>{{ batch.source_filename }}</td>
+            <td>
+              {% if row.is_duplicate %}
+                <span class="badge bg-warning">Duplicate</span>
+              {% endif %}
+              {% if row.errors %}
+                <span class="badge bg-danger" title="{{ row.errors }}">Error</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="d-flex justify-content-between mt-3">
+      <div>
+        <a href="{% url 'ingest:batch_detail' batch.pk %}" class="btn btn-secondary">Back to Mapping</a>
+      </div>
+      <div>
+        <form method="post" action="{% url 'ingest:batch_commit' batch.pk %}" class="d-inline">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-success">Commit All</button>
+        </form>
+      </div>
+    </div>
+
+  {% else %}
+    <div class="alert alert-warning">
+      <p class="mb-0">No rows to display in this batch.</p>
+    </div>
+    <a href="{% url 'ingest:batch_detail' batch.pk %}" class="btn btn-secondary">Back to Mapping</a>
+  {% endif %}
+</div>
+{% endblock %}

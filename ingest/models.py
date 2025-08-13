@@ -7,12 +7,12 @@ User = get_user_model()
 
 class MappingProfile(models.Model):
     name = models.CharField(max_length=100, unique=True)
-    # e.g. {"Date":"date","Description":"description","Amount":"amount","Category":"subcategory"}
-    column_map = models.JSONField()  # keep as-is to avoid extra migration
+    column_map = models.JSONField()  
     options = models.JSONField(default=dict, blank=True)  # date formats, sign rules, etc.
+    description = models.TextField(blank=True, default="") # optional notes about this profile, ex what account it maps
 
     def __str__(self):
-        return self.name
+        return self.description
 
 
 class ImportBatch(models.Model):

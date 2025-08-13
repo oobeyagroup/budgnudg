@@ -71,7 +71,7 @@ def _json_safe(v):
         return float(v)
     return v
 
-
+@trace
 def apply_profile_to_batch(
     batch: ImportBatch,
     profile,
@@ -185,11 +185,10 @@ def apply_profile_to_batch(
             )
             continue
 
-    # Optionally bump batch status to previewed if a profile was just applied
-    if getattr(batch, "status", None) != "previewed":
-        batch.status = "previewed"
-        # if your model has updated_at/modified fields they'll auto-update
-        batch.save(update_fields=["status"])
+    # Always assign the profile and set status to previewed, then save
+    batch.profile = profile
+    batch.status = "previewed"
+    batch.save()
 
     return updated, dup_count
 
