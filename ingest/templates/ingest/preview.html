@@ -2,114 +2,182 @@
 {% load ingest_extras %}
 
 {% block content %}
-<div class="container mt-4">
-  <h2>Import Preview</h2>
-  <p class="text-muted">Review transactions before confirming import.</p>
-  <p class="text-info">Found {{ batch.row_count }} row(s) in batch #{{ batch.pk }}.</p>
+<div class="d-flex justify-content-between align-items-center">
+  <div>
+    <h2>Import Preview - Batch #{{ batch.pk }}</h2>
+    <p class="text-muted mb-0">{{ batch.source_filename }} • {{ batch.row_count }} row(s)</p>
+  </div>
+  <div>
+    {% if batch.rows.exists and not missing_profile %}
+      <form method="post" action="{% url 'ingest:batch_commit' batch.pk %}" class="d-inline">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-success">Commit All Transactions</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
 
-  {# Transposed Mapping Preview Table #}
-  {% if mapping_table %}
-  <div class="mb-4">
-    <h4>Mapping Preview</h4>
-    <table class="table table-bordered table-sm w-auto">
+{% if missing_profile %}
+<div class="alert alert-warning mt-4">
+  <h4>Profile Required</h4>
+  <p>This batch doesn't have a mapping profile assigned. A profile is required to preview and process transactions.</p>
+  
+  {% if csv_headers %}
+  <h5>CSV Column Headers Found:</h5>
+  <div class="row">
+    <div class="col-md-8">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        {% for header in csv_headers %}
+          <span class="badge bg-secondary">{{ header }}</span>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+  
+  {% if available_profiles %}
+  <h5>Existing Mapping Profiles:</h5>
+  <div class="table-responsive mb-3">
+    <table class=" table-sm">
+      <thead>
+        <tr>
+          <th>Expected CSV Headers</th>
+          <th>Profile Name</th>
+        </tr>
+      </thead>
       <tbody>
+        {% for profile in available_profiles %}
         <tr>
-          <th class="text-end">Details</th>
-          {% for mapping in mapping_table %}
-            <td class="text-end">{{ mapping.csv_field }}</td>
-          {% endfor %}
+          <td>
+            {% if profile.headers %}
+              {% for header in profile.headers %}
+                <span class="badge bg-light text-dark me-1">{{ header }}</span>
+              {% endfor %}
+            {% else %}
+              <span class="text-muted">No mappings defined</span>
+            {% endif %}
+          </td>
+          <td><strong>{{ profile.name }}</strong></td>
         </tr>
-        <tr>
-          <th class="text-center">1st Row</th>
-          {% for mapping in mapping_table %}
-            <td class="text-center">{{ mapping.sample_value }}</td>
-          {% endfor %}
-        </tr>
-        <tr>
-          <th class="text-danger">Transaction</th>
-          {% for mapping in mapping_table %}
-            <td class="text-danger">{{ mapping.txn_field }}</td>
-          {% endfor %}
-        </tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>
+  <p>Compare your CSV headers above with the existing profiles to see if any match.  If not, you need to create a mapping profile that defines how these CSV columns map to transaction fields.</p>
+</p>
   {% endif %}
-
-  {% if batch.rows.exists %}
-    <div class="table-responsive">
-      <table class="table table-striped table-bordered">
-        <thead class="table-dark">
-          <tr>
-            <th>Date</th>
-            <th>Description</th>
-            <th class="text-end">Amount</th>
-            <th>Bank Account</th>
-            <th>Payoree</th>
-            <th>Subcategory</th>
-            <th>Memo</th>
-            <th>Check #</th>
-            <th>Source</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in batch.rows.all %}
-          <tr>
-            <td>
-              {{ row.raw|get_item:date_field|default:"-" }}
-              {% if row.norm_date %}
-                <br><small class="text-success">→ {{ row.norm_date|date:"Y-m-d" }}</small>
-              {% elif 'date' in row.errors %}
-                <br><small class="text-danger">Invalid date format</small>
-              {% endif %}
-            </td>
-            <td>{{ row.raw|get_item:description_field|default:"-" }}</td>
-            <td class="text-end">
-              {{ row.raw|get_item:amount_field|default:"-" }}
-              {% if row.norm_amount %}
-                <br><small class="text-success">→ ${{ row.norm_amount|floatformat:2 }}</small>
-              {% elif 'amount' in row.errors %}
-                <br><small class="text-danger">Invalid amount format</small>
-              {% endif %}
-            </td>
-            <td>{{ row.raw|get_item:account_field|default:"-" }}</td>
-            <td>{{ row.raw|get_item:payoree_field|default:"-" }}</td>
-            <td>{{ row.raw|get_item:subcategory_field|default:"-" }}</td>
-            <td>{{ row.raw|get_item:memo_field|default:"-" }}</td>
-            <td>{{ row.raw|get_item:check_num_field|default:"-" }}</td>
-            <td>{{ batch.source_filename }}</td>
-            <td>
-              {% if row.is_duplicate %}
-                <span class="badge bg-warning">Duplicate</span>
-              {% endif %}
-              {% if row.errors %}
-                <span class="badge bg-danger" title="{{ row.errors }}">Error</span>
-              {% endif %}
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-
-    <div class="d-flex justify-content-between mt-3">
-      <div>
-  <!-- Back to Mapping button removed -->
-      </div>
-      <div>
-        <form method="post" action="{% url 'ingest:batch_commit' batch.pk %}" class="d-inline">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-success">Commit All</button>
-        </form>
-      </div>
-    </div>
-
-  {% else %}
-    <div class="alert alert-warning">
-      <p class="mb-0">No rows to display in this batch.</p>
-    </div>
-  <!-- Back to Mapping button removed -->
-  {% endif %}
+  
+  <p><strong>Available options:</strong></p>
+  <ul>
+    <li>Go to <a href="{% url 'ingest:profile_list' %}" class="alert-link">Mapping Profiles</a> to create a new profile</li>
+    <li>Use the Django <a href="/admin/ingest/mappingprofile/" class="alert-link">Admin</a> to create or assign a profile</li>
+    <li>Upload a CSV file that matches an existing profile's headers</li>
+  </ul>
 </div>
+{% else %}
+
+{# Transposed Mapping Preview Table #}
+{% if mapping_table %}
+<div class="mt-4">
+  <h4>Field Mapping</h4>
+  <table class="table table-bordered table-sm w-auto">
+    <tbody>
+      <tr>
+        <th class="text-center">CSV Column</th>
+        {% for mapping in mapping_table %}
+          <td class="text-center"><code>{{ mapping.csv_field }}</code></td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <th class="text-center">Sample Data</th>
+        {% for mapping in mapping_table %}
+          <td class="text-center">{{ mapping.sample_value|truncatechars:15 }}</td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <th class="text-center"></th>
+        {% for mapping in mapping_table %}
+          <td class="text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-down" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1"/>
+            </svg>
+          </td>
+        {% endfor %}
+      </tr>
+      <tr>
+        <th class="text-center text-primary">Transaction Field</th>
+        {% for mapping in mapping_table %}
+          <td class="text-center text-primary"><strong>{{ mapping.txn_field }}</strong></td>
+        {% endfor %}
+      </tr>
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% if batch.rows.exists %}
+  <div class="mt-4">
+    <h4>Transaction Preview</h4>
+    <table class="table table-striped">
+      <thead class="table-dark">
+        <tr>
+          <th>Date</th>
+          <th>Description</th>
+          <th class="text-end">Amount</th>
+          <th>Bank Account</th>
+          <th>Payoree</th>
+          <th>Subcategory</th>
+          <th>Memo</th>
+          <th>Check #</th>
+          <th>Source</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in batch.rows.all %}
+        <tr>
+          <td>
+            {{ row.raw|get_item:date_field|default:"-" }}
+            {% if row.norm_date %}
+              <br><small class="text-success">→ {{ row.norm_date|date:"Y-m-d" }}</small>
+            {% elif 'date' in row.errors %}
+              <br><small class="text-danger">Invalid date format</small>
+            {% endif %}
+          </td>
+          <td>{{ row.raw|get_item:description_field|default:"-" }}</td>
+          <td class="text-end">
+            {{ row.raw|get_item:amount_field|default:"-" }}
+            {% if row.norm_amount %}
+              <br><small class="text-success">→ ${{ row.norm_amount|floatformat:2 }}</small>
+            {% elif 'amount' in row.errors %}
+              <br><small class="text-danger">Invalid amount format</small>
+            {% endif %}
+          </td>
+          <td>{{ row.raw|get_item:account_field|default:"-" }}</td>
+          <td>{{ row.raw|get_item:payoree_field|default:"-" }}</td>
+          <td>{{ row.raw|get_item:subcategory_field|default:"-" }}</td>
+          <td>{{ row.raw|get_item:memo_field|default:"-" }}</td>
+          <td>{{ row.raw|get_item:check_num_field|default:"-" }}</td>
+          <td>{{ batch.source_filename }}</td>
+          <td>
+            {% if row.is_duplicate %}
+              <span class="badge bg-warning">Duplicate</span>
+            {% endif %}
+            {% if row.errors %}
+              <span class="badge bg-danger" title="{{ row.errors }}">Error</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+{% else %}
+  <div class="alert alert-warning mt-4">
+    <p class="mb-0">No rows to display in this batch.</p>
+  </div>
+{% endif %}
+
+{% endif %}
 {% endblock %}

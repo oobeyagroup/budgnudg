@@ -12,6 +12,8 @@ from ingest.services.mapping import preview_batch, commit_batch, apply_profile_t
 
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 class BatchPreviewView(DetailView):
     model = ImportBatch
@@ -28,47 +30,81 @@ class BatchPreviewView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         batch = context.get("batch")
-        if batch and batch.profile:
-            # Get field mappings from profile
-            column_map = batch.profile.column_map
-            # Add field mappings to context for template
-            context.update({
-                'date_field': next((k for k, v in column_map.items() if v == 'date'), None),
-                'amount_field': next((k for k, v in column_map.items() if v == 'amount'), None),
-                'description_field': next((k for k, v in column_map.items() if v == 'description'), None),
-                'account_field': next((k for k, v in column_map.items() if v == 'sheet_account'), None),
-                'payoree_field': next((k for k, v in column_map.items() if v == 'payoree'), None),
-                'subcategory_field': next((k for k, v in column_map.items() if v == 'subcategory'), None),
-                'memo_field': next((k for k, v in column_map.items() if v == 'memo'), None),
-                'check_num_field': next((k for k, v in column_map.items() if v == 'check_num'), None),
-            })
-
-            # Build mapping_table for preview
-            mapping_table = []
-            first_row = batch.rows.first()
-            txn_fields = [
-                'date', 'description', 'subcategory', 'sheet_account',
-                'amount', 'memo', 'payoree', 'check_num'
+        
+        # First, try to find and assign a matching profile if none is assigned
+        if batch and not batch.profile and batch.header:
+            from ingest.models import MappingProfile
+            profiles = MappingProfile.objects.all()
+            
+            # Convert batch headers to a set for comparison, filtering out None
+            batch_headers = {h for h in batch.header if h is not None}
+            logger.debug("Looking for profile matching headers: %s", batch_headers)
+            
+            # Look for a profile whose column_map keys match our headers exactly
+            for profile in profiles:
+                profile_headers = set(profile.column_map.keys())
+                if profile_headers == batch_headers:
+                    logger.debug("Found matching profile: %s", profile.name)
+                    batch.profile = profile
+                    batch.save()
+                    messages.success(self.request, f"Automatically matched with profile: {profile.name}")
+                    break
+        
+        if not batch or not batch.profile:
+            # Don't return redirect here - let the template handle the missing profile case
+            context["missing_profile"] = True
+            # Include CSV headers for display in the missing profile message
+            if batch and batch.header:
+                context["csv_headers"] = [h for h in batch.header if h is not None]
+            # Include first 5 mapping profiles to show what's available
+            from ingest.models import MappingProfile
+            profiles = MappingProfile.objects.all()[:5]
+            context["available_profiles"] = [
+                {
+                    "name": p.name,
+                    "headers": list(p.column_map.keys()) if p.column_map else []
+                }
+                for p in profiles
             ]
-            for txn_field in txn_fields:
-                csv_field = next((csv_f for csv_f, txn_f in column_map.items() if txn_f == txn_field), 'tbd')
-                sample_value = ''
-                if csv_field != 'tbd' and first_row and hasattr(first_row, 'raw'):
-                    sample_value = first_row.raw.get(csv_field, '')
-                mapping_table.append({
-                    'csv_field': csv_field,
-                    'sample_value': sample_value,
-                    'txn_field': txn_field
-                })
+            return context
+            
+        # Get field mappings from profile
+        column_map = batch.profile.column_map
+        # Add field mappings to context for template
+        context.update({
+            'date_field': next((k for k, v in column_map.items() if v == 'date'), None),
+            'amount_field': next((k for k, v in column_map.items() if v == 'amount'), None),
+            'description_field': next((k for k, v in column_map.items() if v == 'description'), None),
+            'account_field': next((k for k, v in column_map.items() if v == 'sheet_account'), None),
+            'payoree_field': next((k for k, v in column_map.items() if v == 'payoree'), None),
+            'subcategory_field': next((k for k, v in column_map.items() if v == 'subcategory'), None),
+            'memo_field': next((k for k, v in column_map.items() if v == 'memo'), None),
+            'check_num_field': next((k for k, v in column_map.items() if v == 'check_num'), None),
+        })
+
+        # Build mapping_table for preview
+        mapping_table = []
+        first_row = batch.rows.first()
+        txn_fields = [
+            'date', 'description', 'subcategory', 'sheet_account',
+            'amount', 'memo', 'payoree', 'check_num'
+        ]
+        for txn_field in txn_fields:
+            csv_field = next((csv_f for csv_f, txn_f in column_map.items() if txn_f == txn_field), 'tbd')
+            sample_value = ''
+            if csv_field != 'tbd' and first_row and hasattr(first_row, 'raw'):
+                sample_value = first_row.raw.get(csv_field, '')
             mapping_table.append({
-                'csv_field': 'filename',
-                'sample_value': batch.source_filename,
-                'txn_field': 'source'
+                'csv_field': csv_field,
+                'sample_value': sample_value,
+                'txn_field': txn_field
             })
-            context["mapping_table"] = mapping_table
-        else:
-            messages.warning(self.request, "Please select a profile before previewing transactions.")
-            return redirect("ingest:batch_preview", pk=batch.pk if batch else 1)
+        mapping_table.append({
+            'csv_field': 'filename',
+            'sample_value': batch.source_filename,
+            'txn_field': 'source'
+        })
+        context["mapping_table"] = mapping_table
         return context
 @trace
 def upload_csv(request):
@@ -121,3 +157,16 @@ class BatchListView(ListView):
     template_name = "ingest/batch_list.html"
     context_object_name = "batches"
     paginate_by = 20
+
+
+class MappingProfileListView(ListView):
+    model = MappingProfile
+    template_name = "ingest/profile_list.html"
+    context_object_name = "profiles"
+    paginate_by = 20
+
+
+class MappingProfileDetailView(DetailView):
+    model = MappingProfile
+    template_name = "ingest/profile_detail.html"
+    context_object_name = "profile"
