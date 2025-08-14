@@ -134,11 +134,77 @@ def coerce_row_for_model(row: dict[str, Any]) -> dict[str, Any]:
     return data
 
 @trace
+@trace
 def is_duplicate(data: dict[str, Any]) -> bool:
+    """Check for exact duplicates first, then fuzzy duplicates."""
     from transactions.models import Transaction
-    return Transaction.objects.filter(
-        date=data.get("date"),
-        amount=data.get("amount"),
-        description=data.get("description"),
-        bank_account=data.get("bank_account"),
-    ).exists()
+    
+    # If bank_account is missing or empty, check all bank accounts
+    bank_account = data.get("bank_account")
+    filter_kwargs = {
+        "date": data.get("date"),
+        "amount": data.get("amount"),
+        "description": data.get("description"),
+    }
+    
+    # Only filter by bank_account if it's provided and not empty
+    if bank_account and bank_account.strip():
+        filter_kwargs["bank_account"] = bank_account
+        logger.debug("Checking exact duplicate with bank_account: %s", filter_kwargs)
+    else:
+        logger.debug("Checking exact duplicate across all bank_accounts: %s", filter_kwargs)
+    
+    # Exact duplicate check
+    exact_match = Transaction.objects.filter(**filter_kwargs).exists()
+    
+    if exact_match:
+        logger.debug("Found exact duplicate!")
+        return True
+    
+    # Fuzzy duplicate check - same date, amount, and potentially bank account with similar description
+    fuzzy_match = is_fuzzy_duplicate(data)
+    if fuzzy_match:
+        logger.debug("Found fuzzy duplicate!")
+    else:
+        logger.debug("No duplicate found")
+        
+    return fuzzy_match
+
+@trace
+def is_fuzzy_duplicate(data: dict[str, Any]) -> bool:
+    """
+    Check for fuzzy duplicates: same date, amount, and potentially bank account but similar description.
+    This catches cases where description formatting might vary slightly.
+    """
+    from transactions.models import Transaction
+    from difflib import SequenceMatcher
+    
+    date_val = data.get("date")
+    amount_val = data.get("amount")
+    bank_account_val = data.get("bank_account")
+    description_val = data.get("description", "")
+    
+    if not date_val or amount_val is None:
+        return False
+    
+    # Build filter kwargs - only include bank account if provided and not empty
+    filter_kwargs = {
+        "date": date_val,
+        "amount": amount_val,
+    }
+    
+    if bank_account_val and bank_account_val.strip():
+        filter_kwargs["bank_account"] = bank_account_val
+    
+    # Find transactions with same date, amount, and potentially bank account
+    similar_transactions = Transaction.objects.filter(**filter_kwargs).values_list('description', flat=True)
+    
+    # Check if any existing description is very similar (90% match)
+    for existing_desc in similar_transactions:
+        similarity = SequenceMatcher(None, description_val.lower(), existing_desc.lower()).ratio()
+        if similarity >= 0.9:  # 90% similarity threshold
+            logger.debug("Fuzzy duplicate found: '%s' vs '%s' (%.2f%% similar)", 
+                        description_val, existing_desc, similarity * 100)
+            return True
+    
+    return False

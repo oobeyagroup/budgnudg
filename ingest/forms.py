@@ -9,4 +9,11 @@ class AssignProfileForm(forms.Form):
     profile = forms.ModelChoiceField(queryset=MappingProfile.objects.all(), required=True)
 
 class CommitForm(forms.Form):
-    bank_account = forms.CharField()
+    bank_account = forms.CharField(
+        max_length=100,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Enter bank account name (e.g., "Chase Checking", "Wells Fargo Savings")'
+        }),
+        help_text="Enter a descriptive name for the bank account these transactions belong to."
+    )

@@ -6,7 +6,7 @@ import logging
 from typing import Tuple, List
 # from .utils import parse_date
 
-from transactions.categorization import suggest_subcategory  # your existing function
+from transactions.categorization import suggest_subcategory, suggest_payoree  # your existing function
 from transactions.models import Transaction, Category, Payoree
 from transactions.services.helpers import is_duplicate  # your existing duplicate checker
 from transactions.utils import trace
@@ -35,13 +35,36 @@ def map_row_with_profile(raw_row: dict, profile: MappingProfile):
             except Exception as e: errors.append(f"date: {e}")
         elif model_field == "amount":
             out["amount"] = raw
-            try: out["_amount"] = Decimal(raw.replace(",",""))
-            except (InvalidOperation, AttributeError) as e: errors.append(f"amount: {e}")
+            logger.debug(f"Processing amount: csv_col='{csv_col}', raw_value='{raw}', type={type(raw)}")
+            try: 
+                out["_amount"] = Decimal(raw.replace(",",""))
+                logger.debug(f"Parsed amount successfully: {out['_amount']}")
+            except (InvalidOperation, AttributeError) as e: 
+                logger.debug(f"Amount parsing failed: {e}")
+                errors.append(f"amount: {e}")
         else:
             out[model_field] = raw
-    desc = out.get("description","")
-    sub = suggest_subcategory(desc) or ""
-    out["_suggestions"] = {"subcategory": sub} if sub else {}
+            
+    # Enhanced categorization using multiple fields
+    desc = out.get("description", "")
+    memo = out.get("memo", "")
+    payoree_field = out.get("payoree", "")
+    
+    # Combine available text fields for better analysis
+    combined_text = " ".join(filter(None, [desc, memo, payoree_field]))
+    
+    # Get suggestions using the combined text
+    suggested_subcategory = suggest_subcategory(combined_text) or ""
+    suggested_payoree = suggest_payoree(combined_text) or ""
+    
+    # Build suggestions dict
+    suggestions = {}
+    if suggested_subcategory:
+        suggestions["subcategory"] = suggested_subcategory
+    if suggested_payoree:
+        suggestions["payoree"] = suggested_payoree
+        
+    out["_suggestions"] = suggestions
     out["_errors"] = errors
     return out
 
@@ -136,10 +159,14 @@ def apply_profile_to_batch(
                 "date": norm_date,
                 "amount": norm_amount,
                 "description": norm_description,
-                # bank account is chosen at commit time; only use hint now
-                "bank_account": bank_account_hint or "",
+                "bank_account": bank_account_hint or "",  # Empty bank_account will check all accounts
             }
             is_dup = bool(is_duplicate(dup_payload))
+            
+            # Debug logging to track duplicate detection
+            logger.debug("Duplicate check for row %s: date=%s, amount=%s, desc='%s', bank='%s' -> is_dup=%s", 
+                        row.row_index, norm_date, norm_amount, norm_description[:50], 
+                        bank_account_hint or "EMPTY", is_dup)
 
             if is_dup:
                 dup_count += 1

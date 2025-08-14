@@ -11,7 +11,22 @@
     {% if batch.rows.exists and not missing_profile %}
       <form method="post" action="{% url 'ingest:batch_commit' batch.pk %}" class="d-inline">
         {% csrf_token %}
-        <button type="submit" class="btn btn-success">Commit All Transactions</button>
+        <div class="d-flex align-items-center gap-3">
+          <div>
+            <label for="bank_account" class="form-label mb-1">Bank Account:</label>
+            <input type="text" 
+                   name="bank_account" 
+                   id="bank_account" 
+                   class="form-control" 
+                   placeholder="e.g., Chase Checking" 
+                   value="{{ profile.description|default:'' }}"
+                   required 
+                   style="width: 200px;">
+          </div>
+          <div class="align-self-end">
+            <button type="submit" class="btn btn-success">Commit All Transactions</button>
+          </div>
+        </div>
       </form>
     {% endif %}
   </div>

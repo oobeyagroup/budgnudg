@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from transactions.utils import trace
 from ingest.models import ImportBatch, MappingProfile
-from ingest.forms import UploadCSVForm, AssignProfileForm, CommitForm
+from ingest.forms import UploadCSVForm, AssignProfileForm
 from ingest.services.staging import create_batch_from_csv
 from ingest.services.mapping import preview_batch, commit_batch, apply_profile_to_batch
 
@@ -36,18 +36,32 @@ class BatchPreviewView(DetailView):
             from ingest.models import MappingProfile
             profiles = MappingProfile.objects.all()
             
-            # Convert batch headers to a set for comparison, filtering out None
-            batch_headers = {h for h in batch.header if h is not None}
+            # Convert batch headers to a set for comparison, filtering out None and normalizing
+            batch_headers = {h.strip() for h in batch.header if h is not None and h.strip()}
             logger.debug("Looking for profile matching headers: %s", batch_headers)
             
             # Look for a profile whose column_map keys match our headers exactly
             for profile in profiles:
-                profile_headers = set(profile.column_map.keys())
+                # Normalize profile headers too
+                profile_headers = {k.strip() for k in profile.column_map.keys() if k and k.strip()}
+                logger.debug("Comparing with profile '%s' headers: %s", profile.name, profile_headers)
+                
                 if profile_headers == batch_headers:
-                    logger.debug("Found matching profile: %s", profile.name)
+                    logger.debug("Found exact matching profile: %s", profile.name)
                     batch.profile = profile
                     batch.save()
-                    messages.success(self.request, f"Automatically matched with profile: {profile.name}")
+                    # Automatically apply the profile to process the data
+                    updated, dup_count = apply_profile_to_batch(batch, profile)
+                    messages.success(self.request, f"Automatically matched and processed with profile: {profile.name} ({updated} rows processed, {dup_count} duplicates found)")
+                    break
+                elif profile_headers.issubset(batch_headers):
+                    # Profile headers are a subset of CSV headers (CSV has extra columns)
+                    logger.debug("Found subset matching profile: %s (profile is subset of CSV)", profile.name)
+                    batch.profile = profile
+                    batch.save()
+                    # Automatically apply the profile to process the data
+                    updated, dup_count = apply_profile_to_batch(batch, profile)
+                    messages.success(self.request, f"Automatically matched and processed with profile: {profile.name} ({updated} rows processed, {dup_count} duplicates found, ignoring extra CSV columns)")
                     break
         
         if not batch or not batch.profile:
@@ -105,6 +119,10 @@ class BatchPreviewView(DetailView):
             'txn_field': 'source'
         })
         context["mapping_table"] = mapping_table
+        
+        # Add profile to context explicitly for template access
+        context["profile"] = batch.profile
+        
         return context
 @trace
 def upload_csv(request):
@@ -136,21 +154,20 @@ def apply_profile(request, pk):
 @trace
 def commit(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk)
-    profiles = MappingProfile.objects.all()
+    
     if request.method == "POST":
-        form = CommitForm(request.POST)
-        if form.is_valid():
-            imported, dups, skipped = commit_batch(batch, form.cleaned_data["bank_account"])
-            messages.success(request, f"Imported {len(imported)}; skipped {len(skipped)}.")
-            return redirect("transactions_list")
+        bank_account = request.POST.get("bank_account")
+        if not bank_account:
+            messages.error(request, "Bank account is required.")
+            return redirect("ingest:batch_preview", pk=batch.pk)
+        
+        logger.debug("Committing batch %s with bank_account: %s", batch.pk, bank_account)
+        imported, dups, skipped = commit_batch(batch, bank_account)
+        messages.success(request, f"Imported {len(imported)} transactions; skipped {len(skipped)} (duplicates: {len(dups)}).")
+        return redirect("transactions_list")
     else:
-        form = CommitForm()
-    return render(request, "ingest/commit_form.html", {
-        "form": form,
-        "batch": batch,
-        "profiles": profiles,
-        "selected_profile_id": batch.profile_id
-    })
+        # If GET request, redirect back to preview
+        return redirect("ingest:batch_preview", pk=batch.pk)
 
 class BatchListView(ListView):
     model = ImportBatch
