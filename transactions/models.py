@@ -93,8 +93,36 @@ class Transaction(models.Model):
         - memo: Additional notes or memo for the transaction.
         - payoree: **Foreign key to Payoree model. 
         - subcategory: **Foreign key to Category model for categorization.
+        - categorization_error: Error description when categorization fails
         - tags: **Many-to-many relationship with Tag model for tagging transactions.    
     '''
+    
+    # Error codes for categorization failures
+    ERROR_CODES = {
+        # Subcategory errors
+        'CSV_SUBCATEGORY_LOOKUP_FAILED': 'CSV subcategory name not found in database',
+        'AI_SUBCATEGORY_LOOKUP_FAILED': 'AI suggested subcategory not found in database',
+        'USER_SUBCATEGORY_OVERRIDE_FAILED': 'User-entered subcategory not found in database',
+        'AI_NO_SUBCATEGORY_SUGGESTION': 'AI could not suggest a subcategory',
+        'MULTIPLE_SUBCATEGORIES_FOUND': 'Multiple subcategories found for name',
+        
+        # Payoree errors
+        'CSV_PAYOREE_LOOKUP_FAILED': 'CSV payoree name not found in database',
+        'AI_PAYOREE_LOOKUP_FAILED': 'AI suggested payoree not found in database', 
+        'USER_PAYOREE_OVERRIDE_FAILED': 'User-entered payoree not found in database',
+        'AI_NO_PAYOREE_SUGGESTION': 'AI could not suggest a payoree',
+        'MULTIPLE_PAYOREES_FOUND': 'Multiple payorees found for name',
+        
+        # System errors
+        'CATEGORIES_NOT_IMPORTED': 'Category database is empty or not loaded',
+        'PAYOREES_NOT_IMPORTED': 'Payoree database is empty or not loaded',
+        'DATABASE_ERROR': 'Database connection or query error',
+        'PROFILE_MAPPING_ERROR': 'Wrong CSV profile applied',
+        'DATA_CORRUPTION': 'Invalid or corrupted category data',
+        'BATCH_PROCESSING_FAILED': 'Row failed during batch processing',
+        'LEARNED_DATA_CORRUPT': 'Historical learning data unavailable'
+    }
+    
     class Meta:
        constraints = [
         models.UniqueConstraint(fields=['date', 'amount', 'description', 'bank_account'], name='unique_transaction')
@@ -127,6 +155,15 @@ class Transaction(models.Model):
         blank=True,
         on_delete=models.SET_NULL
     )
+    
+    # Unified error field for categorization failures
+    categorization_error = models.CharField(
+        max_length=200, 
+        blank=True, 
+        null=True,
+        help_text="Describes why subcategory/payoree assignment failed"
+    )
+    
     tags = models.ManyToManyField(Tag, blank=True, related_name='transactions')
 
     def __str__(self):
@@ -137,6 +174,38 @@ class Transaction(models.Model):
 
     def category(self):
         return self.subcategory.parent if self.subcategory else None
+    
+    def has_categorization_error(self):
+        """Check if this transaction has any categorization errors."""
+        return bool(self.categorization_error)
+    
+    def get_error_description(self):
+        """Get human-readable description of categorization error."""
+        if not self.categorization_error:
+            return None
+        return self.ERROR_CODES.get(self.categorization_error, self.categorization_error)
+    
+    def is_successfully_categorized(self):
+        """Check if transaction has both subcategory and payoree successfully assigned."""
+        return self.subcategory is not None and self.payoree is not None and not self.has_categorization_error()
+    
+    def effective_subcategory_display(self):
+        """Get display value for subcategory (name or error)."""
+        if self.subcategory:
+            return self.subcategory.name
+        elif self.has_categorization_error():
+            return f"ERROR: {self.categorization_error}"
+        else:
+            return "Uncategorized"
+    
+    def effective_payoree_display(self):
+        """Get display value for payoree (name or error)."""
+        if self.payoree:
+            return self.payoree.name
+        elif self.has_categorization_error():
+            return f"ERROR: {self.categorization_error}"
+        else:
+            return "Unknown"
     
 # transactions/models.py
 class LearnedSubcat(models.Model):

@@ -6,6 +6,76 @@ from django.db.models import Sum
 
 logger = logging.getLogger(__name__)
 
+# Safe lookup utilities for hybrid error handling
+@trace
+def safe_category_lookup(category_name, error_context="UNKNOWN"):
+    """
+    Safely look up Category, return (obj, error_code) tuple.
+    Returns (Category_obj, None) on success or (None, error_code) on failure.
+    
+    When multiple categories exist with the same name, prefer:
+    1. Top-level categories (parent=None) 
+    2. First category found if all are at same level
+    """
+    if not category_name or not category_name.strip():
+        return None, f"{error_context}_NO_SUBCATEGORY_SUGGESTION"
+        
+    try:
+        category_name = category_name.strip()
+        
+        # Try exact match first
+        categories = Category.objects.filter(name=category_name)
+        
+        if not categories.exists():
+            logger.warning(f"Category lookup failed: '{category_name}' -> {error_context}")
+            return None, f"{error_context}_SUBCATEGORY_LOOKUP_FAILED"
+            
+        elif categories.count() == 1:
+            return categories.first(), None
+            
+        else:
+            # Multiple categories found - prefer top-level category
+            top_level = categories.filter(parent=None).first()
+            if top_level:
+                logger.debug(f"Multiple categories for '{category_name}', using top-level: {top_level.id}")
+                return top_level, None
+            else:
+                # No top-level match, use first category
+                selected = categories.first() 
+                logger.debug(f"Multiple categories for '{category_name}', using first: {selected.id}")
+                return selected, None
+                
+    except Exception as e:
+        logger.error(f"Database error during category lookup: {e}")
+        return None, "DATABASE_ERROR"
+
+@trace  
+def safe_payoree_lookup(payoree_name, error_context="UNKNOWN"):
+    """
+    Safely look up Payoree, return (obj, error_code) tuple.
+    Returns (Payoree_obj, None) on success or (None, error_code) on failure.
+    """
+    if not payoree_name or not payoree_name.strip():
+        return None, f"{error_context}_NO_PAYOREE_SUGGESTION"
+        
+    try:
+        # Try exact match first
+        payoree_obj = Payoree.objects.get(name=payoree_name.strip())
+        return payoree_obj, None
+    except Payoree.DoesNotExist:
+        # Try normalized lookup
+        existing = Payoree.get_existing(payoree_name.strip())
+        if existing:
+            return existing, None
+        logger.warning(f"Payoree lookup failed: '{payoree_name}' -> {error_context}")
+        return None, f"{error_context}_PAYOREE_LOOKUP_FAILED"
+    except Payoree.MultipleObjectsReturned:
+        logger.error(f"Multiple payorees found for: '{payoree_name}'")
+        return None, "MULTIPLE_PAYOREES_FOUND"
+    except Exception as e:
+        logger.error(f"Database error during payoree lookup: {e}")
+        return None, "DATABASE_ERROR"
+
 MERCHANT_NAME_MAPPINGS = {
     # Gas Stations
     r'BP\#?\d*': 'gas',

@@ -285,8 +285,9 @@ def commit_batch(batch: ImportBatch, bank_account: str) -> Tuple[List[int], List
                 "source": getattr(batch, "filename", "") or f"batch:{batch.pk}",
             }
 
-            # Resolve FK suggestions (best-effort)
+            # Resolve FK suggestions with error tracking
             sugg = row.suggestions or parsed.get("_suggestions") or {}
+            categorization_errors = []
             
             # Debug logging for commit resolution
             logger.debug("DEBUG COMMIT: Row %s suggestions dict: %s", getattr(row, 'row_index', 'unknown'), sugg)
@@ -299,31 +300,69 @@ def commit_batch(batch: ImportBatch, bank_account: str) -> Tuple[List[int], List
             ai_sub_name = sugg.get("subcategory")
             logger.debug("DEBUG COMMIT: AI suggested subcategory name: '%s'", ai_sub_name)
             
-            # Use CSV category if available, otherwise fall back to AI suggestion
-            final_subcategory_name = csv_category_name or ai_sub_name
-            logger.debug("DEBUG COMMIT: Final subcategory name (CSV takes precedence): '%s'", final_subcategory_name)
-            
-            if final_subcategory_name:
-                subcategory_obj = Category.objects.filter(name=final_subcategory_name).first()
-                logger.debug("DEBUG COMMIT: Found subcategory object: %s", subcategory_obj)
-                if subcategory_obj:
-                    data["subcategory"] = subcategory_obj
-                    logger.debug("DEBUG COMMIT: Added subcategory to data: %s", subcategory_obj)
+            # Safe subcategory lookup with error tracking
+            subcategory_obj = None
+            if csv_category_name:
+                # CSV category has highest priority
+                from transactions.categorization import safe_category_lookup
+                subcategory_obj, error_code = safe_category_lookup(csv_category_name, "CSV")
+                if error_code:
+                    categorization_errors.append(error_code)
+                    logger.warning("CSV subcategory lookup failed: %s -> %s", csv_category_name, error_code)
+            elif ai_sub_name:
+                # AI suggestion as fallback
+                from transactions.categorization import safe_category_lookup
+                subcategory_obj, error_code = safe_category_lookup(ai_sub_name, "AI")
+                if error_code:
+                    categorization_errors.append(error_code)
+                    logger.warning("AI subcategory lookup failed: %s -> %s", ai_sub_name, error_code)
+            else:
+                # No suggestion available
+                categorization_errors.append("AI_NO_SUBCATEGORY_SUGGESTION")
+                logger.debug("No subcategory suggestion available for row %s", getattr(row, 'row_index', 'unknown'))
+                
+            if subcategory_obj:
+                data["subcategory"] = subcategory_obj
+                logger.debug("DEBUG COMMIT: Added subcategory to data: %s", subcategory_obj)
 
+            # Safe payoree lookup with error tracking  
+            payoree_obj = None
             pyo_name = sugg.get("payoree")
             logger.debug("DEBUG COMMIT: Extracted payoree name: '%s'", pyo_name)
             if pyo_name:
-                pyo = Payoree.get_existing(pyo_name) or Payoree.objects.create(name=pyo_name)
-                data["payoree"] = pyo
+                from transactions.categorization import safe_payoree_lookup
+                payoree_obj, error_code = safe_payoree_lookup(pyo_name, "AI")
+                if error_code:
+                    categorization_errors.append(error_code)
+                    logger.warning("Payoree lookup failed: %s -> %s", pyo_name, error_code)
+                elif not payoree_obj:
+                    # Create new payoree if lookup succeeded but no object found
+                    try:
+                        payoree_obj = Payoree.objects.create(name=pyo_name)
+                        logger.debug("Created new payoree: %s", payoree_obj)
+                    except Exception as e:
+                        categorization_errors.append("DATABASE_ERROR")
+                        logger.error("Failed to create payoree %s: %s", pyo_name, e)
+                        
+            if payoree_obj:
+                data["payoree"] = payoree_obj
+            
+            # Add categorization error if any occurred
+            if categorization_errors:
+                # Use the first/most significant error
+                data["categorization_error"] = categorization_errors[0]
+                logger.debug("DEBUG COMMIT: Adding categorization error: %s", categorization_errors[0])
 
-            # Strip non-model keys
+            # Strip non-model keys (but include categorization_error)
             sanitized = {k: v for k, v in data.items() if k in allowed_fields}
             
             # Debug final data being sent to create
             logger.debug("DEBUG COMMIT: Full data dict: %s", data)
             logger.debug("DEBUG COMMIT: Sanitized data for create: %s", sanitized)
             logger.debug("DEBUG COMMIT: Has subcategory in sanitized: %s", 'subcategory' in sanitized)
+            logger.debug("DEBUG COMMIT: Has categorization_error in sanitized: %s", 'categorization_error' in sanitized)
             logger.debug("DEBUG COMMIT: Subcategory value: %s", sanitized.get('subcategory'))
+            logger.debug("DEBUG COMMIT: Categorization error: %s", sanitized.get('categorization_error'))
 
             if not data["date"] or data["amount"] is None:
                 errs = list(row.errors or [])

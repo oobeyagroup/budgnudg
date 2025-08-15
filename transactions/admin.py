@@ -3,7 +3,7 @@ from .models import Transaction, Category, Payoree, Tag
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
-    list_display = ['bank_account','date', 'description', 'amount', 'subcategory', 'parent_category', 'account_type','payoree']
+    list_display = ['bank_account','date', 'description', 'amount', 'subcategory', 'categorization_error', 'parent_category', 'account_type','payoree']
     search_fields = ['description', 'payoree']
     list_filter = ['subcategory']
 
