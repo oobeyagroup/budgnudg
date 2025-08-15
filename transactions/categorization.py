@@ -7,7 +7,38 @@ from django.db.models import Sum
 logger = logging.getLogger(__name__)
 
 MERCHANT_NAME_MAPPINGS = {
-    # These can be populated more thoroughly later
+    # Gas Stations
+    r'BP\#?\d*': 'gas',
+    r'SHELL': 'gas',
+    r'CITGO': 'gas',
+    r'MOBIL': 'gas',
+    r'EXXON': 'gas',
+    r'CHEVRON': 'gas',
+    r'MARATHON': 'gas',
+    r'SPEEDWAY': 'gas',
+    r'VALERO': 'gas',
+    
+    # Transportation & Tolls
+    r'TOLLWAY': 'tolls',
+    r'TOLL': 'tolls',
+    r'IPASS': 'tolls',
+    r'EZ.*PASS': 'tolls',
+    r'AUTO.*REPLENISH': 'tolls',
+    
+    # Medical & Healthcare
+    r'NORTHWESTERN.*MEDICAL': 'medical',
+    r'NORTHWESTERN.*MY.*CHART': 'medical',
+    r'NORTHWESTERN': 'medical',
+    r'MEDICAL': 'medical',
+    r'HOSPITAL': 'medical',
+    r'CLINIC': 'medical',
+    r'DR\s': 'medical',
+    r'DENTAL': 'medical',
+    r'PHARMACY': 'medical',
+    r'CVS': 'pharmacy',
+    r'WALGREENS': 'pharmacy',
+    
+    # Retail & Shopping
     r'STARBUCKS': 'starbucks',
     r'TARGET': 'target',
     r'AMAZON': 'amazon',
@@ -17,6 +48,13 @@ MERCHANT_NAME_MAPPINGS = {
     r'BINNYS BEVERAGE': 'alcohol',
     r'HOME DEPOT': 'home improvement',
     r'LOWE\'S': 'home improvement',
+    
+    # Recreation & Entertainment
+    r'GOLF': 'golf',
+    r'MARINA': 'marina',
+    r'LAKE': 'recreation',
+    
+    # Financial & Banking
     r'PAYPAL': 'paypal',
     r'APPLE PAY': 'apple pay',
     r'MASTERCARD': 'mastercard',
@@ -77,6 +115,24 @@ MERCHANT_NAME_MAPPINGS = {
     r'DIRECT DEP': 'Income',
     r'PAYROLL': 'Work Income',
     r'SALARY': 'Work Income',
+    # Utilities & Services
+    r'NICOR.*GAS': 'gas utility',
+    r'NICOR': 'gas utility',
+    r'COMMONWEALTH.*EDISON': 'electric utility',
+    r'COMED': 'electric utility',
+    
+    # Banking & ATM
+    r'ATM.*WITHDRAWAL': 'atm',
+    r'ATM': 'atm',
+    r'WITHDRAWAL': 'withdrawal',
+    r'DIRECT.*DEP': 'direct dep',
+    r'PAYCHECK': 'paycheck',
+    
+    # Mortgage & Loans  
+    r'MORTGAGE.*PAYMENT': 'mortgage',
+    r'MORTGAGE.*LN': 'mortgage',
+    r'MORTGAGE': 'mortgage',
+    
     r'INVESTMENT': 'Investments',
     r'ROTH': 'Investments',
     r'IRA': 'Investments',
@@ -100,7 +156,7 @@ def extract_merchant_from_description(description: str) -> str:
         r'WEB\s*ID:\s*\d+',
         r'\b(?:ACH|CC|DEBIT|CREDIT|PAYMENT|PYMT|PMT|AUTOPAY|AUTO\s*PAY)\b',
         r'\b(?:ONLINE\s*PAYMENT|ELECTRONIC\s*PAYMENT)\b',
-        r'\b(?:BILL\s*PAY|BILLPAY|BP|BP\s*PAYMENT|BILL\s*PAYMENT)\b',
+        r'\b(?:BILL\s*PAY|BILLPAY|BP\s*PAYMENT|BILL\s*PAYMENT)\b',  # Removed standalone BP
         r'\b(?:ID\s*\d+|#\s*\d+)\b',
         r'\b(?:REF\s*\d+|REF#\s*\d+)\b',
         r'\b(?:TRANS\s*\d+|TRANS#\s*\d+)\b',
@@ -135,24 +191,77 @@ def categorize_transaction(description: str, amount: float = 0.0) -> tuple[str, 
     logger.debug(f"Categorizing transaction with description: {description} and amount: {amount}")
     merchant = extract_merchant_from_description(description)
     logger.debug(f"Extracted merchant: {merchant} from description: {description}")
-    # These mappings can eventually be migrated to the DB
+    
+    # Enhanced merchant-to-category mappings based on our imported categories
+    merchant_category_map = {
+        # Gas/Fuel
+        'gas': ('Auto', 'Gas'),
+        'bp': ('Auto', 'Gas'),
+        'shell': ('Auto', 'Gas'),
+        'exxon': ('Auto', 'Gas'),
+        'mobil': ('Auto', 'Gas'),
+        'nicor': ('Bills & Utilities', 'Gas'),
+        'gas utility': ('Bills & Utilities', 'Gas'),
+        
+        # Transportation/Tolls
+        'tolls': ('Auto', 'Auto - Tolls'),
+        'tollway': ('Auto', 'Auto - Tolls'),
+        'toll': ('Auto', 'Auto - Tolls'),
+        
+        # Medical/Healthcare
+        'medical': ('Medical', 'Medical'),
+        'northwestern': ('Medical', 'Northwestern Medical'),
+        'pharmacy': ('Medical', 'Pharmacy'),
+        'cvs': ('Medical', 'Pharmacy'),
+        'walgreens': ('Medical', 'Pharmacy'),
+        'dental': ('Medical', 'Dental'),
+        'dentist': ('Medical', 'Dentist'),
+        
+        # Banking & Financial
+        'atm': ('Cash & ATM', 'Cash & ATM'),
+        'withdrawal': ('Cash & ATM', 'Cash & ATM'),
+        'direct dep': ('Prior Year Income', 'Paycheck'),
+        'paycheck': ('Prior Year Income', 'Paycheck'),
+        
+        # Recreation/Entertainment
+        'golf': ('Entertainment', 'Golf'),
+        'marina': ('Entertainment', 'Activities'),
+        'recreation': ('Entertainment', 'Activities'),
+        
+        # Utilities (fallback patterns)
+        'electric': ('Bills & Utilities', 'Electric'),
+        'electric utility': ('Bills & Utilities', 'Electric'),
+        'water': ('Bills & Utilities', 'Water'),
+        'mortgage': ('Home', 'Mortgage (>10/27)'),
+        'insurance': ('Insurance', 'Life Insurance'),
+    }
+    
+    # Check merchant mappings first
+    merchant_lower = merchant.lower()
+    for merchant_key, (category, subcategory) in merchant_category_map.items():
+        if merchant_key in merchant_lower:
+            return (category, subcategory)
+    
+    # Legacy term-based matching for specific patterns
     bill_terms = {
         'ELECTRIC': ('Bills & Utilities', 'Electric'),
         'GAS': ('Bills & Utilities', 'Gas'),
-        'MORTGAGE': ('Housing', 'Mortgage'),
+        'MORTGAGE': ('Home', 'Mortgage (>10/27)'),
         'WATER': ('Bills & Utilities', 'Water'),
-        'PHONE': ('Bills & Utilities', 'Phone'),
-        'INSURANCE': ('Insurance', ''),
+        'PHONE': ('Bills & Utilities', 'Mobile Phone'),
+        'INSURANCE': ('Insurance', 'Life Insurance'),
     }
 
+    description_upper = description.upper()
     for term, cat_pair in bill_terms.items():
-        if term in merchant:
+        if term in description_upper:
             return cat_pair
 
-    if 'DEPOSIT' in merchant and amount > 0:
-        return ('Income', 'Work')
+    # Income detection
+    if 'DEPOSIT' in merchant.upper() and amount > 0:
+        return ('Prior Year Income', 'Paycheck')
 
-    return ('Uncategorized', '')
+    return ('Misc', 'Misc')
 
 @trace
 def suggest_subcategory_old(description: str, amount: float = 0.0) -> str:

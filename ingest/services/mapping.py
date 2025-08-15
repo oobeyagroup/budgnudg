@@ -145,12 +145,41 @@ def apply_profile_to_batch(
 
             norm_description = (out.get("description") or "").strip()
 
-            # Suggestions (augment with categorization if not present)
+            # Suggestions (use enhanced multi-field suggestions from mapping phase)
             suggestions = out.get("_suggestions") or {}
-            if "subcategory" not in suggestions:
-                sug = suggest_subcategory(norm_description) or ""
+            
+            # If no suggestions were generated during mapping, fall back to description-only analysis
+            if not suggestions.get("subcategory"):
+                logger.debug("DEBUG: No multi-field subcategory found, falling back to description analysis")
+                # Enhanced analysis combining available fields
+                desc = norm_description
+                memo = out.get("memo", "")
+                payoree_field = out.get("payoree", "")
+                combined_text = " ".join(filter(None, [desc, memo, payoree_field]))
+                logger.debug("DEBUG: Combined text for analysis: '%s'", combined_text[:100])
+                
+                sug = suggest_subcategory(combined_text) or ""
                 if sug:
                     suggestions["subcategory"] = sug
+                    logger.debug("DEBUG: Generated subcategory suggestion: '%s'", sug)
+            
+            # Also suggest payoree if not present
+            if not suggestions.get("payoree"):
+                logger.debug("DEBUG: No multi-field payoree found, falling back to description analysis")
+                desc = norm_description
+                memo = out.get("memo", "")
+                payoree_field = out.get("payoree", "")
+                combined_text = " ".join(filter(None, [desc, memo, payoree_field]))
+                
+                payoree_sug = suggest_payoree(combined_text) or ""
+                if payoree_sug:
+                    suggestions["payoree"] = payoree_sug
+                    logger.debug("DEBUG: Generated payoree suggestion: '%s'", payoree_sug)
+
+            # Debug logging for suggestions
+            logger.debug("DEBUG: Row %s - Description: '%s'", row.row_index, norm_description[:50])
+            logger.debug("DEBUG: Row %s - Subcategory suggestion: '%s'", row.row_index, suggestions.get("subcategory", "NONE"))
+            logger.debug("DEBUG: Row %s - Payoree suggestion: '%s'", row.row_index, suggestions.get("payoree", "NONE"))
 
             errors = out.get("_errors") or []
 
@@ -258,19 +287,43 @@ def commit_batch(batch: ImportBatch, bank_account: str) -> Tuple[List[int], List
 
             # Resolve FK suggestions (best-effort)
             sugg = row.suggestions or parsed.get("_suggestions") or {}
-            sub_name = sugg.get("subcategory")
-            if sub_name:
-                sub = Category.objects.filter(name=sub_name).first()
-                if sub:
-                    data["subcategory"] = sub
+            
+            # Debug logging for commit resolution
+            logger.debug("DEBUG COMMIT: Row %s suggestions dict: %s", getattr(row, 'row_index', 'unknown'), sugg)
+            
+            # Priority 1: CSV Category field (from parsed data) - this takes precedence
+            csv_category_name = parsed.get("subcategory")  # Note: CSV 'Category' maps to 'subcategory' field in profile
+            logger.debug("DEBUG COMMIT: CSV category from parsed data: '%s'", csv_category_name)
+            
+            # Priority 2: AI-suggested subcategory (from suggestions) - fallback if no CSV category
+            ai_sub_name = sugg.get("subcategory")
+            logger.debug("DEBUG COMMIT: AI suggested subcategory name: '%s'", ai_sub_name)
+            
+            # Use CSV category if available, otherwise fall back to AI suggestion
+            final_subcategory_name = csv_category_name or ai_sub_name
+            logger.debug("DEBUG COMMIT: Final subcategory name (CSV takes precedence): '%s'", final_subcategory_name)
+            
+            if final_subcategory_name:
+                subcategory_obj = Category.objects.filter(name=final_subcategory_name).first()
+                logger.debug("DEBUG COMMIT: Found subcategory object: %s", subcategory_obj)
+                if subcategory_obj:
+                    data["subcategory"] = subcategory_obj
+                    logger.debug("DEBUG COMMIT: Added subcategory to data: %s", subcategory_obj)
 
             pyo_name = sugg.get("payoree")
+            logger.debug("DEBUG COMMIT: Extracted payoree name: '%s'", pyo_name)
             if pyo_name:
                 pyo = Payoree.get_existing(pyo_name) or Payoree.objects.create(name=pyo_name)
                 data["payoree"] = pyo
 
             # Strip non-model keys
             sanitized = {k: v for k, v in data.items() if k in allowed_fields}
+            
+            # Debug final data being sent to create
+            logger.debug("DEBUG COMMIT: Full data dict: %s", data)
+            logger.debug("DEBUG COMMIT: Sanitized data for create: %s", sanitized)
+            logger.debug("DEBUG COMMIT: Has subcategory in sanitized: %s", 'subcategory' in sanitized)
+            logger.debug("DEBUG COMMIT: Subcategory value: %s", sanitized.get('subcategory'))
 
             if not data["date"] or data["amount"] is None:
                 errs = list(row.errors or [])
