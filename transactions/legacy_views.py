@@ -19,55 +19,103 @@ logger = logging.getLogger(__name__)
 def resolve_transaction(request, pk):
     transaction = get_object_or_404(Transaction, pk=pk)
 
-    # Fuzzy suggestions
-    payoree_matches = []
-    category_matches = []
+    # Get all top-level categories for the form
+    top_level_categories = Category.objects.filter(parent=None).prefetch_related('subcategories')
+    
+    # Get AI suggestions using our categorization system
+    category_suggestion = None
+    subcategory_suggestion = None
+    
+    # Import here to avoid circular import
+    from .categorization import categorize_transaction, suggest_subcategory
+    
+    try:
+        # Get AI category suggestion
+        suggested_category_name = categorize_transaction(transaction.description, transaction.amount)
+        if suggested_category_name:
+            category_suggestion = Category.objects.filter(
+                name=suggested_category_name, 
+                parent=None
+            ).first()
+        
+        # Get AI subcategory suggestion  
+        suggested_subcategory_name = suggest_subcategory(transaction.description, transaction.amount)
+        if suggested_subcategory_name:
+            subcategory_suggestion = Category.objects.filter(
+                name=suggested_subcategory_name, 
+                parent__isnull=False
+            ).first()
+    except Exception as e:
+        logger.warning(f"Error getting AI suggestions for transaction {pk}: {e}")
 
-    if not transaction.payoree:
-        payoree_names = list(Payoree.objects.values_list('name', flat=True))
-        payoree_matches = process.extract(
-            transaction.description,
-            payoree_names,
-            scorer=fuzz.partial_ratio,  # Favors beginning matches
-            limit=5
-        )
-
-    if not transaction.subcategory:
-        category_names = list(Category.objects.values_list('name', flat=True))
-        category_matches = process.extract(
-            transaction.description,
-            category_names,
-            scorer=fuzz.partial_ratio,  # Favors prefix
-            limit=5
-        )
-
-    # Find similar transactions
-    similar = Transaction.objects.exclude(id=transaction.id)
-    similar = [
+    # Find similar transactions and their category patterns
+    similar = Transaction.objects.exclude(id=transaction.id).select_related('category', 'subcategory')
+    similar_transactions = [
         t for t in similar
         if fuzz.token_set_ratio(
             normalize_description(transaction.description),
             normalize_description(t.description)
         ) >= 85
     ]
+    
+    # Get category patterns from similar transactions
+    similar_categories = []
+    category_counts = {}
+    
+    for sim_txn in similar_transactions:
+        if sim_txn.category:
+            key = (sim_txn.category, sim_txn.subcategory)
+            category_counts[key] = category_counts.get(key, 0) + 1
+    
+    # Sort by frequency and prepare for template
+    for (cat, subcat), count in sorted(category_counts.items(), key=lambda x: x[1], reverse=True):
+        similar_categories.append((cat, subcat, count))
+
     # Form submission
     if request.method == 'POST':
         payoree_id = request.POST.get('payoree')
+        category_id = request.POST.get('category')
         subcategory_id = request.POST.get('subcategory')
+        
         if payoree_id:
             transaction.payoree = Payoree.objects.get(id=payoree_id)
-        if subcategory_id:
-            transaction.subcategory = Category.objects.get(id=subcategory_id)
+        
+        if category_id:
+            transaction.category = Category.objects.get(id=category_id)
+            # Clear subcategory if new category is selected
+            if subcategory_id:
+                subcategory = Category.objects.get(id=subcategory_id)
+                # Verify subcategory belongs to selected category
+                if subcategory.parent_id == int(category_id):
+                    transaction.subcategory = subcategory
+                else:
+                    transaction.subcategory = None
+            else:
+                transaction.subcategory = None
+        
         transaction.save()
         return redirect('resolve_transaction', pk=transaction.id)
 
+    # Legacy fuzzy suggestions for payoree (keeping for compatibility)
+    payoree_matches = []
+    if not transaction.payoree:
+        payoree_names = list(Payoree.objects.values_list('name', flat=True))
+        payoree_matches = process.extract(
+            transaction.description,
+            payoree_names,
+            scorer=fuzz.partial_ratio,
+            limit=5
+        )
+
     return render(request, 'transactions/resolve_transaction.html', {
         'transaction': transaction,
+        'top_level_categories': top_level_categories,
+        'category_suggestion': category_suggestion,
+        'subcategory_suggestion': subcategory_suggestion,
+        'similar_categories': similar_categories[:5],  # Top 5 most common
         'payoree_matches': payoree_matches,
-        'category_matches': category_matches,
         'payorees': Payoree.objects.order_by('name'),
-        'categories': Category.objects.order_by('name'),
-        'similar_transactions': similar, 
+        'similar_transactions': similar_transactions[:10],  # Limit for performance
     })
 
 @trace

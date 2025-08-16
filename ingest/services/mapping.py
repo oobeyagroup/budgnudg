@@ -85,7 +85,7 @@ def preview_batch(batch: ImportBatch):
     batch.status = "previewed"
     batch.save(update_fields=["status"])
 
-@trace
+# @trace
 def _json_safe(v):
     """Make values safe for JSONField storage."""
     if isinstance(v, (dt.date, dt.datetime)):
@@ -124,6 +124,7 @@ def apply_profile_to_batch(
         try:
             # Your existing routine that applies the profile and returns a dict:
             # expects keys like: date/description/amount + _date/_amount/_suggestions/_errors
+            logger.debug("******Mapping row %s with profile %s", row.row_index, profile.name)
             out = map_row_with_profile(row.raw, profile)
 
             # JSON blob must be serializable
@@ -300,30 +301,47 @@ def commit_batch(batch: ImportBatch, bank_account: str) -> Tuple[List[int], List
             ai_sub_name = sugg.get("subcategory")
             logger.debug("DEBUG COMMIT: AI suggested subcategory name: '%s'", ai_sub_name)
             
-            # Safe subcategory lookup with error tracking
+            # Safe category lookup with error tracking
+            # With new model structure: assign both category and subcategory
+            category_obj = None
             subcategory_obj = None
+            
+            suggested_category_name = None
             if csv_category_name:
-                # CSV category has highest priority
-                from transactions.categorization import safe_category_lookup
-                subcategory_obj, error_code = safe_category_lookup(csv_category_name, "CSV")
-                if error_code:
-                    categorization_errors.append(error_code)
-                    logger.warning("CSV subcategory lookup failed: %s -> %s", csv_category_name, error_code)
+                suggested_category_name = csv_category_name
+                logger.debug("DEBUG COMMIT: Using CSV category: '%s'", csv_category_name)
             elif ai_sub_name:
-                # AI suggestion as fallback
+                suggested_category_name = ai_sub_name
+                logger.debug("DEBUG COMMIT: Using AI suggestion: '%s'", ai_sub_name)
+            
+            if suggested_category_name:
                 from transactions.categorization import safe_category_lookup
-                subcategory_obj, error_code = safe_category_lookup(ai_sub_name, "AI")
+                suggested_obj, error_code = safe_category_lookup(suggested_category_name, "CSV" if csv_category_name else "AI")
+                
                 if error_code:
                     categorization_errors.append(error_code)
-                    logger.warning("AI subcategory lookup failed: %s -> %s", ai_sub_name, error_code)
+                    logger.warning("Category lookup failed: %s -> %s", suggested_category_name, error_code)
+                elif suggested_obj:
+                    # Assign category and subcategory based on hierarchy
+                    if suggested_obj.parent:
+                        # It's a subcategory -> category = parent, subcategory = suggested
+                        category_obj = suggested_obj.parent
+                        subcategory_obj = suggested_obj
+                        logger.debug("DEBUG COMMIT: Assigned category=%s, subcategory=%s", category_obj.name, subcategory_obj.name)
+                    else:
+                        # It's a top-level category -> category = suggested, no subcategory
+                        category_obj = suggested_obj
+                        subcategory_obj = None
+                        logger.debug("DEBUG COMMIT: Assigned category=%s (top-level)", category_obj.name)
             else:
                 # No suggestion available
                 categorization_errors.append("AI_NO_SUBCATEGORY_SUGGESTION")
-                logger.debug("No subcategory suggestion available for row %s", getattr(row, 'row_index', 'unknown'))
+                logger.debug("No category suggestion available for row %s", getattr(row, 'row_index', 'unknown'))
                 
+            if category_obj:
+                data["category"] = category_obj
             if subcategory_obj:
                 data["subcategory"] = subcategory_obj
-                logger.debug("DEBUG COMMIT: Added subcategory to data: %s", subcategory_obj)
 
             # Safe payoree lookup with error tracking  
             payoree_obj = None

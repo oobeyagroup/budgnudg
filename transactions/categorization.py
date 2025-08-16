@@ -237,7 +237,8 @@ def extract_merchant_from_description(description: str) -> str:
 
     cleaned = description.upper()
     logger.debug(f"Original description: {description}")
-    logger.debug(f"Cleaned description: {cleaned}")
+    if cleaned != description:
+        logger.debug(f"Cleaned description: {cleaned}")
 
     # Remove unwanted patterns
     for pattern in patterns_to_remove:
@@ -256,54 +257,211 @@ def extract_merchant_from_description(description: str) -> str:
 @trace
 def categorize_transaction(description: str, amount: float = 0.0) -> tuple[str, str]:
     if not description:
-        return ("Uncategorized", "")
+        return ("Miscellaneous", "")
     
     logger.debug(f"Categorizing transaction with description: {description} and amount: {amount}")
     merchant = extract_merchant_from_description(description)
     logger.debug(f"Extracted merchant: {merchant} from description: {description}")
     
-    # Enhanced merchant-to-category mappings based on our imported categories
+    # Updated merchant-to-category mappings based on our new clean category structure
     merchant_category_map = {
-        # Gas/Fuel
-        'gas': ('Auto', 'Gas'),
-        'bp': ('Auto', 'Gas'),
-        'shell': ('Auto', 'Gas'),
-        'exxon': ('Auto', 'Gas'),
-        'mobil': ('Auto', 'Gas'),
-        'nicor': ('Bills & Utilities', 'Gas'),
-        'gas utility': ('Bills & Utilities', 'Gas'),
+        # Transportation
+        'gas': ('Transportation', 'Gas'),
+        'bp': ('Transportation', 'Gas'),
+        'shell': ('Transportation', 'Gas'),
+        'exxon': ('Transportation', 'Gas'),
+        'mobil': ('Transportation', 'Gas'),
+        'speedway': ('Transportation', 'Gas'),
+        'chevron': ('Transportation', 'Gas'),
+        'citgo': ('Transportation', 'Gas'),
+        'texaco': ('Transportation', 'Gas'),
+        'sunoco': ('Transportation', 'Gas'),
+        'tolls': ('Transportation', 'Tolls'),
+        'tollway': ('Transportation', 'Tolls'),
+        'toll': ('Transportation', 'Tolls'),
+        'ipass': ('Transportation', 'Tolls'),
+        'parking': ('Transportation', 'Parking'),
+        'uber': ('Transportation', 'Public Transit'),
+        'lyft': ('Transportation', 'Public Transit'),
+        'taxi': ('Transportation', 'Public Transit'),
         
-        # Transportation/Tolls
-        'tolls': ('Auto', 'Auto - Tolls'),
-        'tollway': ('Auto', 'Auto - Tolls'),
-        'toll': ('Auto', 'Auto - Tolls'),
+        # Food & Dining
+        'starbucks': ('Food & Dining', 'Coffee/Tea'),
+        'dunkin': ('Food & Dining', 'Coffee/Tea'),
+        'coffee': ('Food & Dining', 'Coffee/Tea'),
+        'mcdonald': ('Food & Dining', 'Fast Food'),
+        'burger king': ('Food & Dining', 'Fast Food'),
+        'taco bell': ('Food & Dining', 'Fast Food'),
+        'subway': ('Food & Dining', 'Fast Food'),
+        'kfc': ('Food & Dining', 'Fast Food'),
+        'wendy': ('Food & Dining', 'Fast Food'),
+        'chipotle': ('Food & Dining', 'Fast Food'),
+        'panera': ('Food & Dining', 'Fast Food'),
+        'restaurant': ('Food & Dining', 'Restaurants'),
+        'diner': ('Food & Dining', 'Restaurants'),
+        'bistro': ('Food & Dining', 'Restaurants'),
+        'bar': ('Food & Dining', 'Restaurants'),
+        'grill': ('Food & Dining', 'Restaurants'),
+        'pizza': ('Food & Dining', 'Restaurants'),
+        'domino': ('Food & Dining', 'Restaurants'),
+        'papa john': ('Food & Dining', 'Restaurants'),
+        'grocery': ('Food & Dining', 'Groceries'),
+        'kroger': ('Food & Dining', 'Groceries'),
+        'safeway': ('Food & Dining', 'Groceries'),
+        'whole foods': ('Food & Dining', 'Groceries'),
+        'trader joe': ('Food & Dining', 'Groceries'),
+        'costco': ('Food & Dining', 'Groceries'),
+        'walmart': ('Food & Dining', 'Groceries'),
+        'target': ('Food & Dining', 'Groceries'),
+        'alcohol': ('Food & Dining', 'Alcohol'),
+        'liquor': ('Food & Dining', 'Alcohol'),
+        'wine': ('Food & Dining', 'Alcohol'),
+        'beer': ('Food & Dining', 'Alcohol'),
+        'binnys': ('Food & Dining', 'Alcohol'),
         
-        # Medical/Healthcare
-        'medical': ('Medical', 'Medical'),
-        'northwestern': ('Medical', 'Northwestern Medical'),
-        'pharmacy': ('Medical', 'Pharmacy'),
-        'cvs': ('Medical', 'Pharmacy'),
-        'walgreens': ('Medical', 'Pharmacy'),
-        'dental': ('Medical', 'Dental'),
-        'dentist': ('Medical', 'Dentist'),
+        # Health & Medical
+        'medical': ('Health & Medical', 'Doctor Visits'),
+        'hospital': ('Health & Medical', 'Doctor Visits'),
+        'clinic': ('Health & Medical', 'Doctor Visits'),
+        'northwestern': ('Health & Medical', 'Doctor Visits'),
+        'mayo clinic': ('Health & Medical', 'Doctor Visits'),
+        'doctor': ('Health & Medical', 'Doctor Visits'),
+        'physician': ('Health & Medical', 'Doctor Visits'),
+        'pharmacy': ('Health & Medical', 'Pharmacy'),
+        'cvs': ('Health & Medical', 'Pharmacy'),
+        'walgreens': ('Health & Medical', 'Pharmacy'),
+        'rite aid': ('Health & Medical', 'Pharmacy'),
+        'dental': ('Health & Medical', 'Dental'),
+        'dentist': ('Health & Medical', 'Dental'),
+        'orthodont': ('Health & Medical', 'Dental'),
+        'vision': ('Health & Medical', 'Vision'),
+        'optometrist': ('Health & Medical', 'Vision'),
+        'eye care': ('Health & Medical', 'Vision'),
+        'glasses': ('Health & Medical', 'Vision'),
+        'contacts': ('Health & Medical', 'Vision'),
         
-        # Banking & Financial
-        'atm': ('Cash & ATM', 'Cash & ATM'),
-        'withdrawal': ('Cash & ATM', 'Cash & ATM'),
-        'direct dep': ('Prior Year Income', 'Paycheck'),
-        'paycheck': ('Prior Year Income', 'Paycheck'),
+        # Shopping
+        'amazon': ('Shopping', 'Online Shopping'),
+        'ebay': ('Shopping', 'Online Shopping'),
+        'etsy': ('Shopping', 'Online Shopping'),
+        'online': ('Shopping', 'Online Shopping'),
+        'best buy': ('Shopping', 'Electronics'),
+        'apple store': ('Shopping', 'Electronics'),
+        'microsoft': ('Shopping', 'Electronics'),
+        'electronics': ('Shopping', 'Electronics'),
+        'computer': ('Shopping', 'Electronics'),
+        'phone': ('Shopping', 'Electronics'),
+        'macy': ('Shopping', 'Clothing'),
+        'nordstrom': ('Shopping', 'Clothing'),
+        'gap': ('Shopping', 'Clothing'),
+        'nike': ('Shopping', 'Clothing'),
+        'clothing': ('Shopping', 'Clothing'),
+        'apparel': ('Shopping', 'Clothing'),
+        'home depot': ('Shopping', 'Home Goods'),
+        'lowe': ('Shopping', 'Home Goods'),
+        'bed bath': ('Shopping', 'Home Goods'),
+        'ikea': ('Shopping', 'Home Goods'),
+        'furniture': ('Shopping', 'Home Goods'),
+        'gift': ('Shopping', 'Gifts'),
+        'present': ('Shopping', 'Gifts'),
         
-        # Recreation/Entertainment
-        'golf': ('Entertainment', 'Golf'),
-        'marina': ('Entertainment', 'Activities'),
-        'recreation': ('Entertainment', 'Activities'),
+        # Entertainment
+        'netflix': ('Entertainment', 'Subscriptions'),
+        'hulu': ('Entertainment', 'Subscriptions'),
+        'disney': ('Entertainment', 'Subscriptions'),
+        'spotify': ('Entertainment', 'Subscriptions'),
+        'apple music': ('Entertainment', 'Subscriptions'),
+        'youtube': ('Entertainment', 'Subscriptions'),
+        'subscription': ('Entertainment', 'Subscriptions'),
+        'movie': ('Entertainment', 'Movies'),
+        'theater': ('Entertainment', 'Movies'),
+        'cinema': ('Entertainment', 'Movies'),
+        'amc': ('Entertainment', 'Movies'),
+        'regal': ('Entertainment', 'Movies'),
+        'concert': ('Entertainment', 'Concerts/Events'),
+        'ticketmaster': ('Entertainment', 'Concerts/Events'),
+        'stubhub': ('Entertainment', 'Concerts/Events'),
+        'sports': ('Entertainment', 'Sports'),
+        'gym': ('Entertainment', 'Sports'),
+        'fitness': ('Entertainment', 'Sports'),
+        'golf': ('Entertainment', 'Sports'),
+        'tennis': ('Entertainment', 'Sports'),
+        'book': ('Entertainment', 'Books/Media'),
+        'barnes': ('Entertainment', 'Books/Media'),
+        'library': ('Entertainment', 'Books/Media'),
+        'hobby': ('Entertainment', 'Hobbies'),
         
-        # Utilities (fallback patterns)
-        'electric': ('Bills & Utilities', 'Electric'),
-        'electric utility': ('Bills & Utilities', 'Electric'),
-        'water': ('Bills & Utilities', 'Water'),
-        'mortgage': ('Home', 'Mortgage (>10/27)'),
-        'insurance': ('Insurance', 'Life Insurance'),
+        # Financial
+        'atm': ('Cash & ATM', ''),
+        'withdrawal': ('Cash & ATM', ''),
+        'cash': ('Cash & ATM', ''),
+        'bank fee': ('Financial', 'Bank Fees'),
+        'overdraft': ('Financial', 'Bank Fees'),
+        'service charge': ('Financial', 'Bank Fees'),
+        'credit card': ('Financial', 'Credit Card Payment'),
+        'payment': ('Financial', 'Credit Card Payment'),
+        'investment': ('Financial', 'Investment'),
+        'vanguard': ('Financial', 'Investment'),
+        'fidelity': ('Financial', 'Investment'),
+        'schwab': ('Financial', 'Investment'),
+        'loan': ('Financial', 'Loans'),
+        'mortgage': ('Housing', 'Mortgage/Rent'),
+        'tax': ('Financial', 'Taxes'),
+        'irs': ('Financial', 'Taxes'),
+        
+        # Housing
+        'rent': ('Housing', 'Mortgage/Rent'),
+        'mortgage': ('Housing', 'Mortgage/Rent'),
+        'electric': ('Housing', 'Utilities'),
+        'electricity': ('Housing', 'Utilities'),
+        'gas utility': ('Housing', 'Utilities'),
+        'water': ('Housing', 'Utilities'),
+        'sewer': ('Housing', 'Utilities'),
+        'internet': ('Housing', 'Utilities'),
+        'cable': ('Housing', 'Utilities'),
+        'phone service': ('Housing', 'Utilities'),
+        'comcast': ('Housing', 'Utilities'),
+        'at&t': ('Housing', 'Utilities'),
+        'verizon': ('Housing', 'Utilities'),
+        'property tax': ('Housing', 'Property Tax'),
+        'home insurance': ('Housing', 'Home Insurance'),
+        'homeowners': ('Housing', 'Home Insurance'),
+        'hoa': ('Housing', 'HOA Fees'),
+        'maintenance': ('Housing', 'Home Maintenance'),
+        'repair': ('Housing', 'Home Maintenance'),
+        'plumber': ('Housing', 'Home Maintenance'),
+        'electrician': ('Housing', 'Home Maintenance'),
+        'hvac': ('Housing', 'Home Maintenance'),
+        
+        # Income
+        'direct dep': ('Income', 'Salary'),
+        'paycheck': ('Income', 'Salary'),
+        'salary': ('Income', 'Salary'),
+        'bonus': ('Income', 'Bonus'),
+        'dividend': ('Income', 'Investment Income'),
+        'interest': ('Income', 'Investment Income'),
+        
+        # Personal
+        'education': ('Personal', 'Education'),
+        'school': ('Personal', 'Education'),
+        'tuition': ('Personal', 'Education'),
+        'college': ('Personal', 'Education'),
+        'university': ('Personal', 'Education'),
+        'charity': ('Personal', 'Charity'),
+        'donation': ('Personal', 'Charity'),
+        'church': ('Personal', 'Charity'),
+        'pet': ('Personal', 'Pet Care'),
+        'veterinarian': ('Personal', 'Pet Care'),
+        'vet': ('Personal', 'Pet Care'),
+        'animal': ('Personal', 'Pet Care'),
+        
+        # Business (if applicable)
+        'office': ('Business', 'Office Supplies'),
+        'supplies': ('Business', 'Office Supplies'),
+        'business travel': ('Business', 'Business Travel'),
+        'hotel': ('Business', 'Business Travel'),
+        'flight': ('Business', 'Business Travel'),
+        'conference': ('Business', 'Business Travel'),
     }
     
     # Check merchant mappings first
@@ -313,25 +471,32 @@ def categorize_transaction(description: str, amount: float = 0.0) -> tuple[str, 
             return (category, subcategory)
     
     # Legacy term-based matching for specific patterns
-    bill_terms = {
-        'ELECTRIC': ('Bills & Utilities', 'Electric'),
-        'GAS': ('Bills & Utilities', 'Gas'),
-        'MORTGAGE': ('Home', 'Mortgage (>10/27)'),
-        'WATER': ('Bills & Utilities', 'Water'),
-        'PHONE': ('Bills & Utilities', 'Mobile Phone'),
-        'INSURANCE': ('Insurance', 'Life Insurance'),
-    }
-
     description_upper = description.upper()
-    for term, cat_pair in bill_terms.items():
-        if term in description_upper:
-            return cat_pair
-
-    # Income detection
-    if 'DEPOSIT' in merchant.upper() and amount > 0:
-        return ('Prior Year Income', 'Paycheck')
-
-    return ('Misc', 'Misc')
+    
+    # Utility bill patterns
+    if any(term in description_upper for term in ['ELECTRIC', 'ELECTRICITY', 'POWER']):
+        return ('Housing', 'Utilities')
+    if any(term in description_upper for term in ['GAS UTIL', 'NATURAL GAS', 'NICOR']):
+        return ('Housing', 'Utilities')
+    if 'WATER' in description_upper and 'BILL' in description_upper:
+        return ('Housing', 'Utilities')
+    if any(term in description_upper for term in ['INTERNET', 'CABLE', 'COMCAST', 'XFINITY']):
+        return ('Housing', 'Utilities')
+    
+    # Transportation patterns
+    if any(term in description_upper for term in ['GAS STATION', 'FUEL', 'GASOLINE']):
+        return ('Transportation', 'Gas')
+    
+    # Financial patterns
+    if 'ATM' in description_upper:
+        return ('Cash & ATM', '')
+    
+    # Income detection (positive amounts)
+    if amount > 0 and any(term in description_upper for term in ['DEPOSIT', 'PAYROLL', 'SALARY', 'PAYCHECK']):
+        return ('Income', 'Salary')
+    
+    # Default fallback
+    return ('Miscellaneous', '')
 
 @trace
 def suggest_subcategory_old(description: str, amount: float = 0.0) -> str:

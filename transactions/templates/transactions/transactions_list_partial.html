@@ -10,8 +10,8 @@
             <th style="width: 8%;">Amount</th>
             <th style="width: 8%;">Account Type</th>
             <th style="width: 5%;">Check Number</th>
-            <th style="width: 8%;">SubCategory</th>
             <th style="width: 8%;">Category</th>
+            <th style="width: 8%;">SubCategory</th>
             <th style="width: 10%;">Payoree</th>
             <th style="width: 5%;">Memo</th>
             <th style="width: 5%;">Actions</th>
@@ -21,21 +21,26 @@
         {% for txn in transactions %}
         <tr class="fs-12">
             <!-- <td>{{ txn.source }}</td> -->
-            <td>{{ txn.bank_account }}</td>
-            <td>{{ txn.sheet_account }}</td>
-            <td>{{ txn.date|date:"n/j/y" }}</td>
+            <td class="truncate" >{{ txn.bank_account }}</td>
+            <td class="truncate" >{{ txn.sheet_account }}</td>
+            <td class="truncate" >{{ txn.date|date:"n/j/y" }}</td>
             <td class="truncate" title="{{ txn.description }}">{{ txn.description }}</td>
             <td class="text-end">${{ txn.amount|floatformat:2|intcomma }}</td>
             <td class="truncate" title="{{ txn.account_type }}">{{ txn.account_type }}</td>           
             <td>{{ txn.check_num }}</td>
+            <td class="truncate" title="{{ txn.category.name }}">
+                {% if txn.category %}
+                    {{ txn.category.name }}
+                {% elif txn.categorization_error and debug %}
+                    <span class="text-danger" title="{{ txn.categorization_error }}">Error</span>
+                {% else %}
+                    -
+                {% endif %}
+            </td>
             {% if txn.subcategory %}
                 <td class="truncate" title="{{ txn.subcategory.name }}">{{ txn.subcategory.name }}</td>
-            {% else %}
-                <td> - </td>
-            {% endif %}
-            </td>
-            {% if txn.subcategory and txn.subcategory.parent %}
-                <td class="truncate" title="{{ txn.subcategory.parent.name }}">{{ txn.subcategory.parent.name }}</td>
+            {% elif txn.categorization_error and debug %}
+                <td class="text-danger truncate" title="{{ txn.categorization_error }}">{{ txn.categorization_error }}</td>
             {% else %}
                 <td> - </td>
             {% endif %}

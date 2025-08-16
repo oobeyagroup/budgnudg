@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction
+from .models import Transaction, Category
 from django.utils.decorators import method_decorator
 from transactions.utils import trace
 import logging
@@ -14,9 +14,53 @@ class CategoryImportForm(forms.Form):
     )
 
 class TransactionForm(forms.ModelForm):
+    """Form for editing transactions with hierarchical category support."""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+        # Set up category choices (top-level only)
+        self.fields['category'].queryset = Category.objects.filter(parent=None)
+        self.fields['category'].empty_label = "-- Select Category --"
+        
+        # Set up subcategory choices based on current category
+        if self.instance and self.instance.category:
+            self.fields['subcategory'].queryset = Category.objects.filter(
+                parent=self.instance.category
+            )
+        else:
+            self.fields['subcategory'].queryset = Category.objects.none()
+        
+        self.fields['subcategory'].empty_label = "-- No Subcategory --"
+        
+        # Add CSS classes for better styling
+        self.fields['category'].widget.attrs.update({'class': 'form-control'})
+        self.fields['subcategory'].widget.attrs.update({'class': 'form-control'})
+        self.fields['date'].widget.attrs.update({'class': 'form-control'})
+        self.fields['description'].widget.attrs.update({'class': 'form-control'})
+        self.fields['amount'].widget.attrs.update({'class': 'form-control'})
+
     class Meta:
         model = Transaction
-        fields = ['date', 'description', 'amount', 'subcategory']
+        fields = ['date', 'description', 'amount', 'category', 'subcategory']
+        widgets = {
+            'date': forms.DateInput(attrs={'type': 'date'}),
+            'description': forms.Textarea(attrs={'rows': 2}),
+        }
+
+    def clean(self):
+        """Validate that subcategory belongs to selected category."""
+        cleaned_data = super().clean()
+        category = cleaned_data.get('category')
+        subcategory = cleaned_data.get('subcategory')
+        
+        if subcategory and category:
+            if subcategory.parent != category:
+                raise forms.ValidationError(
+                    f"Subcategory '{subcategory.name}' does not belong to category '{category.name}'"
+                )
+        
+        return cleaned_data
 
 class FileUploadForm(forms.Form):
     file = forms.FileField()

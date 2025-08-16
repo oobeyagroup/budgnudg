@@ -33,12 +33,11 @@ class ImportUploadView(ImportSessionMixin, View):
             profile_choices=self.profile_choices(),
             account_choices=self.account_choices(),
         )
-        if not form.is_valid():
+        if form.is_valid():
+            self.save_upload(request, form.cleaned_data)
+            return redirect("import_transactions_preview")
+        else:
             return render(request, self.template_name, {"form": form})
-
-        # Save upload + selections into session
-        self.save_upload_to_session(request, form)
-        return redirect("import_transactions_preview")
 
 
 class ImportPreviewView(ImportSessionMixin, View):
@@ -62,7 +61,26 @@ class ImportPreviewView(ImportSessionMixin, View):
         # persist rows in session for review/confirm
         self.save_parsed(request, rows)
 
-        return render(request, self.template_name, {"transactions": rows})
+        # Calculate summary statistics for enhanced error reporting
+        duplicates_count = sum(1 for row in rows if getattr(row, '_is_duplicate', False))
+        missing_categories_count = sum(1 for row in rows if not getattr(row, 'subcategory', None))
+        valid_count = len(rows) - duplicates_count
+        
+        # Count data quality issues
+        data_issues_count = 0
+        for row in rows:
+            if not getattr(row, 'date', None) or not getattr(row, 'amount', None) or not getattr(row, 'description', None):
+                data_issues_count += 1
+
+        context = {
+            "transactions": rows,
+            "duplicates_count": duplicates_count,
+            "missing_categories_count": missing_categories_count,
+            "valid_count": valid_count,
+            "data_issues_count": data_issues_count,
+        }
+
+        return render(request, self.template_name, context)
 
 
 class ReviewTransactionView(ImportSessionMixin, View):
@@ -92,8 +110,11 @@ class ReviewTransactionView(ImportSessionMixin, View):
                 {"form": form, "current_index": idx + 1, "total": total},
             )
 
-        # merge edits back into the session row, advance pointer
-        self.apply_review(request, form.cleaned_data)
+        # save updates to parsed data
+        self.save_current_row(request, form.cleaned_data)
+        self.advance_review_index(request)
+
+        # keep in review or go to confirm page
         return redirect("review_transaction")
 
 
@@ -101,6 +122,12 @@ class ImportConfirmView(ImportSessionMixin, View):
     @method_decorator(trace)
     def post(self, request):
         rows = self.get_parsed(request)
+        skip_duplicates = request.POST.get('skip_duplicates', False)
+        
+        # Filter out duplicates if requested
+        if skip_duplicates:
+            rows = [row for row in rows if not getattr(row, '_is_duplicate', False)]
+            
         imported, duplicates, skipped = self.persist_rows(rows)
 
         if imported:
@@ -110,7 +137,7 @@ class ImportConfirmView(ImportSessionMixin, View):
         if skipped:
             messages.warning(request, f"Skipped {len(skipped)} invalid rows.")
 
-        # Optional: clear parsed rows so refresh can’t re-import
+        # Optional: clear parsed rows so refresh can't re-import
         request.session.pop("parsed_transactions", None)
         request.session.pop("review_index", None)
 

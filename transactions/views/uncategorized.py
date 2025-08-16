@@ -18,8 +18,8 @@ class UncategorizedTransactionsView(ListView):
     def get_queryset(self):
         return (
             Transaction.objects
-            .select_related("subcategory", "payoree")
-            .filter(subcategory__isnull=True)
+            .select_related("category", "subcategory", "payoree")
+            .filter(payoree__isnull=True)  # Focus on transactions needing payoree assignment
             .order_by(self.ordering)
         )
 

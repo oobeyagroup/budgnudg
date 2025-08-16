@@ -149,11 +149,23 @@ class Transaction(models.Model):
     ) 
     memo = models.TextField(blank=True, null=True)
 
+    # Clear separation: every transaction has a category, optionally a subcategory
+    category = models.ForeignKey(
+        Category,
+        related_name='transactions_in_category',
+        null=True,  # Temporarily allow null to support import process
+        blank=True,
+        on_delete=models.PROTECT,  # Prevent deletion of categories with transactions
+        help_text="Primary category for this transaction"
+    )
+    
     subcategory = models.ForeignKey(
         Category,
+        related_name='transactions_in_subcategory',
         null=True,
         blank=True,
-        on_delete=models.SET_NULL
+        on_delete=models.SET_NULL,
+        help_text="Optional subcategory - must belong to the specified category"
     )
     
     # Unified error field for categorization failures
@@ -172,8 +184,31 @@ class Transaction(models.Model):
             truncated = truncated[:50] + "..."
         return f"{self.date} - {truncated}"
 
-    def category(self):
-        return self.subcategory.parent if self.subcategory else None
+    def clean(self):
+        """Validate that subcategory belongs to the specified category."""
+        super().clean()
+        if self.subcategory and self.category:
+            if self.subcategory.parent != self.category:
+                from django.core.exceptions import ValidationError
+                raise ValidationError({
+                    'subcategory': f'Subcategory "{self.subcategory.name}" must belong to category "{self.category.name}"'
+                })
+    
+    def get_top_level_category(self):
+        """Get the top-level category for this transaction."""
+        if self.category:
+            # If we have a category, return it (could be top-level or not)
+            cat = self.category
+            while cat.parent:
+                cat = cat.parent
+            return cat
+        elif self.subcategory:
+            # Fallback: derive from subcategory for backward compatibility
+            cat = self.subcategory
+            while cat.parent:
+                cat = cat.parent
+            return cat
+        return None
     
     def has_categorization_error(self):
         """Check if this transaction has any categorization errors."""
@@ -186,8 +221,17 @@ class Transaction(models.Model):
         return self.ERROR_CODES.get(self.categorization_error, self.categorization_error)
     
     def is_successfully_categorized(self):
-        """Check if transaction has both subcategory and payoree successfully assigned."""
-        return self.subcategory is not None and self.payoree is not None and not self.has_categorization_error()
+        """Check if transaction has both category and payoree successfully assigned."""
+        return self.payoree is not None and not self.has_categorization_error()
+    
+    def effective_category_display(self):
+        """Get display value for category (name or error)."""
+        if self.category:
+            return self.category.name
+        elif self.has_categorization_error():
+            return f"ERROR: {self.categorization_error}"
+        else:
+            return "Uncategorized"
     
     def effective_subcategory_display(self):
         """Get display value for subcategory (name or error)."""

@@ -1,136 +1,398 @@
 {% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Edit Transaction{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <h2 class="mb-4">Resolve Transaction</h2>
+    <div class="row mb-3">
+        <div class="col">
+            <h3>Edit Transaction</h3>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'transactions_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Transactions
+            </a>
+        </div>
+    </div>
 
-    <table class="table table-bordered">
-        <tr>
-            <th>Description</th>
-            <td>{{ transaction.description }}</td>
-        </tr>
-        <tr>
-            <th>Date</th>
-            <td>{{ transaction.date }}</td>
-        </tr>
-        <tr>
-            <th>Amount</th>
-            <td>${{ transaction.amount }}</td>
-        </tr>
-    </table>
+    <!-- Transaction Details Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Transaction Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Date:</strong></td>
+                            <td>{{ transaction.date|date:"M j, Y" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Amount:</strong></td>
+                            <td class="{% if transaction.amount < 0 %}text-danger{% else %}text-success{% endif %}">
+                                ${{ transaction.amount|floatformat:2|intcomma }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bank Account:</strong></td>
+                            <td>{{ transaction.bank_account }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Description:</strong></td>
+                            <td>{{ transaction.description }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Account Type:</strong></td>
+                            <td>{{ transaction.account_type }}</td>
+                        </tr>
+                        {% if transaction.check_num %}
+                        <tr>
+                            <td><strong>Check #:</strong></td>
+                            <td>{{ transaction.check_num }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
+    <!-- Edit Form -->
     <form method="post">
         {% csrf_token %}
 
+        <!-- Payoree Section -->
         {% if not transaction.payoree %}
-            <h4 class="pt-4">Payor/ee</h4>
-            <div class="container text-center">
-                <div class="row align-items-start">
-                    <div class="col">
-                        <div class="form-group">
-                            <label for="payoree">Select Suggested Payor/ee</label>
-                            <select name="payoree" id="payoree" class="form-control">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Payoree Assignment</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="payoree" class="form-label">Suggested Payorees</label>
+                        <select name="payoree" id="payoree" class="form-select">
                             <option value="">-- Select Payoree --</option>
                             {% for name, score, _ in payoree_matches %}
                                 {% for pay in payorees %}
                                     {% if pay.name == name %}
-                                        <option value="{{ pay.id }}">{{ pay.name }} (Score: {{ score|floatformat:0 }})</option>
+                                        <option value="{{ pay.id }}">{{ pay.name }} (Match: {{ score|floatformat:0 }}%)</option>
                                     {% endif %}
                                 {% endfor %}
                             {% endfor %}
-                            </select>
-                        </div>
+                        </select>
                     </div>
-                    <div class="col">
-                        <div class="form-group">
-                          <label for="payoree_full">Select Any Payoree</label>
-                          <select name="payoree" id="payoree_full" class="form-control select2">
+                    <div class="col-md-6">
+                        <label for="payoree_full" class="form-label">All Payorees</label>
+                        <select name="payoree" id="payoree_full" class="form-select select2">
                             <option value="">-- Select Payoree --</option>
                             {% for pay in payorees %}
-                              <option value="{{ pay.id }}">{{ pay.name }}</option>
+                                <option value="{{ pay.id }}">{{ pay.name }}</option>
                             {% endfor %}
-                          </select>
-                        </div>
+                        </select>
                     </div>
                 </div>
             </div>
+        </div>
         {% else %}
-            <p><strong>Payor/ee:</strong> {{ transaction.payoree }}</p>
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Payoree</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><strong>Current Payoree:</strong> {{ transaction.payoree }}</p>
+            </div>
+        </div>
         {% endif %}
 
-        {% if not transaction.subcategory %}
-            <h4 class="pt-4">SubCategory Suggestions</h4>
-            <div class="container text-center">
-                <div class="row align-items-start">
-                    <div class="col">
-                        <div class="form-group">
-                            <label for="subcategory">Select SubCategory</label>
-                            <select name="subcategory" id="subcategory" class="form-control">
-                                <option value="">-- Select SubCategory --</option>
-                                {% for name, score, _ in category_matches %}
-                                    {% for cat in categories %}
-                                        {% if cat.name == name %}
-                                            <option value="{{ cat.id }}">{{ cat.name }} (Score: {{ score|floatformat:0 }})</option>
-                                        {% endif %}
-                                    {% endfor %}
+        <!-- Category Assignment Section -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Category Assignment</h5>
+            </div>
+            <div class="card-body">
+                <!-- Current Assignment Display -->
+                <div class="alert alert-info mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <div>
+                            <strong>Current Assignment:</strong>
+                            {% if transaction.category %}
+                                <span class="badge bg-primary ms-2">{{ transaction.category.name }}</span>
+                                {% if transaction.subcategory %}
+                                    <i class="fas fa-arrow-right mx-2"></i>
+                                    <span class="badge bg-secondary">{{ transaction.subcategory.name }}</span>
+                                {% else %}
+                                    <span class="text-muted ms-2">(No subcategory)</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-warning ms-2">No category assigned</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Selection Form -->
+                <div class="row">
+                    <!-- Primary Category Selection -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Primary Category</label>
+                            <select name="category" id="category" class="form-select" required>
+                                <option value="">-- Select Category --</option>
+                                {% for cat in top_level_categories %}
+                                    <option value="{{ cat.id }}" 
+                                            {% if transaction.category and transaction.category.id == cat.id %}selected{% endif %}
+                                            data-subcategories="{{ cat.subcategories.all|length }}">
+                                        {{ cat.name }} ({{ cat.subcategories.all|length }} subcategories)
+                                    </option>
                                 {% endfor %}
                             </select>
+                            <div class="form-text">Select the main category first</div>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="form-group">
-                            <label for="subcategory_full">Or Select Any SubCategory</label>
-                            <select name="subcategory" id="subcategory_full" class="form-control select2">
-                              <option value="">-- Select SubCategory --</option>
-                              {% for cat in categories %}
-                                <option value="{{ cat.id }}">{{ cat.name }}</option>
-                              {% endfor %}
-                            </select>                        </div>
+
+                    <!-- Subcategory Selection -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="subcategory" class="form-label">Subcategory (Optional)</label>
+                            <select name="subcategory" id="subcategory" class="form-select">
+                                <option value="">-- Select Category First --</option>
+                            </select>
+                            <div class="form-text">Choose a specific subcategory for more detail</div>
+                        </div>
                     </div>
                 </div>
-            </div>
-        {% else %}
-            <p><strong>SubCategory:</strong> {{ transaction.subcategory }}</p>
-        {% endif %}
 
-        <button type="submit" class="btn btn-primary mt-3">Save</button>
-        <a href="{% url 'uncategorized_transactions' %}" class="btn btn-secondary mt-3 ml-2">Back to list</a>
+                <!-- AI Suggestions -->
+                {% if category_suggestion or subcategory_suggestion %}
+                <div class="alert alert-light border-start border-primary border-4 mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-robot text-primary me-2"></i>
+                        <h6 class="mb-0">AI Suggestions</h6>
+                    </div>
+                    {% if category_suggestion %}
+                        <button type="button" class="btn btn-outline-primary btn-sm me-2 apply-suggestion" 
+                                data-category-id="{{ category_suggestion.id }}" 
+                                data-subcategory-id="{% if subcategory_suggestion %}{{ subcategory_suggestion.id }}{% endif %}">
+                            <i class="fas fa-magic me-1"></i>Apply: {{ category_suggestion.name }}{% if subcategory_suggestion %} → {{ subcategory_suggestion.name }}{% endif %}
+                        </button>
+                    {% endif %}
+                    <small class="text-muted d-block mt-2">Based on transaction description and history</small>
+                </div>
+                {% endif %}
+
+                <!-- Similar Transaction Patterns -->
+                {% if similar_categories %}
+                <div class="alert alert-light border-start border-success border-4 mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-history text-success me-2"></i>
+                        <h6 class="mb-0">From Similar Transactions</h6>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for sim_cat, sim_subcat, count in similar_categories %}
+                            <button type="button" class="btn btn-outline-success btn-sm apply-suggestion" 
+                                    data-category-id="{{ sim_cat.id }}" 
+                                    data-subcategory-id="{% if sim_subcat %}{{ sim_subcat.id }}{% endif %}">
+                                {{ sim_cat.name }}{% if sim_subcat %} → {{ sim_subcat.name }}{% endif %} 
+                                <span class="badge bg-success ms-1">{{ count }}x</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Save Changes
+                    </button>
+                    <a href="{% url 'transactions_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                </div>
     </form>
 
-
-<hr>
-<h3>Similar Transactions</h3>
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Date</th>
-            <th>Description</th>
-            <th>Amount</th>
-            <th>Payoree</th>
-            <th>SubCategory</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for t in similar_transactions %}
-            <tr>
-                <td>{{ t.date }}</td>
-                <td>{{ t.description }}</td>
-                <td>${{ t.amount }}</td>
-                <td>
-                    {% if t.payoree %}
-                        <a href="{% url 'set_transaction_field' transaction.id 'payoree' t.payoree.id %}">{{ t.payoree.name }}</a>
-                    {% else %} - {% endif %}
-                </td>
-                <td>
-                    {% if t.subcategory %}
-                        <a href="{% url 'set_transaction_field' transaction.id 'subcategory' t.subcategory.id %}">{{ t.subcategory.name }}</a>
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-        {% endfor %}
-    </tbody>
-</table>
-
-<a href="{% url 'apply_current_to_similar' transaction.id %}" class="btn btn-warning mt-3">Apply Current Values to All Similar</a>
+    <!-- Similar Transactions -->
+    {% if similar_transactions %}
+    <div class="card mt-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Similar Transactions</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 10%;">Date</th>
+                            <th style="width: 40%;">Description</th>
+                            <th style="width: 10%;">Amount</th>
+                            <th style="width: 15%;">Payoree</th>
+                            <th style="width: 15%;">Category</th>
+                            <th style="width: 10%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in similar_transactions %}
+                            <tr>
+                                <td>{{ t.date|date:"n/j/y" }}</td>
+                                <td class="truncate" title="{{ t.description }}">{{ t.description }}</td>
+                                <td class="text-end {% if t.amount < 0 %}text-danger{% else %}text-success{% endif %}">
+                                    ${{ t.amount|floatformat:2|intcomma }}
+                                </td>
+                                <td>
+                                    {% if t.payoree %}
+                                        <a href="{% url 'set_transaction_field' transaction.id 'payoree' t.payoree.id %}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            {{ t.payoree.name }}
+                                        </a>
+                                    {% else %} 
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if t.category %}
+                                        <button type="button" class="btn btn-outline-success btn-sm apply-suggestion" 
+                                                data-category-id="{{ t.category.id }}" 
+                                                data-subcategory-id="{% if t.subcategory %}{{ t.subcategory.id }}{% endif %}">
+                                            {{ t.category.name }}{% if t.subcategory %} → {{ t.subcategory.name }}{% endif %}
+                                        </button>
+                                    {% else %} 
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'categorize_transaction' t.pk %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if similar_transactions|length > 3 %}
+            <div class="mt-3">
+                <a href="{% url 'apply_current_to_similar' transaction.id %}" class="btn btn-warning">
+                    <i class="fas fa-copy me-1"></i>Apply Current Values to All Similar Transactions
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<style>
+.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.apply-suggestion:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+}
+</style>
+
+<script>
+// Handle category selection change  
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('category');
+    const subcategorySelect = document.getElementById('subcategory');
+    
+    // Category hierarchy data (populated by Django)
+    const categorySubcategories = {};
+    {% for cat in top_level_categories %}
+    categorySubcategories[{{ cat.id }}] = [
+        {% for subcat in cat.subcategories.all %}
+        { id: {{ subcat.id }}, name: "{{ subcat.name|escapejs }}" }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    {% endfor %}
+
+    // Handle category selection change
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            
+            // Clear subcategory options
+            subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option>';
+            
+            if (categoryId && categorySubcategories[categoryId]) {
+                // Add subcategories for selected category
+                categorySubcategories[categoryId].forEach(function(subcat) {
+                    const option = document.createElement('option');
+                    option.value = subcat.id;
+                    option.textContent = subcat.name;
+                    subcategorySelect.appendChild(option);
+                });
+                subcategorySelect.disabled = false;
+            } else {
+                subcategorySelect.disabled = true;
+            }
+        });
+    }
+
+    // Handle suggestion button clicks
+    document.querySelectorAll('.apply-suggestion').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const categoryId = this.dataset.categoryId;
+            const subcategoryId = this.dataset.subcategoryId;
+            
+            // Set category
+            if (categorySelect && categoryId) {
+                categorySelect.value = categoryId;
+                
+                // Trigger category change to load subcategories
+                categorySelect.dispatchEvent(new Event('change'));
+                
+                // Set subcategory after a small delay to ensure subcategories are loaded
+                setTimeout(function() {
+                    if (subcategoryId && subcategorySelect) {
+                        subcategorySelect.value = subcategoryId;
+                    }
+                }, 100);
+            }
+        });
+    });
+
+    // Initialize subcategories based on current selection
+    if (categorySelect && categorySelect.value) {
+        categorySelect.dispatchEvent(new Event('change'));
+        
+        // Set current subcategory if exists
+        {% if transaction.subcategory %}
+        setTimeout(function() {
+            if (subcategorySelect) {
+                subcategorySelect.value = {{ transaction.subcategory.id }};
+            }
+        }, 100);
+        {% endif %}
+    }
+});
+</script>
+
 {% endblock %}
