@@ -1,0 +1,360 @@
+{% extends "base.html" %}
+{% block title %}Category Training Session{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Progress Header -->
+    <div class="row mb-3">
+        <div class="col">
+            <h3><i class="fas fa-graduation-cap me-2"></i>Category Training Session</h3>
+            <div class="d-flex align-items-center">
+                <span class="me-2">Progress:</span>
+                <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                    <div class="progress-bar bg-success" role="progressbar" 
+                         style="width: {{ progress_percentage }}%"
+                         aria-valuenow="{{ progress_percentage }}" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100"></div>
+                </div>
+                <span class="badge bg-primary">{{ current_index }} / {{ total_patterns }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Current Pattern Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <div class="d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Transaction Pattern #{{ current_index }}</h5>
+                <div>
+                    <span class="badge bg-info">{{ pattern.transaction_count }} transactions</span>
+                </div>
+            </div>
+        </div>
+        <div class="card-body">
+            <!-- Pattern Details -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6>Representative Transaction</h6>
+                    <div class="alert alert-light">
+                        <strong>Description:</strong> {{ pattern.representative_description }}<br>
+                        <strong>Amount:</strong> ${{ pattern.representative_amount|floatformat:2 }}<br>
+                        <strong>Pattern Key:</strong> <code>{{ pattern.pattern_key }}</code>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>Similar Transactions</h6>
+                    <div class="list-group">
+                        {% for txn in pattern.transactions %}
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <span class="text-truncate me-2">{{ txn.description }}</span>
+                                <strong>${{ txn.amount|floatformat:2 }}</strong>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if pattern.transaction_count > 3 %}
+                        <div class="list-group-item text-muted">
+                            ... and {{ pattern.transaction_count|add:"-3" }} more similar transactions
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Suggestions -->
+            {% if pattern.suggested_category or pattern.suggested_subcategory %}
+            <div class="alert alert-info mb-4">
+                <div class="d-flex align-items-start">
+                    <i class="fas fa-robot me-3 mt-1"></i>
+                    <div class="flex-grow-1">
+                        <div class="mb-2">
+                            <strong>AI Suggestions:</strong>
+                            {% if pattern.suggested_category %}
+                                <span class="badge bg-primary ms-2">{{ pattern.suggested_category }}</span>
+                            {% endif %}
+                            {% if pattern.suggested_subcategory %}
+                                <i class="fas fa-arrow-right mx-2"></i>
+                                <span class="badge bg-success">{{ pattern.suggested_subcategory }}</span>
+                            {% endif %}
+                        </div>
+                        {% if pattern.reasoning %}
+                        <div class="d-flex align-items-start">
+                            <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                            <div>
+                                <small class="text-muted"><strong>Why this suggestion?</strong></small><br>
+                                <small class="text-secondary">{{ pattern.reasoning }}</small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Training Form -->
+            <form method="post" id="trainingForm">
+                {% csrf_token %}
+                
+                <div class="row">
+                    <!-- Category Selection -->
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Primary Category</label>
+                            <select name="category" id="category" class="form-select">
+                                <option value="">-- Select Category --</option>
+                                {% for cat in top_level_categories %}
+                                    <option value="{{ cat.id }}" 
+                                            {% if pattern.suggested_category == cat.name %}selected{% endif %}
+                                            data-subcategories="{{ cat.subcategories.all|length }}">
+                                        {{ cat.name }} ({{ cat.subcategories.all|length }} subcategories)
+                                    </option>
+                                {% endfor %}
+                                <option value="__new__">+ Add New Category</option>
+                            </select>
+                            <!-- New Category Input -->
+                            <div id="newCategoryInput" class="mt-2" style="display: none;">
+                                <input type="text" name="new_category" id="new_category" class="form-control" 
+                                       placeholder="Enter new category name">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Subcategory Selection -->
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="subcategory" class="form-label">Subcategory (Optional)</label>
+                            <select name="subcategory" id="subcategory" class="form-select">
+                                <option value="">-- Select Category First --</option>
+                            </select>
+                            <!-- New Subcategory Input -->
+                            <div id="newSubcategoryInput" class="mt-2" style="display: none;">
+                                <input type="text" name="new_subcategory" id="new_subcategory" class="form-control" 
+                                       placeholder="Enter new subcategory name">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Payoree Selection -->
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="payoree" class="form-label">Payoree (Optional)</label>
+                            <select name="payoree" id="payoree" class="form-select select2">
+                                <option value="">-- Select Payoree --</option>
+                                {% for payoree in payorees %}
+                                    <option value="{{ payoree.id }}">{{ payoree.name }}</option>
+                                {% endfor %}
+                                <option value="__new__">+ Add New Payoree</option>
+                            </select>
+                            <!-- New Payoree Input -->
+                            <div id="newPayoreeInput" class="mt-2" style="display: none;">
+                                <input type="text" name="new_payoree" id="new_payoree" class="form-control" 
+                                       placeholder="Enter new payoree name">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        {% if current_index > 1 %}
+                        <button type="submit" name="action" value="previous" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-1"></i>Previous
+                        </button>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="btn-group">
+                        <button type="submit" name="action" value="skip" class="btn btn-outline-warning">
+                            <i class="fas fa-forward me-1"></i>Skip Pattern
+                        </button>
+                        <button type="submit" name="action" value="save_and_next" class="btn btn-success">
+                            <i class="fas fa-save me-1"></i>Save & Next
+                        </button>
+                        <button type="submit" name="action" value="next" class="btn btn-primary">
+                            <i class="fas fa-arrow-right me-1"></i>Next
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Quick Apply AI Suggestion -->
+            {% if pattern.suggested_category %}
+            <div class="mt-3">
+                <button type="button" class="btn btn-outline-info btn-sm" id="applyAiSuggestion">
+                    <i class="fas fa-magic me-1"></i>Apply AI Suggestion
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Help Card -->
+    <div class="card bg-light">
+        <div class="card-body">
+            <h6><i class="fas fa-lightbulb me-2"></i>Training Tips</h6>
+            <ul class="mb-0">
+                <li><strong>Save & Next:</strong> Confirm the categorization and move to the next pattern</li>
+                <li><strong>Next:</strong> Move to next pattern without saving (if AI suggestion is good)</li>
+                <li><strong>Skip:</strong> Skip this pattern if you're unsure</li>
+                <li><strong>AI Suggestions:</strong> The system learns from your choices to improve future suggestions</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<style>
+.progress {
+    background-color: #e9ecef;
+    border-radius: 5px;
+}
+
+.text-truncate {
+    max-width: 200px;
+}
+
+.list-group-item {
+    padding: 0.5rem 0.75rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('category');
+    const subcategorySelect = document.getElementById('subcategory');
+    const applyAiButton = document.getElementById('applyAiSuggestion');
+    
+    // Category hierarchy data
+    const categorySubcategories = {};
+    {% for cat in top_level_categories %}
+    categorySubcategories[{{ cat.id }}] = [
+        {% for subcat in cat.subcategories.all %}
+        { id: {{ subcat.id }}, name: "{{ subcat.name|escapejs }}" }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    {% endfor %}
+
+    // Handle category selection change
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            const newCategoryInput = document.getElementById('newCategoryInput');
+            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+            
+            // Show/hide new category input
+            if (categoryId === '__new__') {
+                newCategoryInput.style.display = 'block';
+                subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option><option value="__new__">+ Add New Subcategory</option>';
+                subcategorySelect.disabled = false;
+            } else {
+                newCategoryInput.style.display = 'none';
+                newSubcategoryInput.style.display = 'none';
+                
+                // Clear subcategory options
+                subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option>';
+                
+                if (categoryId && categorySubcategories[categoryId]) {
+                    // Add subcategories for selected category
+                    categorySubcategories[categoryId].forEach(function(subcat) {
+                        const option = document.createElement('option');
+                        option.value = subcat.id;
+                        option.textContent = subcat.name;
+                        {% if pattern.suggested_subcategory %}
+                        if (subcat.name === "{{ pattern.suggested_subcategory|escapejs }}") {
+                            option.selected = true;
+                        }
+                        {% endif %}
+                        subcategorySelect.appendChild(option);
+                    });
+                    
+                    // Add "Add New Subcategory" option
+                    const newOption = document.createElement('option');
+                    newOption.value = '__new__';
+                    newOption.textContent = '+ Add New Subcategory';
+                    subcategorySelect.appendChild(newOption);
+                    
+                    subcategorySelect.disabled = false;
+                } else {
+                    subcategorySelect.disabled = true;
+                }
+            }
+        });
+        
+        // Trigger initial load if category is pre-selected
+        if (categorySelect.value) {
+            categorySelect.dispatchEvent(new Event('change'));
+        }
+    }
+    
+    // Handle subcategory selection change
+    if (subcategorySelect) {
+        subcategorySelect.addEventListener('change', function() {
+            const subcategoryId = this.value;
+            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+            
+            // Show/hide new subcategory input
+            if (subcategoryId === '__new__') {
+                newSubcategoryInput.style.display = 'block';
+            } else {
+                newSubcategoryInput.style.display = 'none';
+            }
+        });
+    }
+    
+    // Handle payoree selection change  
+    const payoreeSelect = document.getElementById('payoree');
+    if (payoreeSelect) {
+        payoreeSelect.addEventListener('change', function() {
+            const payoreeId = this.value;
+            const newPayoreeInput = document.getElementById('newPayoreeInput');
+            
+            // Show/hide new payoree input
+            if (payoreeId === '__new__') {
+                newPayoreeInput.style.display = 'block';
+            } else {
+                newPayoreeInput.style.display = 'none';
+            }
+        });
+    }
+
+    // Apply AI suggestion button
+    if (applyAiButton) {
+        applyAiButton.addEventListener('click', function() {
+            // Find and select the AI suggested category
+            {% if pattern.suggested_category %}
+            const categoryOptions = categorySelect.options;
+            for (let i = 0; i < categoryOptions.length; i++) {
+                if (categoryOptions[i].textContent.includes("{{ pattern.suggested_category|escapejs }}")) {
+                    categorySelect.value = categoryOptions[i].value;
+                    categorySelect.dispatchEvent(new Event('change'));
+                    break;
+                }
+            }
+            {% endif %}
+        });
+    }
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case 'Enter':
+                    e.preventDefault();
+                    document.querySelector('button[value="save_and_next"]').click();
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    document.querySelector('button[value="next"]').click();
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    const prevBtn = document.querySelector('button[value="previous"]');
+                    if (prevBtn) prevBtn.click();
+                    break;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

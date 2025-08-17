@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% block title %}Category Training Complete{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col text-center">
+            <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+            <h3 class="mt-3">Training Session Complete!</h3>
+            <p class="text-muted">Successfully completed training on <strong>{{ filename }}</strong></p>
+        </div>
+    </div>
+
+    <!-- Summary Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white text-center">
+                <div class="card-body">
+                    <h4 class="mb-0">{{ total_patterns }}</h4>
+                    <small>Total Patterns</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white text-center">
+                <div class="card-body">
+                    <h4 class="mb-0">{{ confirmed_patterns }}</h4>
+                    <small>Confirmed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white text-center">
+                <div class="card-body">
+                    <h4 class="mb-0">{{ skipped_patterns }}</h4>
+                    <small>Skipped</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white text-center">
+                <div class="card-body">
+                    <h4 class="mb-0">{{ confirmation_rate|floatformat:1 }}%</h4>
+                    <small>Confirmation Rate</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Summary -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Training Results</h5>
+        </div>
+        <div class="card-body">
+            {% if confirmed_patterns > 0 %}
+            <div class="alert alert-success" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-graduation-cap me-2"></i>
+                    <div>
+                        <strong>Great Job!</strong>
+                        <p class="mb-0">You confirmed {{ confirmed_patterns }} transaction patterns. The system has learned from your choices and will provide better categorization suggestions in the future.</p>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-info" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <div>
+                        <strong>Training Session Completed</strong>
+                        <p class="mb-0">You completed the training session. While no patterns were confirmed, the system still gathered valuable data for future improvements.</p>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <h6>What Happens Next?</h6>
+                    <ul>
+                        <li>Your confirmations are saved as learning data</li>
+                        <li>Future CSV imports will use improved categorization</li>
+                        <li>The AI suggestions will be more accurate</li>
+                        <li>Similar transaction patterns will be auto-categorized</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>Training Impact</h6>
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar bg-success" role="progressbar" 
+                             style="width: {{ confirmation_rate }}%">
+                            {{ confirmation_rate|floatformat:1 }}%
+                        </div>
+                    </div>
+                    <small class="text-muted">Patterns confirmed during this session</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmed Patterns Preview -->
+    {% if confirmed_list %}
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">Confirmed Patterns (Sample)</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Pattern</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Subcategory</th>
+                            <th>Count</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pattern in confirmed_list %}
+                        <tr>
+                            <td><code>{{ pattern.pattern_key }}</code></td>
+                            <td class="truncate">{{ pattern.representative_description }}</td>
+                            <td>
+                                {% if pattern.confirmed_category %}
+                                    <span class="badge bg-primary">{{ pattern.confirmed_category }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pattern.confirmed_subcategory %}
+                                    <span class="badge bg-success">{{ pattern.confirmed_subcategory }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ pattern.transaction_count }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-center gap-3">
+        <a href="{% url 'category_training_upload' %}" class="btn btn-primary">
+            <i class="fas fa-upload me-1"></i>Train with Another File
+        </a>
+        <a href="{% url 'import_transactions_upload' %}" class="btn btn-success">
+            <i class="fas fa-file-import me-1"></i>Import Transactions
+        </a>
+        <a href="{% url 'transactions_list' %}" class="btn btn-secondary">
+            <i class="fas fa-list me-1"></i>View Transactions
+        </a>
+    </div>
+</div>
+
+<style>
+.truncate {
+    max-width: 250px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.progress {
+    background-color: #e9ecef;
+}
+</style>
+{% endblock %}

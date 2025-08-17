@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Category Training - Upload CSV{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h3><i class="fas fa-graduation-cap me-2"></i>Category Training - Upload CSV</h3>
+            <p class="text-muted">Upload a CSV file to train the categorization system with your transaction patterns</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Upload Training Data</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-info-circle me-2"></i>
+                            <div>
+                                <strong>Training Purpose:</strong>
+                                <p class="mb-0">This tool analyzes your CSV file to extract transaction patterns and lets you confirm or correct categorizations. The system learns from your choices to improve future automatic categorization.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger" role="alert">
+                                {{ form.non_field_errors }}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">CSV File</label>
+                            {{ form.file }}
+                            {% if form.file.errors %}
+                                <div class="text-danger small">{{ form.file.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Select a CSV file containing transaction data for training</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="{{ form.mapping_profile.id_for_label }}" class="form-label">Mapping Profile</label>
+                            {{ form.mapping_profile }}
+                            {% if form.mapping_profile.errors %}
+                                <div class="text-danger small">{{ form.mapping_profile.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">Select the mapping profile that matches your CSV format</div>
+                        </div>
+
+                        <!-- Hidden bank account field - required by form but not relevant for training -->
+                        <div style="display: none;">
+                            {{ form.bank_account_choice }}
+                            {{ form.new_bank_account }}
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-upload me-1"></i>Upload & Analyze
+                            </button>
+                            <a href="{% url 'transactions_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-1"></i>Cancel
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">How Training Works</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="badge bg-primary rounded-circle me-3">1</div>
+                        <div>
+                            <strong>Upload CSV</strong>
+                            <p class="mb-0 text-muted">Upload your transaction CSV file</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="badge bg-primary rounded-circle me-3">2</div>
+                        <div>
+                            <strong>Pattern Analysis</strong>
+                            <p class="mb-0 text-muted">System groups similar transactions</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="badge bg-primary rounded-circle me-3">3</div>
+                        <div>
+                            <strong>Review & Confirm</strong>
+                            <p class="mb-0 text-muted">Confirm or correct AI suggestions</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start">
+                        <div class="badge bg-success rounded-circle me-3">4</div>
+                        <div>
+                            <strong>System Learns</strong>
+                            <p class="mb-0 text-muted">Improved categorization for future imports</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.badge.rounded-circle {
+    width: 25px;
+    height: 25px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+</style>
+{% endblock %}

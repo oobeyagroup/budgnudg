@@ -255,248 +255,269 @@ def extract_merchant_from_description(description: str) -> str:
     return cleaned
 
 @trace
-def categorize_transaction(description: str, amount: float = 0.0) -> tuple[str, str]:
+def categorize_transaction_with_reasoning(description: str, amount: float = 0.0) -> tuple[str, str, str]:
+    """
+    Categorize transaction and provide reasoning for the AI's decision.
+    Returns (category, subcategory, reasoning).
+    """
     if not description:
-        return ("Miscellaneous", "")
+        return ("Miscellaneous", "", "No description provided")
     
     logger.debug(f"Categorizing transaction with description: {description} and amount: {amount}")
     merchant = extract_merchant_from_description(description)
     logger.debug(f"Extracted merchant: {merchant} from description: {description}")
     
+    # First, check if we have learned patterns for this merchant key
+    learned_subcat, learned_count = _top_learned_subcat(merchant)
+    if learned_subcat and learned_count > 0:
+        # Find the category for this subcategory
+        try:
+            subcategory_obj = Category.objects.filter(name=learned_subcat, parent__isnull=False).first()
+            if subcategory_obj and subcategory_obj.parent:
+                reasoning = f"Based on {learned_count} previous user confirmations for similar transactions with merchant '{merchant}'"
+                return (subcategory_obj.parent.name, learned_subcat, reasoning)
+        except Exception as e:
+            logger.warning(f"Error looking up learned subcategory: {e}")
+    
     # Updated merchant-to-category mappings based on our new clean category structure
     merchant_category_map = {
         # Transportation
-        'gas': ('Transportation', 'Gas'),
-        'bp': ('Transportation', 'Gas'),
-        'shell': ('Transportation', 'Gas'),
-        'exxon': ('Transportation', 'Gas'),
-        'mobil': ('Transportation', 'Gas'),
-        'speedway': ('Transportation', 'Gas'),
-        'chevron': ('Transportation', 'Gas'),
-        'citgo': ('Transportation', 'Gas'),
-        'texaco': ('Transportation', 'Gas'),
-        'sunoco': ('Transportation', 'Gas'),
-        'tolls': ('Transportation', 'Tolls'),
-        'tollway': ('Transportation', 'Tolls'),
-        'toll': ('Transportation', 'Tolls'),
-        'ipass': ('Transportation', 'Tolls'),
-        'parking': ('Transportation', 'Parking'),
-        'uber': ('Transportation', 'Public Transit'),
-        'lyft': ('Transportation', 'Public Transit'),
-        'taxi': ('Transportation', 'Public Transit'),
+        'gas': ('Transportation', 'Gas', 'Merchant identified as gas station'),
+        'bp': ('Transportation', 'Gas', 'BP identified as major gas station brand'),
+        'shell': ('Transportation', 'Gas', 'Shell identified as major gas station brand'),
+        'exxon': ('Transportation', 'Gas', 'ExxonMobil identified as major gas station brand'),
+        'mobil': ('Transportation', 'Gas', 'Mobil identified as major gas station brand'),
+        'speedway': ('Transportation', 'Gas', 'Speedway identified as gas station chain'),
+        'chevron': ('Transportation', 'Gas', 'Chevron identified as major gas station brand'),
+        'citgo': ('Transportation', 'Gas', 'Citgo identified as gas station brand'),
+        'texaco': ('Transportation', 'Gas', 'Texaco identified as gas station brand'),
+        'sunoco': ('Transportation', 'Gas', 'Sunoco identified as gas station brand'),
+        'tolls': ('Transportation', 'Tolls', 'Merchant identified as toll system'),
+        'tollway': ('Transportation', 'Tolls', 'Tollway identified in transaction description'),
+        'toll': ('Transportation', 'Tolls', 'Toll payment identified in description'),
+        'ipass': ('Transportation', 'Tolls', 'I-PASS identified as electronic toll system'),
+        'parking': ('Transportation', 'Parking', 'Parking payment identified in description'),
+        'uber': ('Transportation', 'Public Transit', 'Uber identified as ride-sharing service'),
+        'lyft': ('Transportation', 'Public Transit', 'Lyft identified as ride-sharing service'),
+        'taxi': ('Transportation', 'Public Transit', 'Taxi service identified'),
         
         # Food & Dining
-        'starbucks': ('Food & Dining', 'Coffee/Tea'),
-        'dunkin': ('Food & Dining', 'Coffee/Tea'),
-        'coffee': ('Food & Dining', 'Coffee/Tea'),
-        'mcdonald': ('Food & Dining', 'Fast Food'),
-        'burger king': ('Food & Dining', 'Fast Food'),
-        'taco bell': ('Food & Dining', 'Fast Food'),
-        'subway': ('Food & Dining', 'Fast Food'),
-        'kfc': ('Food & Dining', 'Fast Food'),
-        'wendy': ('Food & Dining', 'Fast Food'),
-        'chipotle': ('Food & Dining', 'Fast Food'),
-        'panera': ('Food & Dining', 'Fast Food'),
-        'restaurant': ('Food & Dining', 'Restaurants'),
-        'diner': ('Food & Dining', 'Restaurants'),
-        'bistro': ('Food & Dining', 'Restaurants'),
-        'bar': ('Food & Dining', 'Restaurants'),
-        'grill': ('Food & Dining', 'Restaurants'),
-        'pizza': ('Food & Dining', 'Restaurants'),
-        'domino': ('Food & Dining', 'Restaurants'),
-        'papa john': ('Food & Dining', 'Restaurants'),
-        'grocery': ('Food & Dining', 'Groceries'),
-        'kroger': ('Food & Dining', 'Groceries'),
-        'safeway': ('Food & Dining', 'Groceries'),
-        'whole foods': ('Food & Dining', 'Groceries'),
-        'trader joe': ('Food & Dining', 'Groceries'),
-        'costco': ('Food & Dining', 'Groceries'),
-        'walmart': ('Food & Dining', 'Groceries'),
-        'target': ('Food & Dining', 'Groceries'),
-        'alcohol': ('Food & Dining', 'Alcohol'),
-        'liquor': ('Food & Dining', 'Alcohol'),
-        'wine': ('Food & Dining', 'Alcohol'),
-        'beer': ('Food & Dining', 'Alcohol'),
-        'binnys': ('Food & Dining', 'Alcohol'),
+        'starbucks': ('Food & Dining', 'Coffee/Tea', 'Starbucks identified as major coffee chain'),
+        'dunkin': ('Food & Dining', 'Coffee/Tea', 'Dunkin identified as coffee/donut chain'),
+        'coffee': ('Food & Dining', 'Coffee/Tea', 'Coffee-related merchant identified'),
+        'mcdonald': ('Food & Dining', 'Fast Food', 'McDonald\'s identified as major fast food chain'),
+        'burger king': ('Food & Dining', 'Fast Food', 'Burger King identified as fast food chain'),
+        'taco bell': ('Food & Dining', 'Fast Food', 'Taco Bell identified as fast food chain'),
+        'subway': ('Food & Dining', 'Fast Food', 'Subway identified as sandwich chain'),
+        'kfc': ('Food & Dining', 'Fast Food', 'KFC identified as fast food chicken chain'),
+        'wendy': ('Food & Dining', 'Fast Food', 'Wendy\'s identified as fast food chain'),
+        'chipotle': ('Food & Dining', 'Fast Food', 'Chipotle identified as fast-casual restaurant chain'),
+        'panera': ('Food & Dining', 'Fast Food', 'Panera identified as fast-casual bakery-cafe'),
+        'restaurant': ('Food & Dining', 'Restaurants', 'Generic restaurant identifier found'),
+        'diner': ('Food & Dining', 'Restaurants', 'Diner identified in description'),
+        'bistro': ('Food & Dining', 'Restaurants', 'Bistro identified in description'),
+        'bar': ('Food & Dining', 'Restaurants', 'Bar/restaurant identified'),
+        'grill': ('Food & Dining', 'Restaurants', 'Grill/restaurant identified'),
+        'pizza': ('Food & Dining', 'Restaurants', 'Pizza restaurant identified'),
+        'domino': ('Food & Dining', 'Restaurants', 'Domino\'s pizza identified'),
+        'papa john': ('Food & Dining', 'Restaurants', 'Papa John\'s pizza identified'),
+        'grocery': ('Food & Dining', 'Groceries', 'Grocery store identifier found'),
+        'kroger': ('Food & Dining', 'Groceries', 'Kroger identified as major grocery chain'),
+        'safeway': ('Food & Dining', 'Groceries', 'Safeway identified as grocery chain'),
+        'whole foods': ('Food & Dining', 'Groceries', 'Whole Foods identified as organic grocery chain'),
+        'trader joe': ('Food & Dining', 'Groceries', 'Trader Joe\'s identified as specialty grocery chain'),
+        'costco': ('Food & Dining', 'Groceries', 'Costco identified as warehouse grocery store'),
+        'walmart': ('Food & Dining', 'Groceries', 'Walmart identified as retail/grocery store'),
+        'target': ('Food & Dining', 'Groceries', 'Target identified as retail store with groceries'),
+        'alcohol': ('Food & Dining', 'Alcohol', 'Alcohol-related purchase identified'),
+        'liquor': ('Food & Dining', 'Alcohol', 'Liquor store identified'),
+        'wine': ('Food & Dining', 'Alcohol', 'Wine purchase identified'),
+        'beer': ('Food & Dining', 'Alcohol', 'Beer purchase identified'),
+        'binnys': ('Food & Dining', 'Alcohol', 'Binny\'s identified as liquor store chain'),
         
         # Health & Medical
-        'medical': ('Health & Medical', 'Doctor Visits'),
-        'hospital': ('Health & Medical', 'Doctor Visits'),
-        'clinic': ('Health & Medical', 'Doctor Visits'),
-        'northwestern': ('Health & Medical', 'Doctor Visits'),
-        'mayo clinic': ('Health & Medical', 'Doctor Visits'),
-        'doctor': ('Health & Medical', 'Doctor Visits'),
-        'physician': ('Health & Medical', 'Doctor Visits'),
-        'pharmacy': ('Health & Medical', 'Pharmacy'),
-        'cvs': ('Health & Medical', 'Pharmacy'),
-        'walgreens': ('Health & Medical', 'Pharmacy'),
-        'rite aid': ('Health & Medical', 'Pharmacy'),
-        'dental': ('Health & Medical', 'Dental'),
-        'dentist': ('Health & Medical', 'Dental'),
-        'orthodont': ('Health & Medical', 'Dental'),
-        'vision': ('Health & Medical', 'Vision'),
-        'optometrist': ('Health & Medical', 'Vision'),
-        'eye care': ('Health & Medical', 'Vision'),
-        'glasses': ('Health & Medical', 'Vision'),
-        'contacts': ('Health & Medical', 'Vision'),
+        'medical': ('Health & Medical', 'Doctor Visits', 'Medical service identifier found'),
+        'hospital': ('Health & Medical', 'Doctor Visits', 'Hospital identified in description'),
+        'clinic': ('Health & Medical', 'Doctor Visits', 'Medical clinic identified'),
+        'northwestern': ('Health & Medical', 'Doctor Visits', 'Northwestern Medicine identified as major healthcare provider'),
+        'mayo clinic': ('Health & Medical', 'Doctor Visits', 'Mayo Clinic identified as major medical institution'),
+        'doctor': ('Health & Medical', 'Doctor Visits', 'Doctor/physician service identified'),
+        'physician': ('Health & Medical', 'Doctor Visits', 'Physician service identified'),
+        'pharmacy': ('Health & Medical', 'Pharmacy', 'Pharmacy identifier found'),
+        'cvs': ('Health & Medical', 'Pharmacy', 'CVS identified as major pharmacy chain'),
+        'walgreens': ('Health & Medical', 'Pharmacy', 'Walgreens identified as major pharmacy chain'),
+        'rite aid': ('Health & Medical', 'Pharmacy', 'Rite Aid identified as pharmacy chain'),
+        'dental': ('Health & Medical', 'Dental', 'Dental service identifier found'),
+        'dentist': ('Health & Medical', 'Dental', 'Dentist service identified'),
+        'orthodont': ('Health & Medical', 'Dental', 'Orthodontic service identified'),
+        'vision': ('Health & Medical', 'Vision', 'Vision care service identified'),
+        'optometrist': ('Health & Medical', 'Vision', 'Optometrist service identified'),
+        'eye care': ('Health & Medical', 'Vision', 'Eye care service identified'),
+        'glasses': ('Health & Medical', 'Vision', 'Eyeglass purchase identified'),
+        'contacts': ('Health & Medical', 'Vision', 'Contact lens purchase identified'),
         
         # Shopping
-        'amazon': ('Shopping', 'Online Shopping'),
-        'ebay': ('Shopping', 'Online Shopping'),
-        'etsy': ('Shopping', 'Online Shopping'),
-        'online': ('Shopping', 'Online Shopping'),
-        'best buy': ('Shopping', 'Electronics'),
-        'apple store': ('Shopping', 'Electronics'),
-        'microsoft': ('Shopping', 'Electronics'),
-        'electronics': ('Shopping', 'Electronics'),
-        'computer': ('Shopping', 'Electronics'),
-        'phone': ('Shopping', 'Electronics'),
-        'macy': ('Shopping', 'Clothing'),
-        'nordstrom': ('Shopping', 'Clothing'),
-        'gap': ('Shopping', 'Clothing'),
-        'nike': ('Shopping', 'Clothing'),
-        'clothing': ('Shopping', 'Clothing'),
-        'apparel': ('Shopping', 'Clothing'),
-        'home depot': ('Shopping', 'Home Goods'),
-        'lowe': ('Shopping', 'Home Goods'),
-        'bed bath': ('Shopping', 'Home Goods'),
-        'ikea': ('Shopping', 'Home Goods'),
-        'furniture': ('Shopping', 'Home Goods'),
-        'gift': ('Shopping', 'Gifts'),
-        'present': ('Shopping', 'Gifts'),
+        'amazon': ('Shopping', 'Online Shopping', 'Amazon identified as major online retailer'),
+        'ebay': ('Shopping', 'Online Shopping', 'eBay identified as online marketplace'),
+        'etsy': ('Shopping', 'Online Shopping', 'Etsy identified as online marketplace for handmade items'),
+        'online': ('Shopping', 'Online Shopping', 'Online shopping identifier found'),
+        'best buy': ('Shopping', 'Electronics', 'Best Buy identified as electronics retailer'),
+        'apple store': ('Shopping', 'Electronics', 'Apple Store identified as technology retailer'),
+        'microsoft': ('Shopping', 'Electronics', 'Microsoft identified as technology company'),
+        'electronics': ('Shopping', 'Electronics', 'Electronics purchase identifier found'),
+        'computer': ('Shopping', 'Electronics', 'Computer-related purchase identified'),
+        'phone': ('Shopping', 'Electronics', 'Phone-related purchase identified'),
+        'macy': ('Shopping', 'Clothing', 'Macy\'s identified as department store'),
+        'nordstrom': ('Shopping', 'Clothing', 'Nordstrom identified as upscale department store'),
+        'gap': ('Shopping', 'Clothing', 'Gap identified as clothing retailer'),
+        'nike': ('Shopping', 'Clothing', 'Nike identified as athletic wear brand'),
+        'clothing': ('Shopping', 'Clothing', 'Clothing purchase identifier found'),
+        'apparel': ('Shopping', 'Clothing', 'Apparel purchase identifier found'),
+        'home depot': ('Shopping', 'Home Goods', 'Home Depot identified as home improvement retailer'),
+        'lowe': ('Shopping', 'Home Goods', 'Lowe\'s identified as home improvement retailer'),
+        'bed bath': ('Shopping', 'Home Goods', 'Bed Bath & Beyond identified as home goods retailer'),
+        'ikea': ('Shopping', 'Home Goods', 'IKEA identified as furniture retailer'),
+        'furniture': ('Shopping', 'Home Goods', 'Furniture purchase identified'),
+        'gift': ('Shopping', 'Gifts', 'Gift purchase identifier found'),
+        'present': ('Shopping', 'Gifts', 'Present purchase identifier found'),
         
         # Entertainment
-        'netflix': ('Entertainment', 'Subscriptions'),
-        'hulu': ('Entertainment', 'Subscriptions'),
-        'disney': ('Entertainment', 'Subscriptions'),
-        'spotify': ('Entertainment', 'Subscriptions'),
-        'apple music': ('Entertainment', 'Subscriptions'),
-        'youtube': ('Entertainment', 'Subscriptions'),
-        'subscription': ('Entertainment', 'Subscriptions'),
-        'movie': ('Entertainment', 'Movies'),
-        'theater': ('Entertainment', 'Movies'),
-        'cinema': ('Entertainment', 'Movies'),
-        'amc': ('Entertainment', 'Movies'),
-        'regal': ('Entertainment', 'Movies'),
-        'concert': ('Entertainment', 'Concerts/Events'),
-        'ticketmaster': ('Entertainment', 'Concerts/Events'),
-        'stubhub': ('Entertainment', 'Concerts/Events'),
-        'sports': ('Entertainment', 'Sports'),
-        'gym': ('Entertainment', 'Sports'),
-        'fitness': ('Entertainment', 'Sports'),
-        'golf': ('Entertainment', 'Sports'),
-        'tennis': ('Entertainment', 'Sports'),
-        'book': ('Entertainment', 'Books/Media'),
-        'barnes': ('Entertainment', 'Books/Media'),
-        'library': ('Entertainment', 'Books/Media'),
-        'hobby': ('Entertainment', 'Hobbies'),
+        'netflix': ('Entertainment', 'Subscriptions', 'Netflix identified as streaming service'),
+        'hulu': ('Entertainment', 'Subscriptions', 'Hulu identified as streaming service'),
+        'disney': ('Entertainment', 'Subscriptions', 'Disney+ identified as streaming service'),
+        'spotify': ('Entertainment', 'Subscriptions', 'Spotify identified as music streaming service'),
+        'apple music': ('Entertainment', 'Subscriptions', 'Apple Music identified as music streaming service'),
+        'youtube': ('Entertainment', 'Subscriptions', 'YouTube Premium identified as video service'),
+        'subscription': ('Entertainment', 'Subscriptions', 'Subscription service identifier found'),
+        'movie': ('Entertainment', 'Movies', 'Movie-related purchase identified'),
+        'theater': ('Entertainment', 'Movies', 'Movie theater identified'),
+        'cinema': ('Entertainment', 'Movies', 'Cinema identified'),
+        'amc': ('Entertainment', 'Movies', 'AMC identified as movie theater chain'),
+        'regal': ('Entertainment', 'Movies', 'Regal identified as movie theater chain'),
+        'concert': ('Entertainment', 'Concerts/Events', 'Concert event identified'),
+        'ticketmaster': ('Entertainment', 'Concerts/Events', 'Ticketmaster identified as event ticketing service'),
+        'stubhub': ('Entertainment', 'Concerts/Events', 'StubHub identified as ticket resale platform'),
+        'sports': ('Entertainment', 'Sports', 'Sports-related activity identified'),
+        'gym': ('Entertainment', 'Sports', 'Gym membership or visit identified'),
+        'fitness': ('Entertainment', 'Sports', 'Fitness-related activity identified'),
+        'golf': ('Entertainment', 'Sports', 'Golf-related activity identified'),
+        'tennis': ('Entertainment', 'Sports', 'Tennis-related activity identified'),
+        'book': ('Entertainment', 'Books/Media', 'Book purchase identified'),
+        'barnes': ('Entertainment', 'Books/Media', 'Barnes & Noble identified as bookstore'),
+        'library': ('Entertainment', 'Books/Media', 'Library-related service identified'),
+        'hobby': ('Entertainment', 'Hobbies', 'Hobby-related purchase identified'),
         
         # Financial
-        'atm': ('Cash & ATM', ''),
-        'withdrawal': ('Cash & ATM', ''),
-        'cash': ('Cash & ATM', ''),
-        'bank fee': ('Financial', 'Bank Fees'),
-        'overdraft': ('Financial', 'Bank Fees'),
-        'service charge': ('Financial', 'Bank Fees'),
-        'credit card': ('Financial', 'Credit Card Payment'),
-        'payment': ('Financial', 'Credit Card Payment'),
-        'investment': ('Financial', 'Investment'),
-        'vanguard': ('Financial', 'Investment'),
-        'fidelity': ('Financial', 'Investment'),
-        'schwab': ('Financial', 'Investment'),
-        'loan': ('Financial', 'Loans'),
-        'mortgage': ('Housing', 'Mortgage/Rent'),
-        'tax': ('Financial', 'Taxes'),
-        'irs': ('Financial', 'Taxes'),
+        'atm': ('Cash & ATM', '', 'ATM transaction identified'),
+        'withdrawal': ('Cash & ATM', '', 'Cash withdrawal identified'),
+        'cash': ('Cash & ATM', '', 'Cash transaction identified'),
+        'bank fee': ('Financial', 'Bank Fees', 'Bank fee identified'),
+        'overdraft': ('Financial', 'Bank Fees', 'Overdraft fee identified'),
+        'service charge': ('Financial', 'Bank Fees', 'Service charge identified'),
+        'credit card': ('Financial', 'Credit Card Payment', 'Credit card payment identified'),
+        'payment': ('Financial', 'Credit Card Payment', 'Payment transaction identified'),
+        'investment': ('Financial', 'Investment', 'Investment transaction identified'),
+        'vanguard': ('Financial', 'Investment', 'Vanguard identified as investment company'),
+        'fidelity': ('Financial', 'Investment', 'Fidelity identified as investment company'),
+        'schwab': ('Financial', 'Investment', 'Charles Schwab identified as investment company'),
+        'loan': ('Financial', 'Loans', 'Loan payment identified'),
+        'mortgage': ('Housing', 'Mortgage/Rent', 'Mortgage payment identified'),
+        'tax': ('Financial', 'Taxes', 'Tax payment identified'),
+        'irs': ('Financial', 'Taxes', 'IRS payment identified'),
         
         # Housing
-        'rent': ('Housing', 'Mortgage/Rent'),
-        'mortgage': ('Housing', 'Mortgage/Rent'),
-        'electric': ('Housing', 'Utilities'),
-        'electricity': ('Housing', 'Utilities'),
-        'gas utility': ('Housing', 'Utilities'),
-        'water': ('Housing', 'Utilities'),
-        'sewer': ('Housing', 'Utilities'),
-        'internet': ('Housing', 'Utilities'),
-        'cable': ('Housing', 'Utilities'),
-        'phone service': ('Housing', 'Utilities'),
-        'comcast': ('Housing', 'Utilities'),
-        'at&t': ('Housing', 'Utilities'),
-        'verizon': ('Housing', 'Utilities'),
-        'property tax': ('Housing', 'Property Tax'),
-        'home insurance': ('Housing', 'Home Insurance'),
-        'homeowners': ('Housing', 'Home Insurance'),
-        'hoa': ('Housing', 'HOA Fees'),
-        'maintenance': ('Housing', 'Home Maintenance'),
-        'repair': ('Housing', 'Home Maintenance'),
-        'plumber': ('Housing', 'Home Maintenance'),
-        'electrician': ('Housing', 'Home Maintenance'),
-        'hvac': ('Housing', 'Home Maintenance'),
+        'rent': ('Housing', 'Mortgage/Rent', 'Rent payment identified'),
+        'electric': ('Housing', 'Utilities', 'Electric utility payment identified'),
+        'electricity': ('Housing', 'Utilities', 'Electricity payment identified'),
+        'gas utility': ('Housing', 'Utilities', 'Gas utility payment identified'),
+        'water': ('Housing', 'Utilities', 'Water utility payment identified'),
+        'sewer': ('Housing', 'Utilities', 'Sewer utility payment identified'),
+        'internet': ('Housing', 'Utilities', 'Internet service payment identified'),
+        'cable': ('Housing', 'Utilities', 'Cable service payment identified'),
+        'phone service': ('Housing', 'Utilities', 'Phone service payment identified'),
+        'comcast': ('Housing', 'Utilities', 'Comcast identified as cable/internet provider'),
+        'at&t': ('Housing', 'Utilities', 'AT&T identified as telecommunications provider'),
+        'verizon': ('Housing', 'Utilities', 'Verizon identified as telecommunications provider'),
+        'property tax': ('Housing', 'Property Tax', 'Property tax payment identified'),
+        'home insurance': ('Housing', 'Home Insurance', 'Home insurance payment identified'),
+        'homeowners': ('Housing', 'Home Insurance', 'Homeowners insurance identified'),
+        'hoa': ('Housing', 'HOA Fees', 'HOA fee payment identified'),
+        'maintenance': ('Housing', 'Home Maintenance', 'Home maintenance service identified'),
+        'repair': ('Housing', 'Home Maintenance', 'Home repair service identified'),
+        'plumber': ('Housing', 'Home Maintenance', 'Plumbing service identified'),
+        'electrician': ('Housing', 'Home Maintenance', 'Electrical service identified'),
+        'hvac': ('Housing', 'Home Maintenance', 'HVAC service identified'),
         
         # Income
-        'direct dep': ('Income', 'Salary'),
-        'paycheck': ('Income', 'Salary'),
-        'salary': ('Income', 'Salary'),
-        'bonus': ('Income', 'Bonus'),
-        'dividend': ('Income', 'Investment Income'),
-        'interest': ('Income', 'Investment Income'),
+        'direct dep': ('Income', 'Salary', 'Direct deposit payment identified'),
+        'paycheck': ('Income', 'Salary', 'Paycheck deposit identified'),
+        'salary': ('Income', 'Salary', 'Salary payment identified'),
+        'bonus': ('Income', 'Bonus', 'Bonus payment identified'),
+        'dividend': ('Income', 'Investment Income', 'Dividend payment identified'),
+        'interest': ('Income', 'Investment Income', 'Interest payment identified'),
         
         # Personal
-        'education': ('Personal', 'Education'),
-        'school': ('Personal', 'Education'),
-        'tuition': ('Personal', 'Education'),
-        'college': ('Personal', 'Education'),
-        'university': ('Personal', 'Education'),
-        'charity': ('Personal', 'Charity'),
-        'donation': ('Personal', 'Charity'),
-        'church': ('Personal', 'Charity'),
-        'pet': ('Personal', 'Pet Care'),
-        'veterinarian': ('Personal', 'Pet Care'),
-        'vet': ('Personal', 'Pet Care'),
-        'animal': ('Personal', 'Pet Care'),
+        'education': ('Personal', 'Education', 'Education-related expense identified'),
+        'school': ('Personal', 'Education', 'School payment identified'),
+        'tuition': ('Personal', 'Education', 'Tuition payment identified'),
+        'college': ('Personal', 'Education', 'College payment identified'),
+        'university': ('Personal', 'Education', 'University payment identified'),
+        'charity': ('Personal', 'Charity', 'Charitable donation identified'),
+        'donation': ('Personal', 'Charity', 'Donation payment identified'),
+        'church': ('Personal', 'Charity', 'Church donation identified'),
+        'pet': ('Personal', 'Pet Care', 'Pet-related expense identified'),
+        'veterinarian': ('Personal', 'Pet Care', 'Veterinary service identified'),
+        'vet': ('Personal', 'Pet Care', 'Veterinary service identified'),
+        'animal': ('Personal', 'Pet Care', 'Animal-related expense identified'),
         
         # Business (if applicable)
-        'office': ('Business', 'Office Supplies'),
-        'supplies': ('Business', 'Office Supplies'),
-        'business travel': ('Business', 'Business Travel'),
-        'hotel': ('Business', 'Business Travel'),
-        'flight': ('Business', 'Business Travel'),
-        'conference': ('Business', 'Business Travel'),
+        'office': ('Business', 'Office Supplies', 'Office supplies purchase identified'),
+        'supplies': ('Business', 'Office Supplies', 'Office supplies purchase identified'),
+        'business travel': ('Business', 'Business Travel', 'Business travel expense identified'),
+        'hotel': ('Business', 'Business Travel', 'Hotel expense identified'),
+        'flight': ('Business', 'Business Travel', 'Flight expense identified'),
+        'conference': ('Business', 'Business Travel', 'Conference expense identified'),
     }
     
     # Check merchant mappings first
     merchant_lower = merchant.lower()
-    for merchant_key, (category, subcategory) in merchant_category_map.items():
+    for merchant_key, (category, subcategory, reason) in merchant_category_map.items():
         if merchant_key in merchant_lower:
-            return (category, subcategory)
+            return (category, subcategory, reason)
     
     # Legacy term-based matching for specific patterns
     description_upper = description.upper()
     
     # Utility bill patterns
     if any(term in description_upper for term in ['ELECTRIC', 'ELECTRICITY', 'POWER']):
-        return ('Housing', 'Utilities')
+        return ('Housing', 'Utilities', 'Electric utility keywords found in description')
     if any(term in description_upper for term in ['GAS UTIL', 'NATURAL GAS', 'NICOR']):
-        return ('Housing', 'Utilities')
+        return ('Housing', 'Utilities', 'Gas utility keywords found in description')
     if 'WATER' in description_upper and 'BILL' in description_upper:
-        return ('Housing', 'Utilities')
+        return ('Housing', 'Utilities', 'Water bill keywords found in description')
     if any(term in description_upper for term in ['INTERNET', 'CABLE', 'COMCAST', 'XFINITY']):
-        return ('Housing', 'Utilities')
+        return ('Housing', 'Utilities', 'Internet/cable service keywords found in description')
     
     # Transportation patterns
     if any(term in description_upper for term in ['GAS STATION', 'FUEL', 'GASOLINE']):
-        return ('Transportation', 'Gas')
+        return ('Transportation', 'Gas', 'Gas/fuel keywords found in description')
     
     # Financial patterns
     if 'ATM' in description_upper:
-        return ('Cash & ATM', '')
+        return ('Cash & ATM', '', 'ATM transaction keyword found in description')
     
     # Income detection (positive amounts)
     if amount > 0 and any(term in description_upper for term in ['DEPOSIT', 'PAYROLL', 'SALARY', 'PAYCHECK']):
-        return ('Income', 'Salary')
+        return ('Income', 'Salary', f'Positive amount (${amount}) with salary/payroll keywords suggests income')
     
     # Default fallback
-    return ('Miscellaneous', '')
+    return ('Miscellaneous', '', 'No matching patterns found - using default category')
+
+@trace
+def categorize_transaction(description: str, amount: float = 0.0) -> tuple[str, str]:
+    """Original function that returns just category and subcategory."""
+    category, subcategory, _ = categorize_transaction_with_reasoning(description, amount)
+    return (category, subcategory)
 
 @trace
 def suggest_subcategory_old(description: str, amount: float = 0.0) -> str:

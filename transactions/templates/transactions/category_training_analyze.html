@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Category Training - Analysis{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h3><i class="fas fa-chart-line me-2"></i>Training Data Analysis</h3>
+            <p class="text-muted">Analysis complete for <strong>{{ filename }}</strong></p>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">{{ total_patterns }}</h4>
+                    <small>Unique Transaction Patterns</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-info text-white">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">{{ patterns_preview|length }}</h4>
+                    <small>Patterns Previewed</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-success text-white">
+                <div class="card-body text-center">
+                    <h4 class="mb-0">Ready</h4>
+                    <small>For Training Session</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Analysis Results -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Pattern Analysis Results</h5>
+        </div>
+        <div class="card-body">
+            <p>The system has identified <strong>{{ total_patterns }}</strong> unique transaction patterns from your CSV file. These patterns represent groups of similar transactions that can be categorized together.</p>
+            
+            <div class="alert alert-success" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="fas fa-check-circle me-2"></i>
+                    <div>
+                        <strong>Analysis Complete!</strong>
+                        <p class="mb-0">Your CSV has been processed and patterns have been identified. You can now start the training session to teach the system how to categorize these patterns.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview of Patterns -->
+    {% if patterns_preview %}
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h6 class="mb-0">Pattern Preview (Top 5)</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Pattern</th>
+                            <th>Example Description</th>
+                            <th>Count</th>
+                            <th>AI Suggestion</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pattern in patterns_preview %}
+                        <tr>
+                            <td>
+                                <code>{{ pattern.pattern_key }}</code>
+                            </td>
+                            <td>
+                                <span class="truncate" title="{{ pattern.representative_description }}">
+                                    {{ pattern.representative_description }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-primary">{{ pattern.transaction_count }}</span>
+                            </td>
+                            <td>
+                                {% if pattern.suggested_category %}
+                                    <span class="badge bg-success">{{ pattern.suggested_category }}</span>
+                                    {% if pattern.suggested_subcategory %}
+                                        <i class="fas fa-arrow-right mx-1"></i>
+                                        <span class="badge bg-info">{{ pattern.suggested_subcategory }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted">No suggestion</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Action Buttons -->
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <a href="{% url 'category_training_upload' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Upload Different File
+            </a>
+        </div>
+        
+        <div>
+            <a href="{% url 'category_training_session' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-play me-1"></i>Start Training Session
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+.truncate {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
+{% endblock %}

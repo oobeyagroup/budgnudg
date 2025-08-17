@@ -24,6 +24,13 @@ from transactions.views.reports import (
     ReportIncomeStatementView,
 )
 from transactions.views.import_payoree import ImportPayoreeView
+from transactions.views.category_training import (
+    CategoryTrainingUploadView,
+    CategoryTrainingAnalyzeView,
+    CategoryTrainingSessionView,
+    CategoryTrainingCompleteView,
+    LearnFromCurrentView,
+)
 
 # Legacy FBVs (temporary)
 from transactions import legacy_import_views as legacy
@@ -43,6 +50,13 @@ urlpatterns = [
 
     # NEW: categories import (CBV)
     path("import/categories/", ImportCategoriesView.as_view(), name="import_categories"),
+
+    # Category Training System
+    path("training/upload/", CategoryTrainingUploadView.as_view(), name="category_training_upload"),
+    path("training/analyze/", CategoryTrainingAnalyzeView.as_view(), name="category_training_analyze"),
+    path("training/session/", CategoryTrainingSessionView.as_view(), name="category_training_session"),
+    path("training/complete/", CategoryTrainingCompleteView.as_view(), name="category_training_complete"),
+    path("learn-from-current/<int:transaction_id>/", LearnFromCurrentView.as_view(), name="learn_from_current"),
 
     # Import wizard (FBV)
     path("import/transactions/", legacy.import_transactions_upload, name="import_transactions_upload"),

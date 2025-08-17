@@ -27,21 +27,23 @@ class CategorizeTransactionView(View):
         # Get AI suggestions using our categorization system
         category_suggestion = None
         subcategory_suggestion = None
+        ai_reasoning = None
         
         # Import here to avoid circular import
-        from transactions.categorization import categorize_transaction, suggest_subcategory
+        from transactions.categorization import categorize_transaction_with_reasoning, suggest_subcategory
         
         try:
-            # Get AI category suggestion
-            suggested_category_name = categorize_transaction(transaction.description, float(transaction.amount))
+            # Get AI category and subcategory suggestions with reasoning
+            suggested_category_name, suggested_subcategory_name, ai_reasoning = categorize_transaction_with_reasoning(
+                transaction.description, float(transaction.amount)
+            )
+            
             if suggested_category_name:
                 category_suggestion = Category.objects.filter(
                     name=suggested_category_name, 
                     parent=None
                 ).first()
             
-            # Get AI subcategory suggestion  
-            suggested_subcategory_name = suggest_subcategory(transaction.description, float(transaction.amount))
             if suggested_subcategory_name:
                 subcategory_suggestion = Category.objects.filter(
                     name=suggested_subcategory_name, 
@@ -59,6 +61,7 @@ class CategorizeTransactionView(View):
             "top_level_categories": top_level_categories,
             "category_suggestion": category_suggestion,
             "subcategory_suggestion": subcategory_suggestion,
+            "ai_reasoning": ai_reasoning,
             "similar_categories": similar_categories,
             "payoree_matches": [],  # Could add fuzzy matching here if needed
             "payorees": Payoree.objects.order_by('name'),

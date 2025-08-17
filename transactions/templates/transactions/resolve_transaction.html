@@ -173,19 +173,85 @@
                 <!-- AI Suggestions -->
                 {% if category_suggestion or subcategory_suggestion %}
                 <div class="alert alert-light border-start border-primary border-4 mb-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <i class="fas fa-robot text-primary me-2"></i>
-                        <h6 class="mb-0">AI Suggestions</h6>
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-robot text-primary me-3 mt-1"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-2">AI Suggestions</h6>
+                            {% if category_suggestion %}
+                                <button type="button" class="btn btn-outline-primary btn-sm me-2 apply-suggestion" 
+                                        data-category-id="{{ category_suggestion.id }}" 
+                                        data-subcategory-id="{% if subcategory_suggestion %}{{ subcategory_suggestion.id }}{% endif %}">
+                                    <i class="fas fa-magic me-1"></i>Apply: {{ category_suggestion.name }}{% if subcategory_suggestion %} → {{ subcategory_suggestion.name }}{% endif %}
+                                </button>
+                            {% endif %}
+                            {% if ai_reasoning %}
+                            <div class="mt-2 d-flex align-items-start">
+                                <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                                <div>
+                                    <small class="text-muted"><strong>Why this suggestion?</strong></small><br>
+                                    <small class="text-secondary">{{ ai_reasoning }}</small>
+                                </div>
+                            </div>
+                            {% else %}
+                            <small class="text-muted d-block mt-2">Based on transaction description and history</small>
+                            {% endif %}
+                        </div>
                     </div>
-                    {% if category_suggestion %}
-                        <button type="button" class="btn btn-outline-primary btn-sm me-2 apply-suggestion" 
-                                data-category-id="{{ category_suggestion.id }}" 
-                                data-subcategory-id="{% if subcategory_suggestion %}{{ subcategory_suggestion.id }}{% endif %}">
-                            <i class="fas fa-magic me-1"></i>Apply: {{ category_suggestion.name }}{% if subcategory_suggestion %} → {{ subcategory_suggestion.name }}{% endif %}
-                        </button>
-                    {% endif %}
-                    <small class="text-muted d-block mt-2">Based on transaction description and history</small>
                 </div>
+                {% endif %}
+
+                <!-- Learn from Current Assignment -->
+                {% if transaction.category or transaction.subcategory or transaction.payoree %}
+                    {% comment %}
+                    Show "Learn from Current" button when:
+                    1. Transaction has a current assignment AND
+                    2. Either no AI suggestion exists OR the AI suggestion is different from current
+                    {% endcomment %}
+                    {% if not category_suggestion and not subcategory_suggestion %}
+                        <!-- No AI suggestion case -->
+                        <div class="alert alert-light border-start border-info border-4 mb-3">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-graduation-cap text-info me-3 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-2">Teach the AI</h6>
+                                    <p class="mb-2 small text-muted">The AI didn't find a suggestion for this transaction. Help it learn from your correct categorization:</p>
+                                    <div class="mb-2">
+                                        <strong>Current Assignment:</strong>
+                                        {% if transaction.category %}{{ transaction.category.name }}{% endif %}
+                                        {% if transaction.subcategory %} → {{ transaction.subcategory.name }}{% endif %}
+                                        {% if transaction.payoree %} | {{ transaction.payoree.name }}{% endif %}
+                                    </div>
+                                    <button type="button" class="btn btn-outline-info btn-sm learn-from-current" 
+                                            data-transaction-id="{{ transaction.id }}">
+                                        <i class="fas fa-brain me-1"></i>Teach AI from Current Assignment
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- AI suggestion exists but may differ from current -->
+                        {% if category_suggestion.id != transaction.category.id or subcategory_suggestion.id != transaction.subcategory.id %}
+                        <div class="alert alert-light border-start border-warning border-4 mb-3">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-graduation-cap text-warning me-3 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-2">Teach the AI</h6>
+                                    <p class="mb-2 small text-muted">The AI's suggestion differs from the current assignment. If the current assignment is correct, teach the AI:</p>
+                                    <div class="mb-2">
+                                        <strong>Current Assignment:</strong>
+                                        {% if transaction.category %}{{ transaction.category.name }}{% endif %}
+                                        {% if transaction.subcategory %} → {{ transaction.subcategory.name }}{% endif %}
+                                        {% if transaction.payoree %} | {{ transaction.payoree.name }}{% endif %}
+                                    </div>
+                                    <button type="button" class="btn btn-outline-warning btn-sm learn-from-current" 
+                                            data-transaction-id="{{ transaction.id }}">
+                                        <i class="fas fa-brain me-1"></i>Teach AI from Current Assignment
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endif %}
                 {% endif %}
 
                 <!-- Similar Transaction Patterns -->
@@ -378,6 +444,98 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // Handle learn from current button clicks
+    document.querySelectorAll('.learn-from-current').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const transactionId = this.dataset.transactionId;
+            const originalText = this.innerHTML;
+            
+            // Disable button and show loading state
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Teaching AI...';
+            
+            // Make AJAX request to learn from current assignment
+            fetch(`{% url 'learn_from_current' 0 %}`.replace('0', transactionId), {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    this.innerHTML = '<i class="fas fa-check me-1"></i>AI Learned!';
+                    this.classList.remove('btn-outline-info', 'btn-outline-warning');
+                    this.classList.add('btn-success');
+                    
+                    // Show toast notification
+                    showToast('Success', data.message, 'success');
+                    
+                    // Fade out the learn section after 3 seconds
+                    setTimeout(() => {
+                        const learnSection = this.closest('.alert');
+                        if (learnSection) {
+                            learnSection.style.transition = 'opacity 0.5s ease-out';
+                            learnSection.style.opacity = '0';
+                            setTimeout(() => {
+                                learnSection.remove();
+                            }, 500);
+                        }
+                    }, 3000);
+                } else {
+                    // Show error message
+                    this.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                    this.classList.add('btn-danger');
+                    showToast('Error', data.message, 'error');
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        this.disabled = false;
+                        this.innerHTML = originalText;
+                        this.classList.remove('btn-danger');
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                this.classList.add('btn-danger');
+                showToast('Error', 'An error occurred while teaching the AI.', 'error');
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.classList.remove('btn-danger');
+                }, 3000);
+            });
+        });
+    });
+
+    // Simple toast notification function
+    function showToast(title, message, type) {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            <strong>${title}:</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Add to page
+        document.body.appendChild(toast);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 5000);
+    }
 
     // Initialize subcategories based on current selection
     if (categorySelect && categorySelect.value) {
