@@ -46,7 +46,7 @@
             {% endif %}
             <td class="truncate" title="{{ txn.payoree }}">{{ txn.payoree }}</td>
             <td>{{ txn.memo }}</td>
-            <td><a href="{% url 'categorize_transaction' txn.pk %}">Edit</a></td>
+            <td><a href="{% url 'transactions:categorize_transaction' txn.pk %}">Edit</a></td>
         </tr>
         {% endfor %}
     </tbody>

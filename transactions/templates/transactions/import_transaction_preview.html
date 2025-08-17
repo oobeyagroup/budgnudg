@@ -203,10 +203,10 @@
     <!-- Action Buttons -->
     <div class="d-flex justify-content-between align-items-center mt-4">
       <div>
-        <a href="{% url 'import_transactions_upload' %}" class="btn btn-secondary">
+        <a href="{% url 'transactions:import_transactions_upload' %}" class="btn btn-secondary">
           <i class="fas fa-arrow-left me-1"></i>Back to Upload
         </a>
-        <a href="{% url 'review_transaction' %}" class="btn btn-outline-primary ms-2">
+        <a href="{% url 'transactions:review_transaction' %}" class="btn btn-outline-primary ms-2">
           <i class="fas fa-edit me-1"></i>Review One by One
         </a>
       </div>
@@ -220,7 +220,7 @@
             <ul class="dropdown-menu">
               <li><h6 class="dropdown-header">Import Options</h6></li>
               <li>
-                <form method="post" action="{% url 'import_transactions_confirm' %}" class="dropdown-item">
+                <form method="post" action="{% url 'transactions:import_transactions_confirm' %}" class="dropdown-item">
                   {% csrf_token %}
                   <input type="hidden" name="skip_duplicates" value="true">
                   <button type="submit" class="btn btn-link p-0 text-start">
@@ -229,7 +229,7 @@
                 </form>
               </li>
               <li>
-                <form method="post" action="{% url 'import_transactions_confirm' %}" class="dropdown-item">
+                <form method="post" action="{% url 'transactions:import_transactions_confirm' %}" class="dropdown-item">
                   {% csrf_token %}
                   <button type="submit" class="btn btn-link p-0 text-start">
                     <i class="fas fa-upload me-1"></i>Import All Anyway
@@ -239,7 +239,7 @@
             </ul>
           </div>
         {% else %}
-          <form method="post" action="{% url 'import_transactions_confirm' %}" class="d-inline">
+          <form method="post" action="{% url 'transactions:import_transactions_confirm' %}" class="d-inline">
             {% csrf_token %}
             <button type="submit" class="btn btn-success">
               <i class="fas fa-check me-1"></i>Import All Transactions
@@ -264,7 +264,7 @@
             <li><i class="fas fa-circle fa-xs me-2"></i>Required columns are missing or empty</li>
           </ul>
         </div>
-        <a href="{% url 'import_transactions_upload' %}" class="btn btn-primary">
+        <a href="{% url 'transactions:import_transactions_upload' %}" class="btn btn-primary">
           <i class="fas fa-upload me-1"></i>Try Again
         </a>
       </div>

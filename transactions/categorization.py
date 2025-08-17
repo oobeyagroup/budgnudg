@@ -247,12 +247,80 @@ def extract_merchant_from_description(description: str) -> str:
     cleaned = re.sub(r'[^\w\s]', ' ', cleaned)
     cleaned = re.sub(r'\s+', ' ', cleaned).strip()
 
-    for pattern, replacement in MERCHANT_NAME_MAPPINGS.items():
-        # logger.debug(f"Checking pattern: {pattern} against cleaned description: {cleaned}")
+    # Store the original cleaned version for learned pattern lookup
+    original_cleaned = cleaned
+    
+    # Only apply merchant mappings to very generic terms, not specific merchant names
+    # Prioritize specific merchant names over generic category mappings
+    generic_mappings = {
+        r'^WITHDRAWAL$': 'Cash Withdrawal',
+        r'^DEPOSIT$': 'Deposit',
+        r'^ATM$': 'ATM',
+        r'^FEE$': 'Bank Fee',
+        r'^INTEREST$': 'Interest',
+        r'^DIVIDEND$': 'Dividend',
+    }
+    
+    # Apply only generic mappings first
+    for pattern, replacement in generic_mappings.items():
         if re.search(pattern, cleaned, re.IGNORECASE):
             return replacement
 
-    return cleaned
+    # Check if this is a specific merchant name that shouldn't be genericized
+    # Look for patterns that suggest a specific business name
+    if re.search(r'\b(CO|CORP|INC|LLC|LTD|COMPANY|COUNTY|CITY|BANK|CREDIT\s+UNION)\b', cleaned):
+        # This looks like a specific business/entity name, but limit to first meaningful part
+        # For tax entities, keep just the core identifier
+        if 'TAX' in cleaned:
+            # For tax payments, extract the key identifying part before redundant info
+            # "DUPAGE CO TAX DUPAGE CO 1439768" -> "DUPAGE CO TAX"
+            tax_match = re.search(r'^([A-Z\s]+?TAX)', cleaned)
+            if tax_match:
+                return tax_match.group(1).strip()
+        
+        # For other business entities, keep first few meaningful words
+        words = cleaned.split()
+        meaningful_words = []
+        for word in words:
+            if len(word) > 2 and not word.isdigit():
+                meaningful_words.append(word)
+            if len(meaningful_words) >= 4:  # Limit to 4 meaningful words
+                break
+        return ' '.join(meaningful_words) if meaningful_words else original_cleaned
+    
+    # For other cases, check the broader merchant mappings (excluding TAX which is too generic)
+    broader_mappings = {}
+    for pattern, replacement in MERCHANT_NAME_MAPPINGS.items():
+        # Skip overly generic patterns that might incorrectly categorize specific business names
+        if pattern not in [r'TAX', r'BANK', r'CREDIT']:
+            broader_mappings[pattern] = replacement
+    
+    for pattern, replacement in broader_mappings.items():
+        if re.search(pattern, cleaned, re.IGNORECASE):
+            return replacement
+
+    return original_cleaned
+
+@trace
+def check_keyword_rules(description: str) -> tuple[str, str, str] | None:
+    """
+    Check if any user-defined keyword rules match this transaction.
+    Returns (category, subcategory, reasoning) or None if no match.
+    """
+    from .models import KeywordRule
+    
+    try:
+        active_rules = KeywordRule.objects.filter(is_active=True).order_by('-priority')
+        for rule in active_rules:
+            if rule.keyword.upper() in description.upper():
+                category_name = rule.category.name
+                subcategory_name = rule.subcategory.name if rule.subcategory else ""
+                reasoning = f'Keyword "{rule.keyword}" matched (user-defined rule with priority {rule.priority})'
+                return (category_name, subcategory_name, reasoning)
+    except Exception as e:
+        logger.warning(f"Error checking keyword rules: {e}")
+    
+    return None
 
 @trace
 def categorize_transaction_with_reasoning(description: str, amount: float = 0.0) -> tuple[str, str, str]:
@@ -264,21 +332,40 @@ def categorize_transaction_with_reasoning(description: str, amount: float = 0.0)
         return ("Miscellaneous", "", "No description provided")
     
     logger.debug(f"Categorizing transaction with description: {description} and amount: {amount}")
+    
+    # PRIORITY 1: Check keyword rules first (highest priority)
+    keyword_result = check_keyword_rules(description)
+    if keyword_result:
+        return keyword_result
+    
     merchant = extract_merchant_from_description(description)
     logger.debug(f"Extracted merchant: {merchant} from description: {description}")
     
-    # First, check if we have learned patterns for this merchant key
+    # PRIORITY 2: Check learned patterns for this specific merchant
     learned_subcat, learned_count = _top_learned_subcat(merchant)
     if learned_subcat and learned_count > 0:
         # Find the category for this subcategory
         try:
             subcategory_obj = Category.objects.filter(name=learned_subcat, parent__isnull=False).first()
             if subcategory_obj and subcategory_obj.parent:
-                reasoning = f"Based on {learned_count} previous user confirmations for similar transactions with merchant '{merchant}'"
+                reasoning = f"Based on {learned_count} previous user confirmations for merchant '{merchant}'"
                 return (subcategory_obj.parent.name, learned_subcat, reasoning)
         except Exception as e:
             logger.warning(f"Error looking up learned subcategory: {e}")
     
+    # PRIORITY 3: Also check learned patterns for the original description (fallback)
+    if merchant != description.upper().strip():
+        original_learned_subcat, original_learned_count = _top_learned_subcat(description.upper().strip())
+        if original_learned_subcat and original_learned_count > 0:
+            try:
+                subcategory_obj = Category.objects.filter(name=original_learned_subcat, parent__isnull=False).first()
+                if subcategory_obj and subcategory_obj.parent:
+                    reasoning = f"Based on {original_learned_count} previous user confirmations for '{description[:30]}...'"
+                    return (subcategory_obj.parent.name, original_learned_subcat, reasoning)
+            except Exception as e:
+                logger.warning(f"Error looking up learned subcategory for original description: {e}")
+    
+    # PRIORITY 4: Default AI categorization using merchant mappings
     # Updated merchant-to-category mappings based on our new clean category structure
     merchant_category_map = {
         # Transportation

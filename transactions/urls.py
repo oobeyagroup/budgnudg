@@ -30,10 +30,22 @@ from transactions.views.category_training import (
     CategoryTrainingSessionView,
     CategoryTrainingCompleteView,
     LearnFromCurrentView,
+    KeywordRulesView,
+    AddKeywordRuleView,
+    DeleteKeywordRuleView,
+    LearningPatternsView,
+    ExportLearningDataView,
+    ImportLearningDataView,
+    DeleteLearnedSubcatView,
+    DeleteLearnedPayoreeView,
+    ClearAllLearnedSubcatsView,
+    ClearAllLearnedPayoreesView,
 )
 
 # Legacy FBVs (temporary)
 from transactions import legacy_import_views as legacy
+
+app_name = 'transactions'
 
 urlpatterns = [
     # Dashboard
@@ -57,6 +69,20 @@ urlpatterns = [
     path("training/session/", CategoryTrainingSessionView.as_view(), name="category_training_session"),
     path("training/complete/", CategoryTrainingCompleteView.as_view(), name="category_training_complete"),
     path("learn-from-current/<int:transaction_id>/", LearnFromCurrentView.as_view(), name="learn_from_current"),
+    
+    # Keyword Rules Management
+    path("keyword-rules/", KeywordRulesView.as_view(), name="keyword_rules"),
+    path("keyword-rules/add/", AddKeywordRuleView.as_view(), name="add_keyword_rule"),
+    path("keyword-rules/delete/<int:rule_id>/", DeleteKeywordRuleView.as_view(), name="delete_keyword_rule"),
+    
+    # Learning Patterns Management
+    path("learning-patterns/", LearningPatternsView.as_view(), name="learning_patterns"),
+    path("learning-patterns/export/", ExportLearningDataView.as_view(), name="export_learning_data"),
+    path("learning-patterns/import/", ImportLearningDataView.as_view(), name="import_learning_data"),
+    path("learning-patterns/delete-subcat/<int:learned_id>/", DeleteLearnedSubcatView.as_view(), name="delete_learned_subcat"),
+    path("learning-patterns/delete-payoree/<int:learned_id>/", DeleteLearnedPayoreeView.as_view(), name="delete_learned_payoree"),
+    path("learning-patterns/clear-subcats/", ClearAllLearnedSubcatsView.as_view(), name="clear_all_learned_subcats"),
+    path("learning-patterns/clear-payorees/", ClearAllLearnedPayoreesView.as_view(), name="clear_all_learned_payorees"),
 
     # Import wizard (FBV)
     path("import/transactions/", legacy.import_transactions_upload, name="import_transactions_upload"),

@@ -269,3 +269,43 @@ class LearnedPayoree(models.Model):
 
     class Meta:
         unique_together = ('key', 'payoree')
+
+class KeywordRule(models.Model):
+    """
+    User-defined keyword rules for categorization.
+    Allows users to specify that certain words/phrases strongly influence category assignment.
+    """
+    keyword = models.CharField(max_length=100, help_text='Word or phrase that influences categorization')
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='keyword_rules')
+    subcategory = models.ForeignKey(Category, blank=True, null=True, on_delete=models.CASCADE, related_name='keyword_subcategory_rules')
+    priority = models.IntegerField(default=100, help_text='Higher numbers = higher priority (1-1000)')
+    is_active = models.BooleanField(default=True)
+    created_by_user = models.BooleanField(default=True, help_text='True if created by user, False if system default')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-priority', 'keyword']
+        indexes = [
+            models.Index(fields=['keyword'], name='kw_rule_keyword_idx'),
+            models.Index(fields=['priority'], name='kw_rule_priority_idx'),
+            models.Index(fields=['is_active'], name='kw_rule_active_idx'),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['keyword', 'category', 'subcategory'], name='unique_keyword_category'),
+        ]
+
+    def __str__(self):
+        if self.subcategory:
+            return f'"{self.keyword}" → {self.category.name}/{self.subcategory.name}'
+        return f'"{self.keyword}" → {self.category.name}'
+
+    def clean(self):
+        """Validate that subcategory belongs to the specified category."""
+        super().clean()
+        if self.subcategory and self.category:
+            if self.subcategory.parent != self.category:
+                from django.core.exceptions import ValidationError
+                raise ValidationError({
+                    'subcategory': f'Subcategory "{self.subcategory.name}" must belong to category "{self.category.name}"'
+                })

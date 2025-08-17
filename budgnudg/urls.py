@@ -21,6 +21,6 @@ from transactions.views.dashboard import DashboardView  # NEW
 urlpatterns = [
     path("", DashboardView.as_view(), name="home"),  # root → dashboard
     path("admin/", admin.site.urls),
-    path("transactions/", include("transactions.urls")),
+    path("transactions/", include("transactions.urls", namespace="transactions")),
     path("ingest/", include("ingest.urls", namespace="ingest")),
 ]

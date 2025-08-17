@@ -18,23 +18,47 @@
                 <div class="card-body">
                     <div class="row">
                         <div class="col-md-3">
-                            <a href="{% url 'import_transactions_upload' %}" class="btn btn-primary btn-sm w-100 mb-2">
+                            <a href="{% url 'transactions:import_transactions_upload' %}" class="btn btn-primary btn-sm w-100 mb-2">
                                 <i class="fas fa-file-import me-1"></i>Import Transactions
                             </a>
                         </div>
                         <div class="col-md-3">
-                            <a href="{% url 'category_training_upload' %}" class="btn btn-success btn-sm w-100 mb-2">
+                            <a href="{% url 'transactions:category_training_upload' %}" class="btn btn-success btn-sm w-100 mb-2">
                                 <i class="fas fa-graduation-cap me-1"></i>Train Categories
                             </a>
                         </div>
                         <div class="col-md-3">
-                            <a href="{% url 'transactions_list' %}" class="btn btn-info btn-sm w-100 mb-2">
+                            <a href="{% url 'transactions:transactions_list' %}" class="btn btn-info btn-sm w-100 mb-2">
                                 <i class="fas fa-list me-1"></i>View Transactions
                             </a>
                         </div>
                         <div class="col-md-3">
-                            <a href="{% url 'categories_list' %}" class="btn btn-secondary btn-sm w-100 mb-2">
+                            <a href="{% url 'transactions:categories_list' %}" class="btn btn-secondary btn-sm w-100 mb-2">
                                 <i class="fas fa-tags me-1"></i>Manage Categories
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <!-- Second row of buttons -->
+                    <div class="row mt-2">
+                        <div class="col-md-3">
+                            <a href="{% url 'transactions:keyword_rules' %}" class="btn btn-warning btn-sm w-100 mb-2">
+                                <i class="fas fa-key me-1"></i>Keyword Rules
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'transactions:learning_patterns' %}" class="btn btn-outline-info btn-sm w-100 mb-2">
+                                <i class="fas fa-brain me-1"></i>AI Learning Patterns
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'transactions:payorees_list' %}" class="btn btn-outline-primary btn-sm w-100 mb-2">
+                                <i class="fas fa-users me-1"></i>Manage Payorees
+                            </a>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{% url 'transactions:uncategorized_transactions' %}" class="btn btn-outline-warning btn-sm w-100 mb-2">
+                                <i class="fas fa-question-circle me-1"></i>Uncategorized
                             </a>
                         </div>
                     </div>

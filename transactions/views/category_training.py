@@ -463,6 +463,8 @@ class LearnFromCurrentView(View):
     @method_decorator(trace)
     def post(self, request, transaction_id):
         """Learn from the current categorization of a transaction."""
+        from ..categorization import extract_merchant_from_description
+        
         try:
             transaction = get_object_or_404(Transaction, id=transaction_id)
             
@@ -473,15 +475,23 @@ class LearnFromCurrentView(View):
                     'message': 'Transaction has no categorization to learn from.'
                 })
             
-            # Create pattern key for learning
+            # Create multiple pattern keys for better learning
+            merchant_key = extract_merchant_from_description(transaction.description)
+            original_key = transaction.description.upper().strip()
             pattern_key = self.create_pattern_key(transaction.description)
+            
+            # Use a list of keys to try, starting with most specific
+            learning_keys = [original_key, merchant_key, pattern_key]
+            # Remove duplicates while preserving order
+            learning_keys = list(dict.fromkeys(learning_keys))
             
             learned_count = 0
             
-            # Learn subcategory if available
+            # Learn subcategory if available - use the merchant key primarily
             if transaction.subcategory:
+                primary_key = merchant_key if merchant_key else original_key
                 learned, created = LearnedSubcat.objects.get_or_create(
-                    key=pattern_key,
+                    key=primary_key,
                     subcategory=transaction.subcategory,
                     defaults={'count': 1}
                 )
@@ -489,12 +499,13 @@ class LearnFromCurrentView(View):
                     learned.count += 1
                     learned.save()
                 learned_count += 1
-                logger.info(f"Learned subcategory: {pattern_key} -> {transaction.subcategory.name}")
+                logger.info(f"Learned subcategory: {primary_key} -> {transaction.subcategory.name}")
             
             # Learn payoree if available  
             if transaction.payoree:
+                primary_key = merchant_key if merchant_key else original_key
                 learned, created = LearnedPayoree.objects.get_or_create(
-                    key=pattern_key,
+                    key=primary_key,
                     payoree=transaction.payoree,
                     defaults={'count': 1}
                 )
@@ -502,7 +513,7 @@ class LearnFromCurrentView(View):
                     learned.count += 1
                     learned.save()
                 learned_count += 1
-                logger.info(f"Learned payoree: {pattern_key} -> {transaction.payoree.name}")
+                logger.info(f"Learned payoree: {primary_key} -> {transaction.payoree.name}")
             
             if learned_count > 0:
                 return JsonResponse({
@@ -527,15 +538,513 @@ class LearnFromCurrentView(View):
         """Create a pattern key for grouping similar transactions."""
         import re
         
-        # Normalize description for pattern matching
+        # Use the same logic as extract_merchant_from_description for consistency
+        from ..categorization import extract_merchant_from_description
+        
+        # Try to extract the core merchant name first
+        merchant = extract_merchant_from_description(description)
+        
+        # For learning, we want to use shorter, more generic keys that will match future transactions
+        # If the merchant extraction returned something meaningful and not too long
+        if merchant and len(merchant.split()) <= 4:
+            return merchant
+        
+        # Fallback: create a normalized pattern from the description
         pattern = description.upper()
         
         # Remove common transaction noise
-        pattern = re.sub(r'\d{4,}', 'XXXX', pattern)  # Replace long numbers
-        pattern = re.sub(r'\b\d{1,2}/\d{1,2}/\d{2,4}\b', 'DATE', pattern)  # Replace dates
-        pattern = re.sub(r'\$[\d,]+\.?\d*', 'AMOUNT', pattern)  # Replace amounts
+        pattern = re.sub(r'\d{4,}', '', pattern)  # Remove long numbers
+        pattern = re.sub(r'\b\d{1,2}/\d{1,2}/\d{2,4}\b', '', pattern)  # Remove dates
+        pattern = re.sub(r'\$[\d,]+\.?\d*', '', pattern)  # Remove amounts
+        pattern = re.sub(r'PPD\s*ID:\s*\d+', '', pattern)  # Remove PPD IDs
+        pattern = re.sub(r'WEB\s*ID:\s*\d+', '', pattern)  # Remove WEB IDs
         pattern = re.sub(r'\s+', ' ', pattern).strip()  # Normalize whitespace
         
-        # Extract merchant/key part (first few meaningful words)
-        words = pattern.split()[:3]  # Take first 3 words as pattern
-        return ' '.join(words)
+        # Extract key words (usually the first few meaningful words)
+        words = [w for w in pattern.split() if len(w) > 2]  # Skip short words
+        return ' '.join(words[:3])  # Take first 3 meaningful words
+
+
+class KeywordRulesView(View):
+    """Manage keyword-based categorization rules."""
+    
+    template_name = 'transactions/keyword_rules.html'
+    
+    @method_decorator(trace)
+    def get(self, request):
+        """Display keyword rules management interface."""
+        from ..models import KeywordRule, Category
+        import json
+        
+        # Get all keyword rules ordered by priority
+        keyword_rules = KeywordRule.objects.filter(is_active=True).order_by('-priority', 'keyword')
+        
+        # Get categories for the form
+        categories = Category.objects.filter(parent__isnull=True).order_by('name')
+        
+        # Prepare categories data with subcategories for JavaScript
+        categories_data = []
+        for category in categories:
+            subcategories = category.subcategories.all().order_by('name')
+            categories_data.append({
+                'id': category.id,
+                'name': category.name,
+                'subcategories': [{'id': sub.id, 'name': sub.name} for sub in subcategories]
+            })
+        
+        return render(request, self.template_name, {
+            'keyword_rules': keyword_rules,
+            'categories': categories,
+            'categories_json': json.dumps(categories_data),
+            'title': 'Keyword Categorization Rules'
+        })
+
+
+class AddKeywordRuleView(View):
+    """Add a new keyword rule."""
+    
+    @method_decorator(trace)
+    def post(self, request):
+        """Create a new keyword rule."""
+        from ..models import KeywordRule, Category
+        
+        try:
+            keyword = request.POST.get('keyword', '').strip()
+            category_id = request.POST.get('category')
+            subcategory_id = request.POST.get('subcategory') or None
+            priority = int(request.POST.get('priority', 100))
+            
+            if not keyword:
+                return JsonResponse({'success': False, 'message': 'Keyword is required.'})
+            
+            if not category_id:
+                return JsonResponse({'success': False, 'message': 'Category is required.'})
+            
+            # Validate category
+            try:
+                category = Category.objects.get(id=category_id, parent__isnull=True)
+            except Category.DoesNotExist:
+                return JsonResponse({'success': False, 'message': 'Invalid category selected.'})
+            
+            # Validate subcategory if provided
+            subcategory = None
+            if subcategory_id:
+                try:
+                    subcategory = Category.objects.get(id=subcategory_id, parent=category)
+                except Category.DoesNotExist:
+                    return JsonResponse({'success': False, 'message': 'Invalid subcategory selected.'})
+            
+            # Check for duplicate keyword rules
+            existing = KeywordRule.objects.filter(
+                keyword__iexact=keyword,
+                category=category,
+                subcategory=subcategory
+            ).first()
+            
+            if existing:
+                return JsonResponse({
+                    'success': False, 
+                    'message': f'A rule for "{keyword}" with this category already exists.'
+                })
+            
+            # Create the rule
+            rule = KeywordRule.objects.create(
+                keyword=keyword,
+                category=category,
+                subcategory=subcategory,
+                priority=priority,
+                created_by_user=True
+            )
+            
+            logger.info(f"Created keyword rule: {keyword} -> {category.name}" + 
+                       (f"/{subcategory.name}" if subcategory else ""))
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Keyword rule "{keyword}" created successfully.',
+                'rule_id': rule.id
+            })
+            
+        except Exception as e:
+            logger.error(f"Error creating keyword rule: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while creating the rule.'
+            })
+
+
+class DeleteKeywordRuleView(View):
+    """Delete a keyword rule."""
+    
+    @method_decorator(trace)
+    def delete(self, request, rule_id):
+        """Delete a keyword rule."""
+        from ..models import KeywordRule
+        
+        try:
+            rule = get_object_or_404(KeywordRule, id=rule_id)
+            keyword = rule.keyword
+            rule.delete()
+            
+            logger.info(f"Deleted keyword rule: {keyword}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Keyword rule "{keyword}" deleted successfully.'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error deleting keyword rule: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while deleting the rule.'
+            })
+
+
+class LearningPatternsView(View):
+    """View and manage all learned AI patterns."""
+    
+    template_name = 'transactions/learning_patterns.html'
+    
+    @method_decorator(trace)
+    def get(self, request):
+        """Display learning patterns management interface."""
+        from ..models import LearnedSubcat, LearnedPayoree, KeywordRule
+        from django.db.models import Sum
+        
+        # Get all learned patterns
+        learned_subcats = LearnedSubcat.objects.select_related('subcategory__parent').order_by('-count', 'key')
+        learned_payorees = LearnedPayoree.objects.select_related('payoree').order_by('-count', 'key')
+        keyword_rules = KeywordRule.objects.filter(is_active=True).order_by('-priority', 'keyword')
+        
+        # Calculate total confirmations
+        total_subcat_confirmations = learned_subcats.aggregate(total=Sum('count'))['total'] or 0
+        total_payoree_confirmations = learned_payorees.aggregate(total=Sum('count'))['total'] or 0
+        total_confirmations = total_subcat_confirmations + total_payoree_confirmations
+        
+        return render(request, self.template_name, {
+            'learned_subcats': learned_subcats,
+            'learned_payorees': learned_payorees,
+            'keyword_rules': keyword_rules,
+            'total_confirmations': total_confirmations,
+            'title': 'AI Learning Patterns'
+        })
+
+
+class ExportLearningDataView(View):
+    """Export all learning data as JSON backup."""
+    
+    @method_decorator(trace)
+    def get(self, request):
+        """Export learning data as downloadable JSON file."""
+        import json
+        from django.http import JsonResponse, HttpResponse
+        from ..models import LearnedSubcat, LearnedPayoree, KeywordRule
+        
+        try:
+            # Collect all learning data
+            learning_data = {
+                'export_date': timezone.now().isoformat(),
+                'version': '1.0',
+                'learned_subcats': [],
+                'learned_payorees': [],
+                'keyword_rules': []
+            }
+            
+            # Export learned subcategories
+            for learned in LearnedSubcat.objects.select_related('subcategory__parent'):
+                learning_data['learned_subcats'].append({
+                    'key': learned.key,
+                    'subcategory': learned.subcategory.name,
+                    'category': learned.subcategory.parent.name,
+                    'count': learned.count,
+                    'last_seen': learned.last_seen.isoformat()
+                })
+            
+            # Export learned payorees
+            for learned in LearnedPayoree.objects.select_related('payoree'):
+                learning_data['learned_payorees'].append({
+                    'key': learned.key,
+                    'payoree': learned.payoree.name,
+                    'count': learned.count,
+                    'last_seen': learned.last_seen.isoformat()
+                })
+            
+            # Export keyword rules
+            for rule in KeywordRule.objects.filter(is_active=True).select_related('category', 'subcategory'):
+                learning_data['keyword_rules'].append({
+                    'keyword': rule.keyword,
+                    'category': rule.category.name,
+                    'subcategory': rule.subcategory.name if rule.subcategory else None,
+                    'priority': rule.priority,
+                    'created_by_user': rule.created_by_user,
+                    'created_at': rule.created_at.isoformat()
+                })
+            
+            # Create response
+            response = HttpResponse(
+                json.dumps(learning_data, indent=2),
+                content_type='application/json'
+            )
+            filename = f"budgnudg_learning_backup_{timezone.now().strftime('%Y%m%d_%H%M%S')}.json"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            
+            logger.info(f"Exported learning data: {len(learning_data['learned_subcats'])} subcats, {len(learning_data['learned_payorees'])} payorees, {len(learning_data['keyword_rules'])} keyword rules")
+            
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error exporting learning data: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while exporting learning data.'
+            })
+
+
+class ImportLearningDataView(View):
+    """Import learning data from JSON backup."""
+    
+    @method_decorator(trace)
+    def post(self, request):
+        """Import learning data from uploaded JSON file."""
+        import json
+        from django.core.files.uploadedfile import UploadedFile
+        from ..models import LearnedSubcat, LearnedPayoree, KeywordRule, Category, Payoree
+        from datetime import datetime
+        
+        try:
+            # Get uploaded file
+            if 'backup_file' not in request.FILES:
+                return JsonResponse({'success': False, 'message': 'No backup file provided.'})
+            
+            backup_file = request.FILES['backup_file']
+            merge_data = request.POST.get('merge_data') == 'on'
+            
+            # Read and parse JSON
+            try:
+                file_content = backup_file.read().decode('utf-8')
+                learning_data = json.loads(file_content)
+            except (UnicodeDecodeError, json.JSONDecodeError) as e:
+                return JsonResponse({'success': False, 'message': 'Invalid JSON file format.'})
+            
+            # Validate file structure
+            required_keys = ['learned_subcats', 'learned_payorees', 'keyword_rules']
+            if not all(key in learning_data for key in required_keys):
+                return JsonResponse({'success': False, 'message': 'Invalid backup file structure.'})
+            
+            imported_counts = {'subcats': 0, 'payorees': 0, 'keyword_rules': 0}
+            
+            # Clear existing data if not merging
+            if not merge_data:
+                LearnedSubcat.objects.all().delete()
+                LearnedPayoree.objects.all().delete()
+                KeywordRule.objects.filter(created_by_user=True).delete()
+                logger.info("Cleared existing learning data for full import")
+            
+            # Import learned subcategories
+            for item in learning_data['learned_subcats']:
+                try:
+                    # Find the category and subcategory
+                    category = Category.objects.get(name=item['category'], parent__isnull=True)
+                    subcategory = Category.objects.get(name=item['subcategory'], parent=category)
+                    
+                    learned, created = LearnedSubcat.objects.get_or_create(
+                        key=item['key'],
+                        subcategory=subcategory,
+                        defaults={
+                            'count': item['count'],
+                            'last_seen': datetime.fromisoformat(item['last_seen']).date()
+                        }
+                    )
+                    
+                    if not created and merge_data:
+                        # Merge counts if already exists
+                        learned.count += item['count']
+                        learned.save()
+                    
+                    imported_counts['subcats'] += 1
+                    
+                except (Category.DoesNotExist, KeyError) as e:
+                    logger.warning(f"Skipped invalid subcategory entry: {item} - {e}")
+                    continue
+            
+            # Import learned payorees
+            for item in learning_data['learned_payorees']:
+                try:
+                    # Find or create the payoree
+                    payoree, _ = Payoree.objects.get_or_create(name=item['payoree'])
+                    
+                    learned, created = LearnedPayoree.objects.get_or_create(
+                        key=item['key'],
+                        payoree=payoree,
+                        defaults={
+                            'count': item['count'],
+                            'last_seen': datetime.fromisoformat(item['last_seen']).date()
+                        }
+                    )
+                    
+                    if not created and merge_data:
+                        # Merge counts if already exists
+                        learned.count += item['count']
+                        learned.save()
+                    
+                    imported_counts['payorees'] += 1
+                    
+                except (KeyError) as e:
+                    logger.warning(f"Skipped invalid payoree entry: {item} - {e}")
+                    continue
+            
+            # Import keyword rules
+            for item in learning_data['keyword_rules']:
+                try:
+                    # Find the category
+                    category = Category.objects.get(name=item['category'], parent__isnull=True)
+                    subcategory = None
+                    if item.get('subcategory'):
+                        subcategory = Category.objects.get(name=item['subcategory'], parent=category)
+                    
+                    # Check if rule already exists
+                    if not KeywordRule.objects.filter(
+                        keyword__iexact=item['keyword'],
+                        category=category,
+                        subcategory=subcategory
+                    ).exists():
+                        KeywordRule.objects.create(
+                            keyword=item['keyword'],
+                            category=category,
+                            subcategory=subcategory,
+                            priority=item.get('priority', 100),
+                            created_by_user=item.get('created_by_user', True)
+                        )
+                        imported_counts['keyword_rules'] += 1
+                    
+                except (Category.DoesNotExist, KeyError) as e:
+                    logger.warning(f"Skipped invalid keyword rule entry: {item} - {e}")
+                    continue
+            
+            message = f"Successfully imported {imported_counts['subcats']} subcategory patterns, {imported_counts['payorees']} payoree patterns, and {imported_counts['keyword_rules']} keyword rules."
+            
+            logger.info(f"Import completed: {imported_counts}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': message,
+                'imported_counts': imported_counts
+            })
+            
+        except Exception as e:
+            logger.error(f"Error importing learning data: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while importing learning data.'
+            })
+
+
+class DeleteLearnedSubcatView(View):
+    """Delete a learned subcategory pattern."""
+    
+    @method_decorator(trace)
+    def delete(self, request, learned_id):
+        """Delete a learned subcategory pattern."""
+        from ..models import LearnedSubcat
+        
+        try:
+            learned = get_object_or_404(LearnedSubcat, id=learned_id)
+            pattern_key = learned.key
+            learned.delete()
+            
+            logger.info(f"Deleted learned subcategory pattern: {pattern_key}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Learned pattern "{pattern_key}" deleted successfully.'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error deleting learned subcategory pattern: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while deleting the pattern.'
+            })
+
+
+class DeleteLearnedPayoreeView(View):
+    """Delete a learned payoree pattern."""
+    
+    @method_decorator(trace)
+    def delete(self, request, learned_id):
+        """Delete a learned payoree pattern."""
+        from ..models import LearnedPayoree
+        
+        try:
+            learned = get_object_or_404(LearnedPayoree, id=learned_id)
+            pattern_key = learned.key
+            learned.delete()
+            
+            logger.info(f"Deleted learned payoree pattern: {pattern_key}")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Learned pattern "{pattern_key}" deleted successfully.'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error deleting learned payoree pattern: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while deleting the pattern.'
+            })
+
+
+class ClearAllLearnedSubcatsView(View):
+    """Clear all learned subcategory patterns."""
+    
+    @method_decorator(trace)
+    def post(self, request):
+        """Clear all learned subcategory patterns."""
+        from ..models import LearnedSubcat
+        
+        try:
+            count = LearnedSubcat.objects.count()
+            LearnedSubcat.objects.all().delete()
+            
+            logger.info(f"Cleared {count} learned subcategory patterns")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Successfully cleared {count} learned subcategory patterns.'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error clearing learned subcategory patterns: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while clearing patterns.'
+            })
+
+
+class ClearAllLearnedPayoreesView(View):
+    """Clear all learned payoree patterns."""
+    
+    @method_decorator(trace)
+    def post(self, request):
+        """Clear all learned payoree patterns."""
+        from ..models import LearnedPayoree
+        
+        try:
+            count = LearnedPayoree.objects.count()
+            LearnedPayoree.objects.all().delete()
+            
+            logger.info(f"Cleared {count} learned payoree patterns")
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Successfully cleared {count} learned payoree patterns.'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error clearing learned payoree patterns: {e}")
+            return JsonResponse({
+                'success': False,
+                'message': 'An error occurred while clearing patterns.'
+            })

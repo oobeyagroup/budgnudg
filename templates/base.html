@@ -63,8 +63,8 @@
                 Transactions
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="{% url 'uncategorized_transactions' %}">Uncategorized</a></li>
-                <li><a class="dropdown-item" href="{% url 'transactions_list' %}">All</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:uncategorized_transactions' %}">Uncategorized</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:transactions_list' %}">All</a></li>
               </ul>
             </li>
            <li class="nav-item dropdown">
@@ -72,27 +72,27 @@
                 Reports
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item disabled" href="{% url 'report_account_time_span' %}">Account Time Span</a></li>
-                <li><a class="dropdown-item disabled" href="{% url 'report_income_statement' %}">Income Statement</a></li>
+                <li><a class="dropdown-item disabled" href="{% url 'transactions:report_account_time_span' %}">Account Time Span</a></li>
+                <li><a class="dropdown-item disabled" href="{% url 'transactions:report_income_statement' %}">Income Statement</a></li>
               </ul>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'categories_list' %}">Categories</a>
+              <a class="nav-link" href="{% url 'transactions:categories_list' %}">Categories</a>
             </li> 
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'report_account_time_span' %}">Accounts</a>
+              <a class="nav-link" href="{% url 'transactions:report_account_time_span' %}">Accounts</a>
             </li> 
             <li class="nav-item">
-              <a class="nav-link" href="{% url 'payorees_list' %}">Payor/ee</a>
+              <a class="nav-link" href="{% url 'transactions:payorees_list' %}">Payor/ee</a>
             </li>
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="importDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 Import
               </a>
               <ul class="dropdown-menu" aria-labelledby="importDropdown">
-                <li><a class="dropdown-item" href="{% url 'import_transactions_upload' %}">Transactions</a></li>
-                <li><a class="dropdown-item" href="{% url 'import_categories' %}">Categories</a></li>
-                <li><a class="dropdown-item" href="{% url 'import_payoree' %}">Payoree</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:import_transactions_upload' %}">Transactions</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:import_categories' %}">Categories</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:import_payoree' %}">Payoree</a></li>
               </ul>
             </li>
             <li class="nav-item">
