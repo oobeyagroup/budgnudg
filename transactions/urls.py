@@ -51,11 +51,6 @@ urlpatterns = [
     # Dashboard
     path("", DashboardView.as_view(), name="dashboard"),
 
-    # NEW: import flow (CBV)
-    # path("import/transactions/", ImportUploadView.as_view(), name="import_transactions_upload"),
-    # path("import/transactions/preview/", ImportPreviewView.as_view(), name="import_transactions_preview"),
-    # path("import/transactions/review/", ReviewTransactionView.as_view(), name="review_transaction"),
-    # path("import/transactions/confirm/", ImportConfirmView.as_view(), name="import_transactions_confirm"),
     path("payorees/", PayoreesListView.as_view(), name="payorees_list"),
     path("categories/", CategoriesListView.as_view(), name="categories_list"),
     path("categorize/<int:pk>/", CategorizeTransactionView.as_view(), name="categorize_transaction"),
@@ -102,14 +97,4 @@ urlpatterns = [
     path("import/payoree/", ImportPayoreeView.as_view(), name="import_payoree"),
 
 
-    # Legacy FBVs (keep ONLY the ones you still use; avoid duplicates)
-    # path("uncategorized/", fbv.uncategorized_transactions, name="uncategorized_transactions"),
-    # path("categories/", fbv.categories_list, name="categories_list"),
-    # path("resolve/<int:pk>/", fbv.resolve_transaction, name="resolve_transaction"),
-    # path("set/<int:transaction_id>/<str:field>/<int:value_id>/", fbv.set_transaction_field, name="set_transaction_field"),
-    # path("apply_current/<int:transaction_id>/", fbv.apply_current_to_similar, name="apply_current_to_similar"),
-    # path("bank-accounts/", fbv.bank_accounts_list, name="bank_accounts_list"),
-    # path("report_account_time_span/", fbv.report_account_time_span, name="report_account_time_span"),
-    # path("report_income_statement/", fbv.report_income_statement, name="report_income_statement"),
-    #  removed: duplicate import/categories and import/payoree FBVs
 ]

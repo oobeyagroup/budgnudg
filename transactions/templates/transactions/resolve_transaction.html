@@ -153,7 +153,13 @@
                                         {{ cat.name }} ({{ cat.subcategories.all|length }} subcategories)
                                     </option>
                                 {% endfor %}
+                                <option value="__new__">+ Add New Category</option>
                             </select>
+                            <!-- New Category Input -->
+                            <div id="newCategoryInput" class="mt-2" style="display: none;">
+                                <input type="text" name="new_category" id="new_category" class="form-control" 
+                                       placeholder="Enter new category name">
+                            </div>
                             <div class="form-text">Select the main category first</div>
                         </div>
                     </div>
@@ -165,6 +171,11 @@
                             <select name="subcategory" id="subcategory" class="form-select">
                                 <option value="">-- Select Category First --</option>
                             </select>
+                            <!-- New Subcategory Input -->
+                            <div id="newSubcategoryInput" class="mt-2" style="display: none;">
+                                <input type="text" name="new_subcategory" id="new_subcategory" class="form-control" 
+                                       placeholder="Enter new subcategory name">
+                            </div>
                             <div class="form-text">Choose a specific subcategory for more detail</div>
                         </div>
                     </div>
@@ -344,11 +355,24 @@
                 </table>
             </div>
             
-            {% if similar_transactions|length > 3 %}
+            {% if similar_transactions|length > 0 %}
             <div class="mt-3">
-                <a href="{% url 'transactions:apply_current_to_similar' transaction.id %}" class="btn btn-warning">
-                    <i class="fas fa-copy me-1"></i>Apply Current Values to All Similar Transactions
-                </a>
+                <div class="alert alert-info">
+                    <p class="mb-2">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Found {{ similar_transactions|length }} similar transaction{{ similar_transactions|length|pluralize }}.
+                        {% if transaction.category or transaction.subcategory or transaction.payoree %}
+                            You can apply the current categorization to all of them.
+                        {% else %}
+                            Categorize this transaction first, then apply to similar ones.
+                        {% endif %}
+                    </p>
+                    {% if transaction.category or transaction.subcategory or transaction.payoree %}
+                    <a href="{% url 'transactions:apply_current_to_similar' transaction.id %}" class="btn btn-warning">
+                        <i class="fas fa-copy me-1"></i>Apply Current Values to All {{ similar_transactions|length }} Similar Transaction{{ similar_transactions|length|pluralize }}
+                    </a>
+                    {% endif %}
+                </div>
             </div>
             {% endif %}
         </div>
@@ -403,21 +427,55 @@ document.addEventListener('DOMContentLoaded', function() {
     if (categorySelect) {
         categorySelect.addEventListener('change', function() {
             const categoryId = this.value;
+            const newCategoryInput = document.getElementById('newCategoryInput');
+            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
             
-            // Clear subcategory options
-            subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option>';
-            
-            if (categoryId && categorySubcategories[categoryId]) {
-                // Add subcategories for selected category
-                categorySubcategories[categoryId].forEach(function(subcat) {
-                    const option = document.createElement('option');
-                    option.value = subcat.id;
-                    option.textContent = subcat.name;
-                    subcategorySelect.appendChild(option);
-                });
+            // Show/hide new category input
+            if (categoryId === '__new__') {
+                newCategoryInput.style.display = 'block';
+                subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option><option value="__new__">+ Add New Subcategory</option>';
                 subcategorySelect.disabled = false;
             } else {
-                subcategorySelect.disabled = true;
+                newCategoryInput.style.display = 'none';
+                newSubcategoryInput.style.display = 'none';
+                
+                // Clear subcategory options
+                subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option>';
+                
+                if (categoryId && categorySubcategories[categoryId]) {
+                    // Add subcategories for selected category
+                    categorySubcategories[categoryId].forEach(function(subcat) {
+                        const option = document.createElement('option');
+                        option.value = subcat.id;
+                        option.textContent = subcat.name;
+                        subcategorySelect.appendChild(option);
+                    });
+                    
+                    // Add "Add New Subcategory" option
+                    const newOption = document.createElement('option');
+                    newOption.value = '__new__';
+                    newOption.textContent = '+ Add New Subcategory';
+                    subcategorySelect.appendChild(newOption);
+                    
+                    subcategorySelect.disabled = false;
+                } else {
+                    subcategorySelect.disabled = true;
+                }
+            }
+        });
+    }
+
+    // Handle subcategory selection change
+    if (subcategorySelect) {
+        subcategorySelect.addEventListener('change', function() {
+            const subcategoryId = this.value;
+            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+            
+            // Show/hide new subcategory input
+            if (subcategoryId === '__new__') {
+                newSubcategoryInput.style.display = 'block';
+            } else {
+                newSubcategoryInput.style.display = 'none';
             }
         });
     }

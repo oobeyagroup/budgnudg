@@ -44,6 +44,10 @@ INSTALLED_APPS = [
     'transactions.apps.TransactionsConfig',
 ]
 
+# Add devtools app only in DEBUG mode
+if DEBUG:
+    INSTALLED_APPS.append('devtools')
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -53,6 +57,8 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+if DEBUG:
+    MIDDLEWARE.insert(0, "devtools.middleware.TemplateLoggingMiddleware")
 
 ROOT_URLCONF = 'budgnudg.urls'
 
@@ -159,6 +165,11 @@ LOGGING = {
             'propagate': False,
         },
         'transactions': {  # your app
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'devtools': {  # devtools app
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': False,

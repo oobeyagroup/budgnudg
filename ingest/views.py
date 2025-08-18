@@ -164,7 +164,7 @@ def commit(request, pk):
         logger.debug("Committing batch %s with bank_account: %s", batch.pk, bank_account)
         imported, dups, skipped = commit_batch(batch, bank_account)
         messages.success(request, f"Imported {len(imported)} transactions; skipped {len(skipped)} (duplicates: {len(dups)}).")
-        return redirect("transactions_list")
+        return redirect("transactions:transactions_list")
     else:
         # If GET request, redirect back to preview
         return redirect("ingest:batch_preview", pk=batch.pk)

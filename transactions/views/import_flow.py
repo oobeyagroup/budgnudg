@@ -142,4 +142,4 @@ class ImportConfirmView(ImportSessionMixin, View):
         request.session.pop("review_index", None)
 
         # Reuse your list page or dashboard
-        return redirect("transactions_list")  # or 'dashboard'
+        return redirect("transactions:transactions_list")  # or 'dashboard'

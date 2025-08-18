@@ -73,27 +73,67 @@ class CategorizeTransactionView(View):
     def post(self, request, pk):
         transaction = get_object_or_404(Transaction, pk=pk)
         
-        # Handle form submission similar to resolve_transaction
+        # Handle form submission
         payoree_id = request.POST.get('payoree')
         category_id = request.POST.get('category')
         subcategory_id = request.POST.get('subcategory')
+        new_category_name = request.POST.get('new_category', '').strip()
+        new_subcategory_name = request.POST.get('new_subcategory', '').strip()
         
         if payoree_id:
             transaction.payoree = Payoree.objects.get(id=payoree_id)
         
-        if category_id:
-            transaction.category = Category.objects.get(id=category_id)
-            # Clear subcategory if new category is selected
-            if subcategory_id:
+        # Handle category creation/selection
+        if category_id == '__new__' and new_category_name:
+            # Create new category
+            category, created = Category.objects.get_or_create(
+                name=new_category_name,
+                defaults={'parent': None}
+            )
+            transaction.category = category
+            if created:
+                messages.success(request, f"Created new category: {category.name}")
+        elif category_id and category_id != '__new__':
+            try:
+                transaction.category = Category.objects.get(id=category_id)
+            except (Category.DoesNotExist, ValueError):
+                pass
+        
+        # Handle subcategory creation/selection
+        if subcategory_id == '__new__' and new_subcategory_name:
+            # Create new subcategory under the selected/created category
+            parent_category = None
+            if category_id == '__new__' and new_category_name:
+                parent_category = Category.objects.get(name=new_category_name)
+            elif category_id and category_id != '__new__':
+                try:
+                    parent_category = Category.objects.get(id=category_id)
+                except (Category.DoesNotExist, ValueError):
+                    pass
+            
+            if parent_category:
+                subcategory, created = Category.objects.get_or_create(
+                    name=new_subcategory_name,
+                    parent=parent_category
+                )
+                transaction.subcategory = subcategory
+                if created:
+                    messages.success(request, f"Created new subcategory: {subcategory.name}")
+            else:
+                messages.error(request, "Cannot create subcategory without a parent category.")
+        elif subcategory_id and subcategory_id != '__new__':
+            try:
                 subcategory = Category.objects.get(id=subcategory_id)
                 # Verify subcategory belongs to selected category
-                if subcategory.parent_id == int(category_id):
+                if transaction.category and subcategory.parent_id == transaction.category.id:
                     transaction.subcategory = subcategory
                 else:
                     transaction.subcategory = None
-            else:
-                transaction.subcategory = None
+            except (Category.DoesNotExist, ValueError):
+                pass
+        else:
+            transaction.subcategory = None
         
         transaction.save()
         messages.success(request, f"Transaction {transaction.id} updated successfully.")
-        return redirect("transactions_list")
+        return redirect("transactions:transactions_list")

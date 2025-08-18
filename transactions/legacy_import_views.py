@@ -66,4 +66,4 @@ def import_transactions_confirm(request):
     request.session.pop(imp.SESSION["parsed"], None)
     request.session.pop(imp.SESSION["index"], None)
 
-    return redirect("transactions_list")
+    return redirect("transactions:transactions_list")
