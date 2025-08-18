@@ -1,6 +1,6 @@
 # transactions/views/categorize.py
-from django.views import View
-from django.shortcuts import render, redirect, get_object_or_404
+from django.views.generic import TemplateView
+from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.utils.decorators import method_decorator
 from transactions.models import Transaction, Category, Payoree
@@ -10,7 +10,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class CategorizeTransactionView(View):
+class CategorizeTransactionView(TemplateView):
     template_name = "transactions/resolve_transaction.html"
 
     @method_decorator(trace)
@@ -18,7 +18,9 @@ class CategorizeTransactionView(View):
         return super().dispatch(request, *args, **kwargs)
 
     @method_decorator(trace)
-    def get(self, request, pk):
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        pk = kwargs.get('pk')
         transaction = get_object_or_404(Transaction, pk=pk)
 
         # Get all top-level categories for the form
@@ -56,7 +58,7 @@ class CategorizeTransactionView(View):
         similar_transactions = []
         similar_categories = []
 
-        ctx = {
+        context.update({
             "transaction": transaction,
             "top_level_categories": top_level_categories,
             "category_suggestion": category_suggestion,
@@ -66,8 +68,8 @@ class CategorizeTransactionView(View):
             "payoree_matches": [],  # Could add fuzzy matching here if needed
             "payorees": Payoree.objects.order_by('name'),
             "similar_transactions": similar_transactions,
-        }
-        return render(request, self.template_name, ctx)
+        })
+        return context
 
     @method_decorator(trace)
     def post(self, request, pk):
