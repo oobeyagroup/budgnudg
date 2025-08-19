@@ -41,6 +41,11 @@ from transactions.views.category_training import (
     ClearAllLearnedSubcatsView,
     ClearAllLearnedPayoreesView,
 )
+from transactions.views.api import (
+    SubcategoriesAPIView,
+    TransactionSuggestionsAPIView,
+    SimilarTransactionsAPIView,
+)
 
 # Legacy FBVs (temporary)
 from transactions import legacy_import_views as legacy
@@ -96,5 +101,9 @@ urlpatterns = [
     path("report_income_statement/", ReportIncomeStatementView.as_view(), name="report_income_statement"),
     path("import/payoree/", ImportPayoreeView.as_view(), name="import_payoree"),
 
+    # API Endpoints
+    path("api/subcategories/<int:category_id>/", SubcategoriesAPIView.as_view(), name="api_subcategories"),
+    path("api/suggestions/<int:transaction_id>/", TransactionSuggestionsAPIView.as_view(), name="api_suggestions"),
+    path("api/similar/<int:transaction_id>/", SimilarTransactionsAPIView.as_view(), name="api_similar"),
 
 ]

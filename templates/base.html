@@ -7,7 +7,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
-<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/css/select2.min.css" rel="stylesheet"></head>
+</head>
 <!-- colors: Hidden Gem(smoky jade): #596D69   Rumors: #744245  Blank Canvas: #F1EDE1 -->
  <style>
     body {
@@ -122,9 +122,6 @@
 <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
-<!-- Select2 JS -->
-<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0/dist/js/select2.min.js"></script>
-
 <!-- Init Scripts -->
 <script>
   $(document).ready(function() {
@@ -163,14 +160,12 @@
       responsive: true
     });
 
-    // Initialize Select2
-    $('.select2').select2({
-      width: '100%',
-      placeholder: 'Select or search...',
-      allowClear: true,
-      tags: true
-    });
+    // DataTables and other initialization code can go here
   });
 </script>
+
+{% block extra_js %}
+{% endblock %}
+
 </body>
 </html>

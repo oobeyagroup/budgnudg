@@ -1,0 +1,614 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Edit Transaction{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-3">
+        <div class="col">
+            <h3>Edit Transaction</h3>
+        </div>
+        <div class="col-auto">
+            <a href="{% url 'transactions:transactions_list' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Transactions
+            </a>
+        </div>
+    </div>
+
+    <!-- Transaction Details Card -->
+    <div class="card mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Transaction Details</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Date:</strong></td>
+                            <td>{{ transaction.date|date:"M j, Y" }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Amount:</strong></td>
+                            <td class="{% if transaction.amount < 0 %}text-danger{% else %}text-success{% endif %}">
+                                ${{ transaction.amount|floatformat:2|intcomma }}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Bank Account:</strong></td>
+                            <td>{{ transaction.bank_account }}</td>
+                        </tr>
+                    </table>
+                </div>
+                <div class="col-md-6">
+                    <table class="table table-sm table-borderless">
+                        <tr>
+                            <td><strong>Description:</strong></td>
+                            <td>{{ transaction.description }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Account Type:</strong></td>
+                            <td>{{ transaction.account_type }}</td>
+                        </tr>
+                        {% if transaction.check_num %}
+                        <tr>
+                            <td><strong>Check #:</strong></td>
+                            <td>{{ transaction.check_num }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Form -->
+    <form method="post">
+        {% csrf_token %}
+
+        <!-- Payoree Section -->
+        {% if not transaction.payoree %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Payoree Assignment</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="payoree" class="form-label">Suggested Payorees</label>
+                        <select name="payoree" id="payoree" class="form-select">
+                            <option value="">-- Select Payoree --</option>
+                            {% for name, score, _ in payoree_matches %}
+                                {% for pay in payorees %}
+                                    {% if pay.name == name %}
+                                        <option value="{{ pay.id }}">{{ pay.name }} (Match: {{ score|floatformat:0 }}%)</option>
+                                    {% endif %}
+                                {% endfor %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="payoree_full" class="form-label">All Payorees</label>
+                        <select name="payoree" id="payoree_full" class="form-select select2">
+                            <option value="">-- Select Payoree --</option>
+                            {% for pay in payorees %}
+                                <option value="{{ pay.id }}">{{ pay.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Payoree</h5>
+            </div>
+            <div class="card-body">
+                <p class="mb-0"><strong>Current Payoree:</strong> {{ transaction.payoree }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Category Assignment Section -->
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Category Assignment</h5>
+            </div>
+            <div class="card-body">
+                <!-- Current Assignment Display -->
+                <div class="alert alert-info mb-3">
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <div>
+                            <strong>Current Assignment:</strong>
+                            {% if transaction.category %}
+                                <span class="badge bg-primary ms-2">{{ transaction.category.name }}</span>
+                                {% if transaction.subcategory %}
+                                    <i class="fas fa-arrow-right mx-2"></i>
+                                    <span class="badge bg-secondary">{{ transaction.subcategory.name }}</span>
+                                {% else %}
+                                    <span class="text-muted ms-2">(No subcategory)</span>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-warning ms-2">No category assigned</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Selection Form -->
+                <div class="row">
+                    <!-- Primary Category Selection -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="category" class="form-label">Primary Category</label>
+                            <select name="category" id="category" class="form-select" required>
+                                <option value="">-- Select Category --</option>
+                                {% for cat in top_level_categories %}
+                                    <option value="{{ cat.id }}" 
+                                            {% if transaction.category and transaction.category.id == cat.id %}selected{% endif %}
+                                            data-subcategories="{{ cat.subcategories.all|length }}">
+                                        {{ cat.name }} ({{ cat.subcategories.all|length }} subcategories)
+                                    </option>
+                                {% endfor %}
+                                <option value="__new__">+ Add New Category</option>
+                            </select>
+                            <!-- New Category Input -->
+                            <div id="newCategoryInput" class="mt-2" style="display: none;">
+                                <input type="text" name="new_category" id="new_category" class="form-control" 
+                                       placeholder="Enter new category name">
+                            </div>
+                            <div class="form-text">Select the main category first</div>
+                        </div>
+                    </div>
+
+                    <!-- Subcategory Selection -->
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="subcategory" class="form-label">Subcategory (Optional)</label>
+                            <select name="subcategory" id="subcategory" class="form-select">
+                                <option value="">-- Select Category First --</option>
+                            </select>
+                            <!-- New Subcategory Input -->
+                            <div id="newSubcategoryInput" class="mt-2" style="display: none;">
+                                <input type="text" name="new_subcategory" id="new_subcategory" class="form-control" 
+                                       placeholder="Enter new subcategory name">
+                            </div>
+                            <div class="form-text">Choose a specific subcategory for more detail</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Suggestions -->
+                {% if category_suggestion or subcategory_suggestion %}
+                <div class="alert alert-light border-start border-primary border-4 mb-3">
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-robot text-primary me-3 mt-1"></i>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-2">AI Suggestions</h6>
+                            {% if category_suggestion %}
+                                <button type="button" class="btn btn-outline-primary btn-sm me-2 apply-suggestion" 
+                                        data-category-id="{{ category_suggestion.id }}" 
+                                        data-subcategory-id="{% if subcategory_suggestion %}{{ subcategory_suggestion.id }}{% endif %}">
+                                    <i class="fas fa-magic me-1"></i>Apply: {{ category_suggestion.name }}{% if subcategory_suggestion %} → {{ subcategory_suggestion.name }}{% endif %}
+                                </button>
+                            {% endif %}
+                            {% if ai_reasoning %}
+                            <div class="mt-2 d-flex align-items-start">
+                                <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                                <div>
+                                    <small class="text-muted"><strong>Why this suggestion?</strong></small><br>
+                                    <small class="text-secondary">{{ ai_reasoning }}</small>
+                                </div>
+                            </div>
+                            {% else %}
+                            <small class="text-muted d-block mt-2">Based on transaction description and history</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Learn from Current Assignment -->
+                {% if transaction.category or transaction.subcategory or transaction.payoree %}
+                    {% comment %}
+                    Show "Learn from Current" button when:
+                    1. Transaction has a current assignment AND
+                    2. Either no AI suggestion exists OR the AI suggestion is different from current
+                    {% endcomment %}
+                    {% if not category_suggestion and not subcategory_suggestion %}
+                        <!-- No AI suggestion case -->
+                        <div class="alert alert-light border-start border-info border-4 mb-3">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-graduation-cap text-info me-3 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-2">Teach the AI</h6>
+                                    <p class="mb-2 small text-muted">The AI didn't find a suggestion for this transaction. Help it learn from your correct categorization:</p>
+                                    <div class="mb-2">
+                                        <strong>Current Assignment:</strong>
+                                        {% if transaction.category %}{{ transaction.category.name }}{% endif %}
+                                        {% if transaction.subcategory %} → {{ transaction.subcategory.name }}{% endif %}
+                                        {% if transaction.payoree %} | {{ transaction.payoree.name }}{% endif %}
+                                    </div>
+                                    <button type="button" class="btn btn-outline-info btn-sm learn-from-current" 
+                                            data-transaction-id="{{ transaction.id }}">
+                                        <i class="fas fa-brain me-1"></i>Teach AI from Current Assignment
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <!-- AI suggestion exists but may differ from current -->
+                        {% if category_suggestion.id != transaction.category.id or subcategory_suggestion.id != transaction.subcategory.id %}
+                        <div class="alert alert-light border-start border-warning border-4 mb-3">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-graduation-cap text-warning me-3 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-2">Teach the AI</h6>
+                                    <p class="mb-2 small text-muted">The AI's suggestion differs from the current assignment. If the current assignment is correct, teach the AI:</p>
+                                    <div class="mb-2">
+                                        <strong>Current Assignment:</strong>
+                                        {% if transaction.category %}{{ transaction.category.name }}{% endif %}
+                                        {% if transaction.subcategory %} → {{ transaction.subcategory.name }}{% endif %}
+                                        {% if transaction.payoree %} | {{ transaction.payoree.name }}{% endif %}
+                                    </div>
+                                    <button type="button" class="btn btn-outline-warning btn-sm learn-from-current" 
+                                            data-transaction-id="{{ transaction.id }}">
+                                        <i class="fas fa-brain me-1"></i>Teach AI from Current Assignment
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    {% endif %}
+                {% endif %}
+
+                <!-- Similar Transaction Patterns -->
+                {% if similar_categories %}
+                <div class="alert alert-light border-start border-success border-4 mb-3">
+                    <div class="d-flex align-items-center mb-2">
+                        <i class="fas fa-history text-success me-2"></i>
+                        <h6 class="mb-0">From Similar Transactions</h6>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for sim_cat, sim_subcat, count in similar_categories %}
+                            <button type="button" class="btn btn-outline-success btn-sm apply-suggestion" 
+                                    data-category-id="{{ sim_cat.id }}" 
+                                    data-subcategory-id="{% if sim_subcat %}{{ sim_subcat.id }}{% endif %}">
+                                {{ sim_cat.name }}{% if sim_subcat %} → {{ sim_subcat.name }}{% endif %} 
+                                <span class="badge bg-success ms-1">{{ count }}x</span>
+                            </button>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Save Changes
+                    </button>
+                    <a href="{% url 'transactions:transactions_list' %}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Cancel
+                    </a>
+                </div>
+    </form>
+
+    <!-- Similar Transactions -->
+    {% if similar_transactions %}
+    <div class="card mt-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0">Similar Transactions</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-sm">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="width: 10%;">Date</th>
+                            <th style="width: 40%;">Description</th>
+                            <th style="width: 10%;">Amount</th>
+                            <th style="width: 15%;">Payoree</th>
+                            <th style="width: 15%;">Category</th>
+                            <th style="width: 10%;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for t in similar_transactions %}
+                            <tr>
+                                <td>{{ t.date|date:"n/j/y" }}</td>
+                                <td class="truncate" title="{{ t.description }}">{{ t.description }}</td>
+                                <td class="text-end {% if t.amount < 0 %}text-danger{% else %}text-success{% endif %}">
+                                    ${{ t.amount|floatformat:2|intcomma }}
+                                </td>
+                                <td>
+                                    {% if t.payoree %}
+                                        <a href="{% url 'transactions:set_transaction_field' transaction.id 'payoree' t.payoree.id %}" 
+                                           class="btn btn-outline-primary btn-sm">
+                                            {{ t.payoree.name }}
+                                        </a>
+                                    {% else %} 
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if t.category %}
+                                        <button type="button" class="btn btn-outline-success btn-sm apply-suggestion" 
+                                                data-category-id="{{ t.category.id }}" 
+                                                data-subcategory-id="{% if t.subcategory %}{{ t.subcategory.id }}{% endif %}">
+                                            {{ t.category.name }}{% if t.subcategory %} → {{ t.subcategory.name }}{% endif %}
+                                        </button>
+                                    {% else %} 
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a href="{% url 'transactions:categorize_transaction' t.pk %}" class="btn btn-outline-secondary btn-sm">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if similar_transactions|length > 0 %}
+            <div class="mt-3">
+                <div class="alert alert-info">
+                    <p class="mb-2">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Found {{ similar_transactions|length }} similar transaction{{ similar_transactions|length|pluralize }}.
+                        {% if transaction.category or transaction.subcategory or transaction.payoree %}
+                            You can apply the current categorization to all of them.
+                        {% else %}
+                            Categorize this transaction first, then apply to similar ones.
+                        {% endif %}
+                    </p>
+                    {% if transaction.category or transaction.subcategory or transaction.payoree %}
+                    <a href="{% url 'transactions:apply_current_to_similar' transaction.id %}" class="btn btn-warning">
+                        <i class="fas fa-copy me-1"></i>Apply Current Values to All {{ similar_transactions|length }} Similar Transaction{{ similar_transactions|length|pluralize }}
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.apply-suggestion:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge {
+    font-size: 0.75em;
+}
+
+.form-text {
+    font-size: 0.875em;
+    color: #6c757d;
+}
+</style>
+
+<script>
+// Handle category selection change  
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('category');
+    const subcategorySelect = document.getElementById('subcategory');
+    
+    // Category hierarchy data (populated by Django)
+    const categorySubcategories = {};
+    {% for cat in top_level_categories %}
+    categorySubcategories[{{ cat.id }}] = [
+        {% for subcat in cat.subcategories.all %}
+        { id: {{ subcat.id }}, name: "{{ subcat.name|escapejs }}" }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    {% endfor %}
+
+    // Handle category selection change
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            const newCategoryInput = document.getElementById('newCategoryInput');
+            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+            
+            // Show/hide new category input
+            if (categoryId === '__new__') {
+                newCategoryInput.style.display = 'block';
+                subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option><option value="__new__">+ Add New Subcategory</option>';
+                subcategorySelect.disabled = false;
+            } else {
+                newCategoryInput.style.display = 'none';
+                newSubcategoryInput.style.display = 'none';
+                
+                // Clear subcategory options
+                subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option>';
+                
+                if (categoryId && categorySubcategories[categoryId]) {
+                    // Add subcategories for selected category
+                    categorySubcategories[categoryId].forEach(function(subcat) {
+                        const option = document.createElement('option');
+                        option.value = subcat.id;
+                        option.textContent = subcat.name;
+                        subcategorySelect.appendChild(option);
+                    });
+                    
+                    // Add "Add New Subcategory" option
+                    const newOption = document.createElement('option');
+                    newOption.value = '__new__';
+                    newOption.textContent = '+ Add New Subcategory';
+                    subcategorySelect.appendChild(newOption);
+                    
+                    subcategorySelect.disabled = false;
+                } else {
+                    subcategorySelect.disabled = true;
+                }
+            }
+        });
+    }
+
+    // Handle subcategory selection change
+    if (subcategorySelect) {
+        subcategorySelect.addEventListener('change', function() {
+            const subcategoryId = this.value;
+            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+            
+            // Show/hide new subcategory input
+            if (subcategoryId === '__new__') {
+                newSubcategoryInput.style.display = 'block';
+            } else {
+                newSubcategoryInput.style.display = 'none';
+            }
+        });
+    }
+
+    // Handle suggestion button clicks
+    document.querySelectorAll('.apply-suggestion').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const categoryId = this.dataset.categoryId;
+            const subcategoryId = this.dataset.subcategoryId;
+            
+            // Set category
+            if (categorySelect && categoryId) {
+                categorySelect.value = categoryId;
+                
+                // Trigger category change to load subcategories
+                categorySelect.dispatchEvent(new Event('change'));
+                
+                // Set subcategory after a small delay to ensure subcategories are loaded
+                setTimeout(function() {
+                    if (subcategoryId && subcategorySelect) {
+                        subcategorySelect.value = subcategoryId;
+                    }
+                }, 100);
+            }
+        });
+    });
+
+    // Handle learn from current button clicks
+    document.querySelectorAll('.learn-from-current').forEach(function(button) {
+        button.addEventListener('click', function() {
+            const transactionId = this.dataset.transactionId;
+            const originalText = this.innerHTML;
+            
+            // Disable button and show loading state
+            this.disabled = true;
+            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Teaching AI...';
+            
+            // Make AJAX request to learn from current assignment
+            fetch(`{% url 'transactions:learn_from_current' 0 %}`.replace('0', transactionId), {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success message
+                    this.innerHTML = '<i class="fas fa-check me-1"></i>AI Learned!';
+                    this.classList.remove('btn-outline-info', 'btn-outline-warning');
+                    this.classList.add('btn-success');
+                    
+                    // Show toast notification
+                    showToast('Success', data.message, 'success');
+                    
+                    // Fade out the learn section after 3 seconds
+                    setTimeout(() => {
+                        const learnSection = this.closest('.alert');
+                        if (learnSection) {
+                            learnSection.style.transition = 'opacity 0.5s ease-out';
+                            learnSection.style.opacity = '0';
+                            setTimeout(() => {
+                                learnSection.remove();
+                            }, 500);
+                        }
+                    }, 3000);
+                } else {
+                    // Show error message
+                    this.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                    this.classList.add('btn-danger');
+                    showToast('Error', data.message, 'error');
+                    
+                    // Reset button after 3 seconds
+                    setTimeout(() => {
+                        this.disabled = false;
+                        this.innerHTML = originalText;
+                        this.classList.remove('btn-danger');
+                    }, 3000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i>Error';
+                this.classList.add('btn-danger');
+                showToast('Error', 'An error occurred while teaching the AI.', 'error');
+                
+                // Reset button after 3 seconds
+                setTimeout(() => {
+                    this.innerHTML = originalText;
+                    this.classList.remove('btn-danger');
+                }, 3000);
+            });
+        });
+    });
+
+    // Simple toast notification function
+    function showToast(title, message, type) {
+        // Create toast element
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            <strong>${title}:</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Add to page
+        document.body.appendChild(toast);
+        
+        // Auto remove after 5 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 5000);
+    }
+
+    // Initialize subcategories based on current selection
+    if (categorySelect && categorySelect.value) {
+        categorySelect.dispatchEvent(new Event('change'));
+        
+        // Set current subcategory if exists
+        {% if transaction.subcategory %}
+        setTimeout(function() {
+            if (subcategorySelect) {
+                subcategorySelect.value = {{ transaction.subcategory.id }};
+            }
+        }, 100);
+        {% endif %}
+    }
+});
+</script>
+
+{% endblock %}

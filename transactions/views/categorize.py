@@ -81,9 +81,22 @@ class CategorizeTransactionView(TemplateView):
         subcategory_id = request.POST.get('subcategory')
         new_category_name = request.POST.get('new_category', '').strip()
         new_subcategory_name = request.POST.get('new_subcategory', '').strip()
+        new_payoree_name = request.POST.get('new_payoree', '').strip()
         
-        if payoree_id:
-            transaction.payoree = Payoree.objects.get(id=payoree_id)
+        # Handle payoree creation/selection
+        if payoree_id == '__new__' and new_payoree_name:
+            # Create new payoree
+            payoree, created = Payoree.objects.get_or_create(
+                name=new_payoree_name
+            )
+            transaction.payoree = payoree
+            if created:
+                messages.success(request, f"Created new payoree: {payoree.name}")
+        elif payoree_id and payoree_id != '__new__':
+            try:
+                transaction.payoree = Payoree.objects.get(id=payoree_id)
+            except (Payoree.DoesNotExist, ValueError):
+                pass
         
         # Handle category creation/selection
         if category_id == '__new__' and new_category_name:

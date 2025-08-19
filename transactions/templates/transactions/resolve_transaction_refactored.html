@@ -72,7 +72,7 @@
         
         <div class="row">
             <!-- Left Column: Transaction Details & AI -->
-            <div class="col-lg-8 col-xl-8">
+            <div class="col-lg-8 col-xl-9">
                 <div class="row">
                     <!-- Transaction Summary -->
                     <div class="col-12">
@@ -92,7 +92,7 @@
             </div>
             
             <!-- Right Column: Assignment Forms & Actions -->
-            <div class="col-lg-4 col-xl-4">
+            <div class="col-lg-4 col-xl-3">
                 <div class="sticky-actions">
                     <!-- Payoree Assignment -->
                     {% include "transactions/partials/_payoree_assignment.html" %}
@@ -204,11 +204,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const validationMessage = document.getElementById('validation-message');
     
     // Apply AI suggestion functionality
-    document.querySelectorAll('.apply-suggestion, .apply-category, .apply-category-suggestion, .apply-payoree-suggestion').forEach(button => {
+    document.querySelectorAll('.apply-suggestion, .apply-category').forEach(button => {
         button.addEventListener('click', function() {
             const categoryId = this.dataset.categoryId;
             const subcategoryId = this.dataset.subcategoryId;
-            const payoreeId = this.dataset.payoreeId;
             
             // Add loading state
             const originalContent = this.innerHTML;
@@ -217,16 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Apply the suggestion
             setTimeout(() => {
-                if (categoryId) {
-                    applySuggestion(categoryId, subcategoryId);
-                }
-                
-                if (payoreeId) {
-                    const payoreeSelect = document.getElementById('payoree');
-                    if (payoreeSelect) {
-                        payoreeSelect.value = payoreeId;
-                    }
-                }
+                applySuggestion(categoryId, subcategoryId);
                 
                 // Reset button state and show feedback
                 this.innerHTML = '<i class="fas fa-check me-1"></i>Applied!';
@@ -235,7 +225,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     this.disabled = false;
                 }, 1500);
                 
-                showToast('success', 'Suggestion applied successfully!');
+                showToast('success', 'Category suggestion applied successfully!');
             }, 300);
         });
     });
@@ -295,8 +285,8 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         // Basic validation
-        const category = document.getElementById('category').value;
-        const payoree = document.getElementById('payoree').value;
+        const category = document.getElementById('id_category').value;
+        const payoree = document.getElementById('id_payoree').value;
         
         if (!category) {
             showValidationError('Please select a category');
@@ -315,85 +305,19 @@ document.addEventListener('DOMContentLoaded', function() {
         this.submit();
     });
     
-    // Category change handler for subcategory loading and new category/subcategory functionality
-    const categorySelect = document.getElementById('category');
-    const subcategorySelect = document.getElementById('subcategory');
+    // Category change handler for subcategory loading
+    const categorySelect = document.getElementById('id_category');
+    const subcategorySelect = document.getElementById('id_subcategory');
     
     if (categorySelect && subcategorySelect) {
         categorySelect.addEventListener('change', function() {
             const categoryId = this.value;
-            const newCategoryInput = document.getElementById('newCategoryInput');
-            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
-            
-            // Handle new category creation
-            if (categoryId === '__new__') {
-                if (newCategoryInput) {
-                    newCategoryInput.style.display = 'block';
-                }
-                subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option><option value="__new__">+ Add New Subcategory</option>';
-                subcategorySelect.disabled = false;
+            if (categoryId) {
+                loadSubcategories(categoryId);
             } else {
-                if (newCategoryInput) newCategoryInput.style.display = 'none';
-                if (newSubcategoryInput) newSubcategoryInput.style.display = 'none';
-                
-                if (categoryId) {
-                    loadSubcategories(categoryId);
-                } else {
-                    subcategorySelect.innerHTML = '<option value="">Select subcategory...</option>';
-                    subcategorySelect.disabled = true;
-                }
+                subcategorySelect.innerHTML = '<option value="">Select subcategory...</option>';
+                subcategorySelect.disabled = true;
             }
-        });
-        
-        // Handle subcategory selection change for new subcategory creation
-        subcategorySelect.addEventListener('change', function() {
-            const subcategoryId = this.value;
-            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
-            
-            // Show/hide new subcategory input
-            if (subcategoryId === '__new__') {
-                if (newSubcategoryInput) {
-                    newSubcategoryInput.style.display = 'block';
-                }
-            } else {
-                if (newSubcategoryInput) newSubcategoryInput.style.display = 'none';
-            }
-        });
-    }
-    
-    // Handle payoree selection change for new payoree creation
-    const payoreeSelect = document.getElementById('payoree');
-    
-    if (payoreeSelect) {
-        payoreeSelect.addEventListener('change', function() {
-            const payoreeId = this.value;
-            const newPayoreeInput = document.getElementById('newPayoreeInput');
-            
-            // Show/hide new payoree input
-            if (payoreeId === '__new__') {
-                if (newPayoreeInput) {
-                    newPayoreeInput.style.display = 'block';
-                }
-            } else {
-                if (newPayoreeInput) newPayoreeInput.style.display = 'none';
-            }
-        });
-    }
-    
-    // Handle change payoree button
-    const changePayoreeButton = document.getElementById('changePayoree');
-    if (changePayoreeButton) {
-        changePayoreeButton.addEventListener('click', function() {
-            // Show payoree selection form and hide current payoree display
-            const currentPayoreeAlert = this.closest('.alert');
-            const payoreeCard = currentPayoreeAlert.closest('.card-body');
-            
-            if (currentPayoreeAlert) {
-                currentPayoreeAlert.style.display = 'none';
-            }
-            
-            // Show payoree selection UI (you might need to toggle visibility here)
-            // This depends on your exact HTML structure
         });
     }
     
@@ -426,13 +350,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     option.textContent = sub.name;
                     subcategorySelect.appendChild(option);
                 });
-                
-                // Add "Add New Subcategory" option
-                const newOption = document.createElement('option');
-                newOption.value = '__new__';
-                newOption.textContent = '+ Add New Subcategory';
-                subcategorySelect.appendChild(newOption);
-                
                 subcategorySelect.disabled = false;
             })
             .catch(error => {
@@ -466,7 +383,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function applySuggestion(categoryId, subcategoryId) {
         if (categoryId) {
-            const categorySelect = document.getElementById('category');
+            const categorySelect = document.getElementById('id_category');
             if (categorySelect) {
                 categorySelect.value = categoryId;
                 categorySelect.dispatchEvent(new Event('change'));
@@ -474,7 +391,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Apply subcategory after category loads
                 if (subcategoryId) {
                     setTimeout(() => {
-                        const subcategorySelect = document.getElementById('subcategory');
+                        const subcategorySelect = document.getElementById('id_subcategory');
                         if (subcategorySelect) {
                             subcategorySelect.value = subcategoryId;
                         }
@@ -520,6 +437,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateSimilarTransactionsTable(transactions) {
         // This would update the similar transactions table with fresh data
         // Implementation depends on how you want to handle the UI update
+        console.log('Updating similar transactions:', transactions);
     }
     
     // Progressive disclosure for mobile

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dropdown Functionality</title>
+    <style>
+        .hidden { display: none; }
+        .container { max-width: 600px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        select, input { width: 100%; padding: 8px; margin-bottom: 10px; }
+        .new-input { background-color: #f0f8ff; border: 2px solid #007bff; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test Add New Functionality</h1>
+        
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <select id="category">
+                <option value="">-- Select Category --</option>
+                <option value="1">Food & Dining</option>
+                <option value="2">Transportation</option>
+                <option value="3">Entertainment</option>
+                <option value="__new__">+ Add New Category</option>
+            </select>
+            <div id="newCategoryInput" style="display: none;">
+                <input type="text" id="new_category" class="new-input" placeholder="Enter new category name">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="subcategory">Subcategory:</label>
+            <select id="subcategory">
+                <option value="">-- Select Category First --</option>
+            </select>
+            <div id="newSubcategoryInput" style="display: none;">
+                <input type="text" id="new_subcategory" class="new-input" placeholder="Enter new subcategory name">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label for="payoree">Payoree:</label>
+            <select id="payoree">
+                <option value="">-- Select Payoree --</option>
+                <option value="1">Amazon</option>
+                <option value="2">Walmart</option>
+                <option value="3">Target</option>
+                <option value="__new__">+ Add New Payoree</option>
+            </select>
+            <div id="newPayoreeInput" style="display: none;">
+                <input type="text" id="new_payoree" class="new-input" placeholder="Enter new payoree name">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Page loaded, initializing dropdown handlers');
+            
+            // Category dropdown handler
+            const categorySelect = document.getElementById('category');
+            const subcategorySelect = document.getElementById('subcategory');
+            
+            if (categorySelect && subcategorySelect) {
+                categorySelect.addEventListener('change', function() {
+                    const categoryId = this.value;
+                    const newCategoryInput = document.getElementById('newCategoryInput');
+                    const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+                    
+                    console.log('Category changed to:', categoryId);
+                    
+                    if (categoryId === '__new__') {
+                        console.log('Showing new category input');
+                        newCategoryInput.style.display = 'block';
+                        subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option><option value="__new__">+ Add New Subcategory</option>';
+                        subcategorySelect.disabled = false;
+                    } else {
+                        console.log('Hiding new category input');
+                        newCategoryInput.style.display = 'none';
+                        newSubcategoryInput.style.display = 'none';
+                        
+                        if (categoryId) {
+                            // Simulate loading subcategories
+                            subcategorySelect.innerHTML = '<option value="">Select subcategory...</option>';
+                            subcategorySelect.innerHTML += '<option value="1">Restaurants</option>';
+                            subcategorySelect.innerHTML += '<option value="2">Groceries</option>';
+                            subcategorySelect.innerHTML += '<option value="__new__">+ Add New Subcategory</option>';
+                            subcategorySelect.disabled = false;
+                        } else {
+                            subcategorySelect.innerHTML = '<option value="">-- Select Category First --</option>';
+                            subcategorySelect.disabled = true;
+                        }
+                    }
+                });
+                
+                // Subcategory dropdown handler
+                subcategorySelect.addEventListener('change', function() {
+                    const subcategoryId = this.value;
+                    const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+                    
+                    console.log('Subcategory changed to:', subcategoryId);
+                    
+                    if (subcategoryId === '__new__') {
+                        console.log('Showing new subcategory input');
+                        newSubcategoryInput.style.display = 'block';
+                    } else {
+                        console.log('Hiding new subcategory input');
+                        newSubcategoryInput.style.display = 'none';
+                    }
+                });
+            }
+            
+            // Payoree dropdown handler
+            const payoreeSelect = document.getElementById('payoree');
+            if (payoreeSelect) {
+                payoreeSelect.addEventListener('change', function() {
+                    const payoreeId = this.value;
+                    const newPayoreeInput = document.getElementById('newPayoreeInput');
+                    
+                    console.log('Payoree changed to:', payoreeId);
+                    
+                    if (payoreeId === '__new__') {
+                        console.log('Showing new payoree input');
+                        newPayoreeInput.style.display = 'block';
+                    } else {
+                        console.log('Hiding new payoree input');
+                        newPayoreeInput.style.display = 'none';
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>

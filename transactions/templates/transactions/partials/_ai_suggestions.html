@@ -1,0 +1,73 @@
+<!-- AI Suggestions Partial -->
+{% if category_suggestion or subcategory_suggestion %}
+<div class="card mb-4 shadow-sm border-warning">
+    <div class="card-header bg-warning bg-opacity-10">
+        <h6 class="mb-0 text-warning-emphasis">
+            <i class="fas fa-robot me-2"></i>AI Suggestions
+        </h6>
+    </div>
+    <div class="card-body">
+        <!-- Category Suggestion -->
+        {% if category_suggestion %}
+            <div class="d-flex align-items-start mb-3">
+                <i class="fas fa-tag text-warning me-3 mt-1"></i>
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <strong>Suggested Category:</strong>
+                            <span class="badge bg-warning text-dark ms-2">{{ category_suggestion.name }}</span>
+                            {% if subcategory_suggestion %}
+                                <i class="fas fa-arrow-right mx-2 text-muted"></i>
+                                <span class="badge bg-secondary">{{ subcategory_suggestion.name }}</span>
+                            {% endif %}
+                        </div>
+                        <button type="button" class="btn btn-warning btn-sm apply-suggestion" 
+                                data-category-id="{{ category_suggestion.id }}" 
+                                data-subcategory-id="{% if subcategory_suggestion %}{{ subcategory_suggestion.id }}{% endif %}">
+                            <i class="fas fa-magic me-1"></i>Apply
+                        </button>
+                    </div>
+                    
+                    <!-- AI Reasoning -->
+                    {% if ai_reasoning %}
+                        <div class="mt-2 p-2 bg-light rounded">
+                            <div class="d-flex align-items-start">
+                                <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                                <div>
+                                    <small class="text-muted fw-bold">AI Reasoning:</small><br>
+                                    <small class="text-secondary">{{ ai_reasoning }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Confidence Indicator -->
+        <div class="d-flex align-items-center justify-content-between">
+            <small class="text-muted">
+                <i class="fas fa-chart-line me-1"></i>
+                Based on transaction description and learning patterns
+            </small>
+            {% if category_suggestion %}
+                <div class="d-flex align-items-center">
+                    <small class="text-muted me-2">Confidence:</small>
+                    <div class="progress" style="width: 60px; height: 6px;">
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: 85%"></div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% else %}
+    <!-- No AI Suggestions -->
+    <div class="card mb-4 shadow-sm border-secondary">
+        <div class="card-body text-center py-3">
+            <i class="fas fa-robot text-muted mb-2" style="font-size: 1.5rem;"></i>
+            <p class="text-muted mb-0">No AI suggestions available for this transaction</p>
+            <small class="text-muted">The AI will learn from your categorization choices</small>
+        </div>
+    </div>
+{% endif %}

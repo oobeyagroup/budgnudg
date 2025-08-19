@@ -1,0 +1,67 @@
+<!-- Category Assignment Partial -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light">
+        <h6 class="mb-0">
+            <i class="fas fa-tags me-2 text-success"></i>Category Assignment
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row g-3">
+            <!-- Primary Category Selection -->
+            <div class="">
+                <label for="category" class="form-label">Primary Category</label>
+                <select name="category" id="category" class="form-select" required>
+                    <option value="">-- Select Category --</option>
+                    {% for cat in top_level_categories %}
+                        <option value="{{ cat.id }}" 
+                                {% if transaction.category and transaction.category.id == cat.id %}selected{% endif %}>
+                            {{ cat.name }} ({{ cat.subcategories.all|length }} subcategories)
+                        </option>
+                    {% endfor %}
+                    <option value="__new__">+ Add New Category</option>
+                </select>
+                
+                <!-- New Category Input -->
+                <div id="newCategoryInput" class="mt-2" style="display: none;">
+                    <input type="text" name="new_category" id="new_category" class="form-control" 
+                           placeholder="Enter new category name">
+                </div>
+                <div class="form-text">Select the main category first</div>
+            </div>
+            
+            <!-- Subcategory Selection -->
+            <div class="">
+                <label for="subcategory" class="form-label">Subcategory (Optional)</label>
+                <select name="subcategory" id="subcategory" class="form-select">
+                    <option value="">-- Select Category First --</option>
+                </select>
+                
+                <!-- New Subcategory Input -->
+                <div id="newSubcategoryInput" class="mt-2" style="display: none;">
+                    <input type="text" name="new_subcategory" id="new_subcategory" class="form-control" 
+                           placeholder="Enter new subcategory name">
+                </div>
+                <div class="form-text">Choose a specific subcategory for more detail</div>
+            </div>
+        </div>
+        
+        <!-- Category Suggestions from Similar Transactions -->
+        {% if similar_categories %}
+            <div class="alert alert-info mt-3">
+                <small class="fw-bold">
+                    <i class="fas fa-lightbulb me-1"></i>Common categories for similar transactions:
+                </small>
+                <div class="mt-2">
+                    {% for category, subcategory, count in similar_categories %}
+                        <button type="button" class="btn btn-outline-success btn-sm me-1 mb-1 apply-category-suggestion" 
+                                data-category-id="{{ category.id }}" 
+                                data-subcategory-id="{% if subcategory %}{{ subcategory.id }}{% endif %}">
+                            {{ category.name }}{% if subcategory %} → {{ subcategory.name }}{% endif %}
+                            <span class="badge bg-secondary ms-1">{{ count }}</span>
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
