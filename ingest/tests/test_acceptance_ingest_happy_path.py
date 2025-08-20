@@ -59,7 +59,7 @@ def test_apply_profile_populates_parsed_normals_and_preview(client, profile_basi
         assert r.norm_date is not None
         assert r.norm_amount is not None
 
-    preview = client.get(reverse("ingest:batch_detail", args=[batch.id]))
+    preview = client.get(reverse("ingest:batch_preview", args=[batch.id]))
     assert preview.status_code == 200
     html = preview.content.decode()
     assert "STARBUCKS" in html
@@ -88,7 +88,7 @@ def test_full_happy_path_in_one_go(client, profile_basic, csv_bytes_basic):
 
     client.post(reverse("ingest:batch_apply_profile", args=[batch.id]), {"profile_id": profile_basic.id}, follow=True)
 
-    detail = client.get(reverse("ingest:batch_detail", args=[batch.id]))
+    detail = client.get(reverse("ingest:batch_preview", args=[batch.id]))
     assert detail.status_code == 200
 
     resp = client.post(reverse("ingest:batch_commit", args=[batch.id]), {"bank_account": "CHK-3607"}, follow=True)
