@@ -1,8 +1,6 @@
-import csv
-from io import TextIOWrapper
 from datetime import datetime
 import json
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from pathlib import Path
 import logging
 import functools
@@ -42,13 +40,6 @@ def parse_transaction_row(row, mapping, bank_account):
 
     return txn_data
 
-MAPPING_FILE = Path(__file__).resolve().parent.parent / 'csv_mappings.json'
-
-@trace
-def load_mapping_profiles():
-    with open(MAPPING_FILE, 'r') as f:
-        return json.load(f)
-
 @trace
 def parse_date(value):
     date_formats = ["%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y", "%d/%m/%Y"]
@@ -59,92 +50,16 @@ def parse_date(value):
             continue
     return None
 
-@trace
-def parse_transactions_file(file, profile_name, bank_account):
-    profiles = load_mapping_profiles()
-    profile = profiles.get(profile_name)
-
-    if not profile:
-        raise ValueError(f"Mapping profile '{profile_name}' not found.")
-
-    mapping = profile['mapping']
-    decoded_file = TextIOWrapper(file, encoding='utf-8')
-    reader = csv.DictReader(decoded_file)
-
-    transactions = []
-    for row in reader:
-        txn = {
-            'bank_account': bank_account,
-            'suggested_subcategory': None,
-            'suggested_category': None
-        }
-
-        for csv_col, model_field in mapping.items():
-            value = (row.get(csv_col) or '').strip()
-            print(f"CSV Column: {csv_col}, Model Field: {model_field}, Value: {value}")
-            if model_field == 'date':
-                txn['date'] = parse_date(value)
-            elif model_field == 'amount':
-                try:
-                    txn['amount'] = float(Decimal(value))
-                except (ValueError, InvalidOperation):
-                    txn['amount'] = 0.0
-            elif model_field == 'subcategory':
-                txn['subcategory'] = value
-            elif model_field == 'payoree':
-                txn['payoree_name'] = value
-            else:
-                txn[model_field] = value
-
-        transactions.append(txn)
-
-    return transactions
-
-@trace
-def parse_transaction_row(row, mapping, bank_account):
-    txn = {
-        'bank_account': bank_account,
-        'suggested_subcategory': None,
-        'suggested_category': None
-    }
-
-    for csv_col, model_field in mapping.items():
-        value = (row.get(csv_col) or '').strip()
-        # logger.debug("CSV C: %-16s  M: %-14s V: %s ", csv_col, model_field, value)
-        if model_field == 'date':
-            txn['date'] = parse_date(value)
-        elif model_field == 'amount':
-            try:
-                txn['amount'] = float(Decimal(value))
-            except (ValueError, InvalidOperation):
-                txn['amount'] = 0.0
-        elif model_field == 'subcategory':
-            txn['subcategory'] = value  
-        elif model_field == 'payoree':
-            txn['payoree_name'] = value 
-        else:
-            txn[model_field] = value
-
-    return txn
-
-@trace
-def map_csv_file_to_transactions(file_obj, profile_name, bank_account):
-    all_profiles = load_mapping_profiles()
-    profile = all_profiles.get(profile_name)
-
-    if not profile:
-        raise ValueError(f"Mapping profile '{profile_name}' not found.")
-
-    mapping = profile['mapping']
-    reader = csv.DictReader(file_obj)
-
-    transactions = []
-    for row in reader:
-        logger
-        txn = parse_transaction_row(row, mapping, bank_account)
-        transactions.append(txn)
-    logger.debug("Parsed %d transactions from CSV", len(transactions))  
-    return transactions
+def normalize_description(desc):
+    """
+    Normalize transaction descriptions for comparison and similarity matching.
+    Removes common variable elements like transaction IDs and web identifiers.
+    """
+    import re
+    # Remove 11-digit numbers and WEB ID numbers
+    cleaned = re.sub(r'\b\d{11}\b', '', desc)
+    cleaned = re.sub(r'WEB ID[:]? \d+', '', cleaned, flags=re.IGNORECASE)
+    return cleaned.lower().strip()
 
 @trace
 def read_uploaded_file(uploaded_file, encoding='utf-8-sig'):

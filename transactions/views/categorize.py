@@ -70,7 +70,7 @@ class CategorizeTransactionView(TemplateView):
         
         try:
             from rapidfuzz import fuzz
-            from transactions.legacy_views import normalize_description
+            from transactions.utils import normalize_description
             
             # Get other transactions for comparison
             other_transactions = Transaction.objects.exclude(id=transaction.id).select_related('category', 'subcategory', 'payoree')

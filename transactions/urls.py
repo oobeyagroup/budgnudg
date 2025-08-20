@@ -2,12 +2,6 @@
 from django.urls import path
 
 # CBVs (import from submodules directly)
-from transactions.views.import_flow import (
-    ImportUploadView,
-    ImportPreviewView,
-    ReviewTransactionView,
-    ImportConfirmView,
-)
 from transactions.views.import_categories import ImportCategoriesView
 from transactions.views.transactions_list import TransactionListView
 from transactions.views.dashboard import DashboardView
@@ -47,9 +41,6 @@ from transactions.views.api import (
     SimilarTransactionsAPIView,
 )
 
-# Legacy FBVs (temporary)
-from transactions import legacy_import_views as legacy
-
 app_name = 'transactions'
 
 urlpatterns = [
@@ -83,12 +74,6 @@ urlpatterns = [
     path("learning-patterns/delete-payoree/<int:learned_id>/", DeleteLearnedPayoreeView.as_view(), name="delete_learned_payoree"),
     path("learning-patterns/clear-subcats/", ClearAllLearnedSubcatsView.as_view(), name="clear_all_learned_subcats"),
     path("learning-patterns/clear-payorees/", ClearAllLearnedPayoreesView.as_view(), name="clear_all_learned_payorees"),
-
-    # Import wizard (FBV)
-    path("import/transactions/", legacy.import_transactions_upload, name="import_transactions_upload"),
-    path("import/transactions/preview/", legacy.import_transactions_preview, name="import_transactions_preview"),
-    path("import/transactions/review/", legacy.review_transaction, name="review_transaction"),
-    path("import/transactions/confirm/", legacy.import_transactions_confirm, name="import_transactions_confirm"),
 
     # Transactions list (CBV)
     path("list/", TransactionListView.as_view(), name="transactions_list"),

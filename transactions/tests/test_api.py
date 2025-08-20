@@ -285,7 +285,7 @@ class TestSimilarTransactionsAPIView(TestCase):
         
     def test_similar_transactions_api_returns_successful_response(self):
         """API should return successful response structure"""
-        with patch('transactions.legacy_views.normalize_description') as mock_normalize:
+        with patch('transactions.utils.normalize_description') as mock_normalize:
             mock_normalize.side_effect = lambda x: x.upper()
             
             with patch('rapidfuzz.fuzz.token_set_ratio') as mock_fuzz:
@@ -300,7 +300,7 @@ class TestSimilarTransactionsAPIView(TestCase):
                 
     def test_similar_transactions_api_finds_similar_transactions(self):
         """API should find and return similar transactions"""
-        with patch('transactions.legacy_views.normalize_description') as mock_normalize:
+        with patch('transactions.utils.normalize_description') as mock_normalize:
             mock_normalize.side_effect = lambda x: x.upper()
             
             with patch('rapidfuzz.fuzz.token_set_ratio') as mock_fuzz:
@@ -325,7 +325,7 @@ class TestSimilarTransactionsAPIView(TestCase):
                 
     def test_similar_transactions_api_includes_transaction_details(self):
         """API should include comprehensive transaction details"""
-        with patch('transactions.legacy_views.normalize_description') as mock_normalize:
+        with patch('transactions.utils.normalize_description') as mock_normalize:
             mock_normalize.side_effect = lambda x: x.upper()
             
             with patch('rapidfuzz.fuzz.token_set_ratio') as mock_fuzz:
@@ -362,10 +362,10 @@ class TestSimilarTransactionsAPIView(TestCase):
                 date=date(2023, 1, i+1),
                 description=f"STARBUCKS LOCATION #{i}",
                 amount=Decimal('-5.00'),
-                sheet_account="Chase Checking"
-            )
-            
-        with patch('transactions.legacy_views.normalize_description') as mock_normalize:
+            sheet_account="Chase Checking"
+        )
+        
+        with patch('transactions.utils.normalize_description') as mock_normalize:
             mock_normalize.side_effect = lambda x: x.upper()
             
             with patch('rapidfuzz.fuzz.token_set_ratio') as mock_fuzz:
@@ -379,7 +379,7 @@ class TestSimilarTransactionsAPIView(TestCase):
                 
     def test_similar_transactions_api_excludes_self(self):
         """API should exclude the transaction being compared"""
-        with patch('transactions.legacy_views.normalize_description') as mock_normalize:
+        with patch('transactions.utils.normalize_description') as mock_normalize:
             mock_normalize.side_effect = lambda x: x.upper()
             
             with patch('rapidfuzz.fuzz.token_set_ratio') as mock_fuzz:
@@ -415,7 +415,7 @@ class TestSimilarTransactionsAPIView(TestCase):
         
     def test_similar_transactions_api_similarity_threshold(self):
         """API should only return transactions above similarity threshold"""
-        with patch('transactions.legacy_views.normalize_description') as mock_normalize:
+        with patch('transactions.utils.normalize_description') as mock_normalize:
             mock_normalize.side_effect = lambda x: x.upper()
             
             with patch('rapidfuzz.fuzz.token_set_ratio') as mock_fuzz:
@@ -611,7 +611,7 @@ class TestAPIPerformance(TestCase):
         
     def test_similar_transactions_api_handles_many_transactions(self):
         """Similar transactions API should handle large transaction datasets"""
-        with patch('transactions.legacy_views.normalize_description') as mock_normalize:
+        with patch('transactions.utils.normalize_description') as mock_normalize:
             mock_normalize.side_effect = lambda x: x.upper()
             
             with patch('rapidfuzz.fuzz.token_set_ratio') as mock_fuzz:

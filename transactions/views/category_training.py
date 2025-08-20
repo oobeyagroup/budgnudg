@@ -9,7 +9,6 @@ from django.utils import timezone
 from transactions.models import Transaction, Category, Payoree, LearnedSubcat, LearnedPayoree
 from transactions.forms import TransactionImportForm
 from transactions.utils import trace, read_uploaded_file
-from transactions.services.mapping import map_file_for_profile
 from transactions.categorization import categorize_transaction, suggest_subcategory, categorize_transaction_with_reasoning
 import logging
 import json
