@@ -56,8 +56,8 @@
                                             <small class="text-muted">{{ rule.created_at|date:"M j, Y" }}</small>
                                         </td>
                                         <td>
-                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRule({{ rule.id }})">
-                                                <i class="fas fa-trash"></i>
+                                            <button class="btn btn-sm btn-outline-danger" onclick="deleteRule({{ rule.id }})" title="Delete rule">
+                                                <i class="fas fa-trash me-1"></i>Delete
                                             </button>
                                         </td>
                                     </tr>
