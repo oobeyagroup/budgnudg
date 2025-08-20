@@ -33,7 +33,16 @@
             <div class="">
                 <label for="subcategory" class="form-label">Subcategory (Optional)</label>
                 <select name="subcategory" id="subcategory" class="form-select">
-                    <option value="">-- Select Category First --</option>
+                    {% if transaction.category %}
+                        <!-- If category is selected, show current subcategory or loading state -->
+                        <option value="">-- Select Subcategory --</option>
+                        {% if transaction.subcategory %}
+                            <option value="{{ transaction.subcategory.id }}" selected>{{ transaction.subcategory.name }}</option>
+                        {% endif %}
+                        <!-- Subcategories will be loaded dynamically via JavaScript -->
+                    {% else %}
+                        <option value="">-- Select Category First --</option>
+                    {% endif %}
                 </select>
                 
                 <!-- New Subcategory Input -->

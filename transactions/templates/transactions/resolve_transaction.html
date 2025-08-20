@@ -10,22 +10,22 @@
         top: 20px;
         z-index: 1020;
     }
-    
+
     .transaction-form-container {
         min-height: 100vh;
     }
-    
+
     .card-hover:hover {
         transform: translateY(-2px);
         transition: transform 0.2s ease-in-out;
     }
-    
+
     .progress-indicator {
         height: 4px;
         background: linear-gradient(90deg, var(--bs-success) 0%, var(--bs-warning) 50%, var(--bs-danger) 100%);
         border-radius: 2px;
     }
-    
+
     @media (max-width: 768px) {
         .sticky-actions {
             position: relative;
@@ -59,7 +59,7 @@
                             </button>
                         </div>
                     </div>
-                    
+
                     <!-- Progress Indicator -->
                     <div class="progress-indicator mt-3"></div>
                 </div>
@@ -69,7 +69,7 @@
 
     <form id="transaction-form" method="post" action="">
         {% csrf_token %}
-        
+
         <div class="row">
             <!-- Left Column: Transaction Details & AI -->
             <div class="col-lg-8 col-xl-8">
@@ -78,28 +78,28 @@
                     <div class="col-12">
                         {% include "transactions/partials/_transaction_summary.html" %}
                     </div>
-                    
+
                     <!-- AI Suggestions -->
                     <div class="col-12">
                         {% include "transactions/partials/_ai_suggestions.html" %}
                     </div>
-                    
+
                     <!-- Similar Transactions -->
                     <div class="col-12">
                         {% include "transactions/partials/_similar_transactions.html" %}
                     </div>
                 </div>
             </div>
-            
+
             <!-- Right Column: Assignment Forms & Actions -->
             <div class="col-lg-4 col-xl-4">
                 <div class="sticky-actions">
                     <!-- Payoree Assignment -->
                     {% include "transactions/partials/_payoree_assignment.html" %}
-                    
+
                     <!-- Category Assignment -->
                     {% include "transactions/partials/_category_assignment.html" %}
-                    
+
                     <!-- Action Buttons -->
                     <div class="card shadow-sm border-success">
                         <div class="card-header bg-success bg-opacity-10">
@@ -109,29 +109,35 @@
                         </div>
                         <div class="card-body">
                             <div class="d-grid gap-2">
-                                <!-- Save & Continue Button -->
-                                <button type="submit" name="action" value="save_continue" 
-                                        class="btn btn-success btn-lg" id="save-continue-btn">
-                                    <i class="fas fa-save me-2"></i>
-                                    Save & Continue
+                                <!-- Save & Next Button -->
+                                <button type="submit" name="action" value="save_next" class="btn btn-success btn-lg"
+                                    id="save-next-btn">
+                                    <i class="fas fa-arrow-right me-2"></i>
+                                    Save & Next
                                 </button>
-                                
+
+                                <!-- Save Button -->
+                                <button type="submit" name="action" value="save_stay" class="btn btn-primary"
+                                    id="save-stay-btn">
+                                    <i class="fas fa-save me-2"></i>
+                                    Save
+                                </button>
+
                                 <!-- Save & Return Button -->
-                                <button type="submit" name="action" value="save_return" 
-                                        class="btn btn-outline-success" id="save-return-btn">
+                                <button type="submit" name="action" value="save_return" class="btn btn-outline-success"
+                                    id="save-return-btn">
                                     <i class="fas fa-check me-2"></i>
                                     Save & Return to List
                                 </button>
-                                
+
                                 <!-- Skip Button -->
-                                <button type="button" class="btn btn-outline-warning" 
-                                        data-url="{% url 'transactions:transactions_list' %}" 
-                                        id="skip-button">
+                                <button type="button" class="btn btn-outline-warning"
+                                    data-url="{% url 'transactions:transactions_list' %}" id="skip-button">
                                     <i class="fas fa-forward me-2"></i>
                                     Skip for Now
                                 </button>
                             </div>
-                            
+
                             <!-- Form Validation Summary -->
                             <div id="validation-summary" class="mt-3 d-none">
                                 <div class="alert alert-warning alert-sm mb-0">
@@ -141,8 +147,8 @@
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Quick Actions -->
+
+                    <!-- Quick Actions  maybe someday
                     <div class="card shadow-sm mt-3">
                         <div class="card-header">
                             <h6 class="mb-0">
@@ -162,7 +168,7 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
+                    </div>   -->
                 </div>
             </div>
         </div>
@@ -181,7 +187,7 @@
             Transaction saved successfully!
         </div>
     </div>
-    
+
     <div id="error-toast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
         <div class="toast-header bg-danger text-white">
             <i class="fas fa-exclamation-circle me-2"></i>
@@ -197,284 +203,214 @@
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize form validation
-    const form = document.getElementById('transaction-form');
-    const validationSummary = document.getElementById('validation-summary');
-    const validationMessage = document.getElementById('validation-message');
-    
-    // Apply AI suggestion functionality
-    document.querySelectorAll('.apply-suggestion, .apply-category, .apply-category-suggestion, .apply-payoree-suggestion').forEach(button => {
-        button.addEventListener('click', function() {
-            const categoryId = this.dataset.categoryId;
-            const subcategoryId = this.dataset.subcategoryId;
-            const payoreeId = this.dataset.payoreeId;
-            
-            // Add loading state
-            const originalContent = this.innerHTML;
-            this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
-            this.disabled = true;
-            
-            // Apply the suggestion
-            setTimeout(() => {
-                if (categoryId) {
-                    applySuggestion(categoryId, subcategoryId);
-                }
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initialize form validation
+        const form = document.getElementById('transaction-form');
+        const validationSummary = document.getElementById('validation-summary');
+        const validationMessage = document.getElementById('validation-message');
+
+        // Category change handler for dynamic subcategory loading
+        const categorySelect = document.getElementById('category');
+        if (categorySelect) {
+            categorySelect.addEventListener('change', function () {
+                const categoryId = this.value;
+                console.log('=== CATEGORY CHANGE DEBUG ===');
+                console.log('Selected category ID:', categoryId);
                 
-                if (payoreeId) {
-                    const payoreeSelect = document.getElementById('payoree');
-                    if (payoreeSelect) {
-                        payoreeSelect.value = payoreeId;
+                if (categoryId === '__new__') {
+                    // Show new category input
+                    const newCategoryInput = document.getElementById('newCategoryInput');
+                    console.log('Showing new category input, found element:', !!newCategoryInput);
+                    if (newCategoryInput) {
+                        newCategoryInput.style.display = 'block';
+                        newCategoryInput.querySelector('input').focus();
                     }
+                    return;
                 }
-                
-                // Reset button state and show feedback
-                this.innerHTML = '<i class="fas fa-check me-1"></i>Applied!';
-                setTimeout(() => {
-                    this.innerHTML = originalContent;
-                    this.disabled = false;
-                }, 1500);
-                
-                showToast('success', 'Suggestion applied successfully!');
-            }, 300);
-        });
-    });
-    
-    // Auto-categorize functionality
-    document.getElementById('auto-categorize').addEventListener('click', function() {
-        const button = this;
-        const originalContent = button.innerHTML;
-        
-        // Show loading state
-        button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
-        button.disabled = true;
-        
-        // Find and apply the first available AI suggestion
-        const suggestionButton = document.querySelector('.apply-suggestion');
-        if (suggestionButton) {
-            suggestionButton.click();
-            setTimeout(() => {
-                button.innerHTML = originalContent;
-                button.disabled = false;
-            }, 1500);
-        } else {
-            // Try to get fresh AI suggestions via API
-            const transactionId = getTransactionId();
-            if (transactionId) {
-                fetchAISuggestions(transactionId).then(suggestions => {
-                    if (suggestions && suggestions.category) {
-                        applySuggestion(suggestions.category.id, suggestions.subcategory?.id);
-                        showToast('success', 'AI categorization applied!');
-                    } else {
-                        showToast('error', 'No AI suggestions available for auto-categorization');
-                    }
-                }).catch(error => {
-                    showToast('error', 'Failed to get AI suggestions');
-                }).finally(() => {
-                    button.innerHTML = originalContent;
-                    button.disabled = false;
-                });
-            } else {
-                showToast('error', 'No AI suggestions available for auto-categorization');
-                button.innerHTML = originalContent;
-                button.disabled = false;
-            }
-        }
-    });
-    
-    // Skip button functionality
-    document.getElementById('skip-button').addEventListener('click', function() {
-        const url = this.dataset.url;
-        if (url) {
-            location.href = url;
-        }
-    });
-    
-    // Form submission with validation
-    form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Basic validation
-        const category = document.getElementById('category').value;
-        const payoree = document.getElementById('payoree').value;
-        
-        if (!category) {
-            showValidationError('Please select a category');
-            return;
-        }
-        
-        if (!payoree) {
-            showValidationError('Please assign a payoree');
-            return;
-        }
-        
-        // Hide validation summary if shown
-        validationSummary.classList.add('d-none');
-        
-        // Submit the form
-        this.submit();
-    });
-    
-    // Category change handler for subcategory loading and new category/subcategory functionality
-    const categorySelect = document.getElementById('category');
-    const subcategorySelect = document.getElementById('subcategory');
-    
-    if (categorySelect && subcategorySelect) {
-        categorySelect.addEventListener('change', function() {
-            const categoryId = this.value;
-            const newCategoryInput = document.getElementById('newCategoryInput');
-            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
-            
-            // Handle new category creation
-            if (categoryId === '__new__') {
-                if (newCategoryInput) {
-                    newCategoryInput.style.display = 'block';
-                }
-                subcategorySelect.innerHTML = '<option value="">-- No Subcategory --</option><option value="__new__">+ Add New Subcategory</option>';
-                subcategorySelect.disabled = false;
-            } else {
-                if (newCategoryInput) newCategoryInput.style.display = 'none';
-                if (newSubcategoryInput) newSubcategoryInput.style.display = 'none';
-                
-                if (categoryId) {
+
+                // Load subcategories if not new category
+                if (categoryId && categoryId !== '__new__') {
+                    console.log('Loading subcategories for category:', categoryId);
                     loadSubcategories(categoryId);
                 } else {
-                    subcategorySelect.innerHTML = '<option value="">Select subcategory...</option>';
-                    subcategorySelect.disabled = true;
+                    console.log('Clearing subcategories (empty selection)');
+                    clearSubcategories();
                 }
-            }
-        });
-        
-        // Handle subcategory selection change for new subcategory creation
-        subcategorySelect.addEventListener('change', function() {
-            const subcategoryId = this.value;
-            const newSubcategoryInput = document.getElementById('newSubcategoryInput');
-            
-            // Show/hide new subcategory input
-            if (subcategoryId === '__new__') {
-                if (newSubcategoryInput) {
-                    newSubcategoryInput.style.display = 'block';
-                }
-            } else {
-                if (newSubcategoryInput) newSubcategoryInput.style.display = 'none';
-            }
-        });
-    }
-    
-    // Handle payoree selection change for new payoree creation
-    const payoreeSelect = document.getElementById('payoree');
-    
-    if (payoreeSelect) {
-        payoreeSelect.addEventListener('change', function() {
-            const payoreeId = this.value;
-            const newPayoreeInput = document.getElementById('newPayoreeInput');
-            
-            // Show/hide new payoree input
-            if (payoreeId === '__new__') {
-                if (newPayoreeInput) {
-                    newPayoreeInput.style.display = 'block';
-                }
-            } else {
-                if (newPayoreeInput) newPayoreeInput.style.display = 'none';
-            }
-        });
-    }
-    
-    // Handle change payoree button
-    const changePayoreeButton = document.getElementById('changePayoree');
-    if (changePayoreeButton) {
-        changePayoreeButton.addEventListener('click', function() {
-            // Show payoree selection form and hide current payoree display
-            const currentPayoreeAlert = this.closest('.alert');
-            const payoreeCard = currentPayoreeAlert.closest('.card-body');
-            
-            if (currentPayoreeAlert) {
-                currentPayoreeAlert.style.display = 'none';
-            }
-            
-            // Show payoree selection UI (you might need to toggle visibility here)
-            // This depends on your exact HTML structure
-        });
-    }
-    
-    // Utility functions
-    function showValidationError(message) {
-        validationMessage.textContent = message;
-        validationSummary.classList.remove('d-none');
-        validationSummary.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    
-    function showToast(type, message) {
-        const toast = document.getElementById(type + '-toast');
-        const messageElement = document.getElementById(type + '-message');
-        
-        if (toast && messageElement) {
-            messageElement.textContent = message;
-            const bsToast = new bootstrap.Toast(toast);
-            bsToast.show();
-        }
-    }
-    
-    function loadSubcategories(categoryId) {
-        fetch(`/transactions/api/subcategories/${categoryId}/`)
-            .then(response => response.json())
-            .then(data => {
-                subcategorySelect.innerHTML = '<option value="">Select subcategory...</option>';
-                data.subcategories.forEach(sub => {
-                    const option = document.createElement('option');
-                    option.value = sub.id;
-                    option.textContent = sub.name;
-                    subcategorySelect.appendChild(option);
-                });
-                
-                // Add "Add New Subcategory" option
-                const newOption = document.createElement('option');
-                newOption.value = '__new__';
-                newOption.textContent = '+ Add New Subcategory';
-                subcategorySelect.appendChild(newOption);
-                
-                subcategorySelect.disabled = false;
-            })
-            .catch(error => {
-                console.error('Error loading subcategories:', error);
-                showToast('error', 'Failed to load subcategories');
+                console.log('==============================');
             });
-    }
-    
-    // Enhanced utility functions
-    function getTransactionId() {
-        // Extract transaction ID from URL
-        const pathParts = window.location.pathname.split('/');
-        const resolveIndex = pathParts.indexOf('resolve');
-        if (resolveIndex !== -1 && pathParts[resolveIndex + 1]) {
-            return parseInt(pathParts[resolveIndex + 1]);
         }
-        return null;
-    }
-    
-    function fetchAISuggestions(transactionId) {
-        return fetch(`/transactions/api/suggestions/${transactionId}/`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    return data.suggestions;
+
+        // Initialize subcategories on page load if category is already selected
+        if (categorySelect && categorySelect.value && categorySelect.value !== '__new__') {
+            console.log('=== PAGE LOAD INIT ===');
+            console.log('Category already selected on load:', categorySelect.value);
+            loadSubcategories(categorySelect.value);
+            console.log('======================');
+        }
+
+        // Subcategory change handler
+        const subcategorySelect = document.getElementById('subcategory');
+        if (subcategorySelect) {
+            subcategorySelect.addEventListener('change', function () {
+                const subcategoryId = this.value;
+                console.log('=== SUBCATEGORY CHANGE DEBUG ===');
+                console.log('Selected subcategory ID:', subcategoryId);
+                
+                if (subcategoryId === '__new__') {
+                    const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+                    console.log('Showing new subcategory input, found element:', !!newSubcategoryInput);
+                    if (newSubcategoryInput) {
+                        newSubcategoryInput.style.display = 'block';
+                        newSubcategoryInput.querySelector('input').focus();
+                    }
                 } else {
-                    throw new Error(data.error || 'Failed to fetch suggestions');
+                    const newSubcategoryInput = document.getElementById('newSubcategoryInput');
+                    if (newSubcategoryInput) {
+                        newSubcategoryInput.style.display = 'none';
+                    }
+                }
+                console.log('=================================');
+            });
+        }
+
+        // Payoree change handler
+        const payoreeSelect = document.getElementById('payoree');
+        if (payoreeSelect) {
+            payoreeSelect.addEventListener('change', function () {
+                if (this.value === '__new__') {
+                    const newPayoreeInput = document.getElementById('newPayoreeInput');
+                    if (newPayoreeInput) {
+                        newPayoreeInput.style.display = 'block';
+                        newPayoreeInput.querySelector('input').focus();
+                    }
+                } else {
+                    const newPayoreeInput = document.getElementById('newPayoreeInput');
+                    if (newPayoreeInput) {
+                        newPayoreeInput.style.display = 'none';
+                    }
                 }
             });
-    }
-    
-    function applySuggestion(categoryId, subcategoryId) {
-        if (categoryId) {
-            const categorySelect = document.getElementById('category');
-            if (categorySelect) {
-                categorySelect.value = categoryId;
-                categorySelect.dispatchEvent(new Event('change'));
-                
-                // Apply subcategory after category loads
-                if (subcategoryId) {
+        }
+
+        // Apply suggestion functionality
+        document.querySelectorAll('.apply-suggestion, .apply-category-suggestion, .apply-payoree-suggestion').forEach(button => {
+            button.addEventListener('click', function () {
+                const categoryId = this.dataset.categoryId;
+                const subcategoryId = this.dataset.subcategoryId;
+                const payoreeId = this.dataset.payoreeId;
+
+                // Add loading state
+                const originalContent = this.innerHTML;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
+                this.disabled = true;
+
+                // Apply the suggestion
+                setTimeout(() => {
+                    if (categoryId) {
+                        applySuggestion(categoryId, subcategoryId);
+                    }
+
+                    if (payoreeId) {
+                        const payoreeSelect = document.getElementById('payoree');
+                        if (payoreeSelect) {
+                            payoreeSelect.value = payoreeId;
+                        }
+                    }
+
+                    // Reset button state and show feedback
+                    this.innerHTML = '<i class="fas fa-check me-1"></i>Applied!';
                     setTimeout(() => {
-                        const subcategorySelect = document.getElementById('subcategory');
+                        this.innerHTML = originalContent;
+                        this.disabled = false;
+                    }, 1500);
+
+                    showToast('success', 'Suggestion applied successfully!');
+                }, 300);
+            });
+        });
+
+        // Skip button handler
+        const skipButton = document.getElementById('skip-button');
+        if (skipButton) {
+            skipButton.addEventListener('click', function () {
+                const url = this.dataset.url;
+                if (url) {
+                    window.location.href = url;
+                }
+            });
+        }
+
+        // Helper functions
+        function loadSubcategories(categoryId) {
+            const subcategorySelect = document.getElementById('subcategory');
+            if (!subcategorySelect) {
+                console.error('Subcategory select element not found!');
+                return;
+            }
+
+            console.log('=== LOADING SUBCATEGORIES ===');
+            console.log('Category ID:', categoryId);
+            console.log('API URL:', `/transactions/api/subcategories/${categoryId}/`);
+
+            // Store current selection before loading
+            const currentSubcategoryId = subcategorySelect.value;
+            console.log('Current subcategory ID:', currentSubcategoryId);
+
+            // Show loading state
+            subcategorySelect.innerHTML = '<option value="">Loading...</option>';
+            subcategorySelect.disabled = true;
+
+            // Fetch subcategories
+            fetch(`/transactions/api/subcategories/${categoryId}/`)
+                .then(response => {
+                    console.log('API Response status:', response.status);
+                    console.log('API Response ok:', response.ok);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('API Response data:', data);
+                    subcategorySelect.innerHTML = '<option value="">-- Select Subcategory --</option>';
+                    
+                    if (data.success && data.subcategories) {
+                        console.log('Number of subcategories:', data.subcategories.length);
+                        data.subcategories.forEach(sub => {
+                            console.log('Adding subcategory:', sub.name, 'ID:', sub.id);
+                            const selected = (sub.id.toString() === currentSubcategoryId) ? 'selected' : '';
+                            subcategorySelect.innerHTML += `<option value="${sub.id}" ${selected}>${sub.name}</option>`;
+                        });
+                        subcategorySelect.innerHTML += '<option value="__new__">+ Add New Subcategory</option>';
+                    } else {
+                        console.log('No subcategories found or API error');
+                        subcategorySelect.innerHTML += '<option value="">No subcategories available</option>';
+                    }
+                    subcategorySelect.disabled = false;
+                    console.log('==============================');
+                })
+                .catch(error => {
+                    console.error('Error loading subcategories:', error);
+                    subcategorySelect.innerHTML = '<option value="">Error loading subcategories</option>';
+                    subcategorySelect.disabled = false;
+                });
+        }
+
+        function clearSubcategories() {
+            const subcategorySelect = document.getElementById('subcategory');
+            if (subcategorySelect) {
+                subcategorySelect.innerHTML = '<option value="">-- Select Category First --</option>';
+                subcategorySelect.disabled = true;
+            }
+        }
+
+        function applySuggestion(categoryId, subcategoryId) {
+            const categorySelect = document.getElementById('category');
+            const subcategorySelect = document.getElementById('subcategory');
+
+            if (categorySelect && categoryId) {
+                categorySelect.value = categoryId;
+                
+                if (subcategoryId) {
+                    loadSubcategories(categoryId);
+                    setTimeout(() => {
                         if (subcategorySelect) {
                             subcategorySelect.value = subcategoryId;
                         }
@@ -482,54 +418,242 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         }
-    }
-    
-    function loadMoreSimilarTransactions() {
-        const transactionId = getTransactionId();
-        if (!transactionId) return;
-        
-        const button = document.querySelector('.load-more-similar');
-        if (button) {
-            button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Loading...';
-            button.disabled = true;
+
+        function showToast(type, message) {
+            const toast = document.getElementById(type === 'success' ? 'success-toast' : 'error-toast');
+            const messageElement = document.getElementById(type === 'success' ? 'success-message' : 'error-message');
+            
+            if (toast && messageElement) {
+                messageElement.textContent = message;
+                const bsToast = new bootstrap.Toast(toast);
+                bsToast.show();
+            }
         }
-        
-        fetch(`/transactions/api/similar/${transactionId}/?limit=10`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update similar transactions section with new data
-                    updateSimilarTransactionsTable(data.transactions);
-                    showToast('success', `Loaded ${data.transactions.length} similar transactions`);
-                } else {
-                    showToast('error', 'Failed to load more similar transactions');
+
+        // Train AI button handlers
+        document.querySelectorAll('.train-ai-payoree').forEach(button => {
+            button.addEventListener('click', function () {
+                const transactionId = this.dataset.transactionId;
+                const payoreeId = this.dataset.payoreeId;
+                
+                console.log('Training AI on payoree:', { transactionId, payoreeId });
+                
+                // Show training feedback
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Training...';
+                this.disabled = true;
+                
+                // Simulate training (replace with actual API call)
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-check text-success me-1"></i>Trained!';
+                    showToast('success', 'AI trained on payoree assignment');
+                    
+                    setTimeout(() => {
+                        this.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Train';
+                        this.disabled = false;
+                    }, 2000);
+                }, 1000);
+            });
+        });
+
+        document.querySelectorAll('.train-ai-category').forEach(button => {
+            button.addEventListener('click', function () {
+                const transactionId = this.dataset.transactionId;
+                const categoryId = this.dataset.categoryId;
+                
+                console.log('Training AI on category:', { transactionId, categoryId });
+                
+                // Show training feedback
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Training...';
+                this.disabled = true;
+                
+                // Simulate training (replace with actual API call)
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-check text-success me-1"></i>Trained!';
+                    showToast('success', 'AI trained on category assignment');
+                    
+                    setTimeout(() => {
+                        this.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Train';
+                        this.disabled = false;
+                    }, 2000);
+                }, 1000);
+            });
+        });
+
+        document.querySelectorAll('.train-ai-subcategory').forEach(button => {
+            button.addEventListener('click', function () {
+                const transactionId = this.dataset.transactionId;
+                const categoryId = this.dataset.categoryId;
+                const subcategoryId = this.dataset.subcategoryId;
+                
+                console.log('Training AI on subcategory:', { transactionId, categoryId, subcategoryId });
+                
+                // Show training feedback
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Training...';
+                this.disabled = true;
+                
+                // Simulate training (replace with actual API call)
+                setTimeout(() => {
+                    this.innerHTML = '<i class="fas fa-check text-success me-1"></i>Trained!';
+                    showToast('success', 'AI trained on subcategory assignment');
+                    
+                    setTimeout(() => {
+                        this.innerHTML = '<i class="fas fa-arrow-right me-1"></i>Train';
+                        this.disabled = false;
+                    }, 2000);
+                }, 1000);
+            });
+        });
+
+        // Similar Transactions button handlers
+        document.querySelectorAll('.apply-category').forEach(button => {
+            button.addEventListener('click', function () {
+                const categoryId = this.dataset.categoryId;
+                const subcategoryId = this.dataset.subcategoryId;
+                const payoreeId = this.dataset.payoreeId;
+                
+                console.log('Applying from similar transaction:', { categoryId, subcategoryId, payoreeId });
+                
+                // Apply the category
+                const categorySelect = document.getElementById('category');
+                const subcategorySelect = document.getElementById('subcategory');
+                const payoreeSelect = document.getElementById('payoree');
+                
+                // Set payoree if available
+                if (payoreeSelect && payoreeId) {
+                    payoreeSelect.value = payoreeId;
+                    console.log('Applied payoree:', payoreeId);
                 }
-            })
-            .catch(error => {
-                console.error('Error loading similar transactions:', error);
-                showToast('error', 'Failed to load similar transactions');
-            })
-            .finally(() => {
-                if (button) {
-                    button.innerHTML = '<i class="fas fa-plus me-1"></i>Load More Similar Transactions';
-                    button.disabled = false;
+                
+                if (categorySelect && categoryId) {
+                    categorySelect.value = categoryId;
+                    
+                    // Trigger change event to load subcategories
+                    const changeEvent = new Event('change', { bubbles: true });
+                    categorySelect.dispatchEvent(changeEvent);
+                    
+                    // Set subcategory after a brief delay to allow subcategories to load
+                    if (subcategoryId && subcategorySelect) {
+                        setTimeout(() => {
+                            subcategorySelect.value = subcategoryId;
+                            let message = 'Applied categorization';
+                            if (payoreeId) message += ' and payoree';
+                            message += ' from similar transaction';
+                            showToast('success', message);
+                        }, 500);
+                    } else {
+                        let message = 'Applied category';
+                        if (payoreeId) message += ' and payoree';
+                        message += ' from similar transaction';
+                        showToast('success', message);
+                    }
+                } else if (payoreeId) {
+                    showToast('success', 'Applied payoree from similar transaction');
                 }
             });
-    }
-    
-    function updateSimilarTransactionsTable(transactions) {
-        // This would update the similar transactions table with fresh data
-        // Implementation depends on how you want to handle the UI update
-    }
-    
-    // Progressive disclosure for mobile
-    if (window.innerWidth < 768) {
-        const actionCard = document.querySelector('.sticky-actions');
-        if (actionCard) {
-            actionCard.style.position = 'relative';
-            actionCard.style.top = 'auto';
+        });
+
+        document.querySelectorAll('.view-details').forEach(button => {
+            button.addEventListener('click', function () {
+                const transactionId = this.dataset.transactionId;
+                
+                console.log('Viewing transaction details:', transactionId);
+                
+                // Open transaction in new tab/window
+                const url = `/transactions/categorize/${transactionId}/`;
+                window.open(url, '_blank');
+            });
+        });
+
+        // Apply Current to All Similar button handler
+        document.querySelectorAll('.apply-current-to-similar').forEach(button => {
+            button.addEventListener('click', function () {
+                const transactionId = this.dataset.transactionId;
+                const categorySelect = document.getElementById('category');
+                const subcategorySelect = document.getElementById('subcategory');
+                const payoreeSelect = document.getElementById('payoree');
+                
+                // Get current form values
+                const currentCategory = categorySelect?.value;
+                const currentSubcategory = subcategorySelect?.value;
+                const currentPayoree = payoreeSelect?.value;
+                
+                if (!currentCategory && !currentPayoree) {
+                    showToast('error', 'Please set a category or payoree first before applying to similar transactions');
+                    return;
+                }
+                
+                // Confirm action
+                const confirmMessage = `Apply current categorization to all ${document.querySelectorAll('.similar-transaction-row').length} similar transactions?`;
+                if (!confirm(confirmMessage)) {
+                    return;
+                }
+                
+                // Show loading state
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
+                this.disabled = true;
+                
+                console.log('Applying current categorization to similar transactions:', {
+                    transactionId,
+                    currentCategory,
+                    currentSubcategory,
+                    currentPayoree
+                });
+                
+                // Make API call to apply current categorization to similar transactions
+                fetch(`/transactions/apply_current/${transactionId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        category_id: currentCategory,
+                        subcategory_id: currentSubcategory,
+                        payoree_id: currentPayoree
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', `Applied categorization to ${data.updated_count} similar transactions`);
+                        // Optionally reload the page to show updated similar transactions
+                        setTimeout(() => {
+                            location.reload();
+                        }, 2000);
+                    } else {
+                        showToast('error', data.error || 'Failed to apply categorization');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error applying to similar transactions:', error);
+                    showToast('error', 'Error applying categorization to similar transactions');
+                })
+                .finally(() => {
+                    // Restore button
+                    this.innerHTML = '<i class="fas fa-magic me-1"></i>Apply Current to All Similar';
+                    this.disabled = false;
+                });
+            });
+        });
+
+        // Form validation and debugging
+        if (form) {
+            form.addEventListener('submit', function (e) {
+                // Debug: Log form data before submission
+                const formData = new FormData(form);
+                console.log('=== FORM SUBMISSION DEBUG ===');
+                for (let [key, value] of formData.entries()) {
+                    console.log(`${key}: ${value}`);
+                }
+                console.log('Payoree select value:', document.getElementById('payoree')?.value);
+                console.log('New payoree input value:', document.getElementById('new_payoree')?.value);
+                console.log('Action button clicked:', formData.get('action'));
+                console.log('==============================');
+                
+                // Add form validation logic here if needed
+            });
         }
-    }
-});
+    });
 </script>
 {% endblock %}

@@ -1,73 +1,226 @@
-<!-- AI Suggestions Partial -->
-{% if category_suggestion or subcategory_suggestion %}
-<div class="card mb-4 shadow-sm border-warning">
-    <div class="card-header bg-warning bg-opacity-10">
-        <h6 class="mb-0 text-warning-emphasis">
+{% if category_suggestion or subcategory_suggestion or ai_reasoning %}
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-info bg-opacity-10">
+        <h6 class="mb-0 text-info-emphasis">
             <i class="fas fa-robot me-2"></i>AI Suggestions
         </h6>
     </div>
     <div class="card-body">
-        <!-- Category Suggestion -->
-        {% if category_suggestion %}
-            <div class="d-flex align-items-start mb-3">
-                <i class="fas fa-tag text-warning me-3 mt-1"></i>
-                <div class="flex-grow-1">
-                    <div class="d-flex align-items-center justify-content-between">
-                        <div>
-                            <strong>Suggested Category:</strong>
-                            <span class="badge bg-warning text-dark ms-2">{{ category_suggestion.name }}</span>
-                            {% if subcategory_suggestion %}
-                                <i class="fas fa-arrow-right mx-2 text-muted"></i>
-                                <span class="badge bg-secondary">{{ subcategory_suggestion.name }}</span>
-                            {% endif %}
-                        </div>
-                        <button type="button" class="btn btn-warning btn-sm apply-suggestion" 
-                                data-category-id="{{ category_suggestion.id }}" 
-                                data-subcategory-id="{% if subcategory_suggestion %}{{ subcategory_suggestion.id }}{% endif %}">
-                            <i class="fas fa-magic me-1"></i>Apply
+        <!-- 5-column comparison table -->
+        <div class="container-fluid">
+            <!-- Header Row -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-2 mb-3 fw-bold text-center border-bottom pb-2">
+                <div class="col">Field</div>
+                <div class="col">Current</div>
+                <div class="col">Train AI</div>
+                <div class="col">AI Suggestion</div>
+                <div class="col">Apply</div>
+            </div>
+            
+            <!-- Payoree Row -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-2 mb-2 align-items-center">
+                <div class="col text-center"><strong>Payoree</strong></div>
+                <div class="col text-center">
+                    {% if transaction.payoree %}
+                        <span class="badge bg-info">{{ transaction.payoree.name }}</span>
+                    {% else %}
+                        <span class="text-muted fst-italic">Not assigned</span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if transaction.payoree %}
+                        <button type="button" class="btn btn-outline-primary btn-sm train-ai-payoree"
+                            data-transaction-id="{{ transaction.id }}" 
+                            data-payoree-id="{{ transaction.payoree.id }}"
+                            title="Teach AI from current payoree assignment">
+                            <i class="fas fa-arrow-right me-1"></i>Train
                         </button>
-                    </div>
-                    
-                    <!-- AI Reasoning -->
-                    {% if ai_reasoning %}
-                        <div class="mt-2 p-2 bg-light rounded">
-                            <div class="d-flex align-items-start">
-                                <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
-                                <div>
-                                    <small class="text-muted fw-bold">AI Reasoning:</small><br>
-                                    <small class="text-secondary">{{ ai_reasoning }}</small>
-                                </div>
-                            </div>
-                        </div>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if payoree_suggestion %}
+                        <span class="badge bg-success">{{ payoree_suggestion.name }}</span>
+                    {% else %}
+                        <span class="text-warning">
+                            <i class="fas fa-clock me-1"></i>Coming soon
+                        </span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if payoree_suggestion %}
+                        <button type="button" class="btn btn-outline-success btn-sm apply-payoree-suggestion"
+                            data-payoree-id="{{ payoree_suggestion.id }}"
+                            title="Apply AI payoree suggestion">
+                            <i class="fas fa-arrow-left me-1"></i>Apply
+                        </button>
+                    {% else %}
+                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                            <i class="fas fa-clock me-1"></i>Soon
+                        </button>
                     {% endif %}
                 </div>
             </div>
-        {% endif %}
-        
-        <!-- Confidence Indicator -->
-        <div class="d-flex align-items-center justify-content-between">
-            <small class="text-muted">
-                <i class="fas fa-chart-line me-1"></i>
-                Based on transaction description and learning patterns
-            </small>
-            {% if category_suggestion %}
-                <div class="d-flex align-items-center">
-                    <small class="text-muted me-2">Confidence:</small>
-                    <div class="progress" style="width: 60px; height: 6px;">
-                        <div class="progress-bar bg-warning" role="progressbar" style="width: 85%"></div>
+            
+            <!-- Category Row -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-2 mb-2 align-items-center">
+                <div class="col text-center"><strong>Category</strong></div>
+                <div class="col text-center">
+                    {% if transaction.category %}
+                        <span class="badge bg-primary">{{ transaction.category.name }}</span>
+                    {% else %}
+                        <span class="text-muted fst-italic">Not assigned</span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if transaction.category %}
+                        <button type="button" class="btn btn-outline-primary btn-sm train-ai-category"
+                            data-transaction-id="{{ transaction.id }}" 
+                            data-category-id="{{ transaction.category.id }}"
+                            title="Teach AI from current category assignment">
+                            <i class="fas fa-arrow-right me-1"></i>Train
+                        </button>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if category_suggestion %}
+                        <span class="badge bg-success">{{ category_suggestion.name }}</span>
+                    {% else %}
+                        <span class="text-muted fst-italic">No suggestion</span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if category_suggestion %}
+                        <button type="button" class="btn btn-outline-success btn-sm apply-category-suggestion"
+                            data-category-id="{{ category_suggestion.id }}"
+                            {% if subcategory_suggestion %}data-subcategory-id="{{ subcategory_suggestion.id }}"{% endif %}
+                            title="Apply AI category suggestion">
+                            <i class="fas fa-arrow-left me-1"></i>Apply
+                        </button>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Subcategory Row -->
+            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-2 mb-3 align-items-center">
+                <div class="col text-center"><strong>Subcategory</strong></div>
+                <div class="col text-center">
+                    {% if transaction.subcategory %}
+                        <span class="badge bg-secondary">{{ transaction.subcategory.name }}</span>
+                    {% else %}
+                        <span class="text-muted fst-italic">Not assigned</span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if transaction.subcategory %}
+                        <button type="button" class="btn btn-outline-primary btn-sm train-ai-subcategory"
+                            data-transaction-id="{{ transaction.id }}" 
+                            data-category-id="{{ transaction.category.id }}"
+                            data-subcategory-id="{{ transaction.subcategory.id }}"
+                            title="Teach AI from current subcategory assignment">
+                            <i class="fas fa-arrow-right me-1"></i>Train
+                        </button>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if subcategory_suggestion %}
+                        <span class="badge bg-success">{{ subcategory_suggestion.name }}</span>
+                    {% else %}
+                        <span class="text-muted fst-italic">No suggestion</span>
+                    {% endif %}
+                </div>
+                <div class="col text-center">
+                    {% if subcategory_suggestion %}
+                        <button type="button" class="btn btn-outline-success btn-sm apply-category-suggestion"
+                            data-category-id="{{ category_suggestion.id }}"
+                            data-subcategory-id="{{ subcategory_suggestion.id }}"
+                            title="Apply AI subcategory suggestion">
+                            <i class="fas fa-arrow-left me-1"></i>Apply
+                        </button>
+                            <i class="fas fa-check"></i>
+                        </button>
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        <div class="container bg-light">
+          <div class="row">
+            <div class="col">
+                <!-- AI Reasoning -->
+                {% if ai_reasoning %}
+                <div class="col-md-6 p-3 bg-light rounded">
+                    <div class="d-flex align-items-start">
+                        <i class="fas fa-lightbulb text-warning me-2 mt-1"></i>
+                        <div class="flex-grow-1">
+                            <small class="text-muted fw-bold">AI Reasoning:</small><br>
+                            <small class="text-secondary">{{ ai_reasoning }}</small>
+                        </div>
                     </div>
                 </div>
+                {% endif %}
+            </div>
+            <div class="col">
+            <!-- Confidence Indicator -->
+            {% if category_suggestion and confidence_data %}
+            <div class="d-flex col-md-4 mt-2">
+                <i class="fas fa-chart-line text-info me-2 mt-1"></i>
+                <div class="flex-grow-1">
+                    <small class="text-muted fw-bold">AI Confidence:</small>
+                    <div class="progress mt-1" style="width: 120px; height: 12px;">
+                        <div class="progress-bar {% if confidence_data.overall_confidence >= 80 %}bg-success{% elif confidence_data.overall_confidence >= 60 %}bg-warning{% else %}bg-secondary{% endif %}" 
+                             role="progressbar" 
+                             style="width: {{ confidence_data.overall_confidence }}%"
+                             title="{{ confidence_data.overall_confidence|floatformat:0 }}% confidence">
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-1">
+                        <i class="fas fa-info-circle me-1"></i>
+                        {{ confidence_data.overall_confidence|floatformat:0 }}% 
+                        {% if confidence_data.source == 'learned' %}
+                            ({{ confidence_data.learning_count }} confirmation{{ confidence_data.learning_count|pluralize }})
+                        {% else %}
+                            (rule-based)
+                        {% endif %}
+                    </small>
+                </div>
+            </div>
             {% endif %}
+            </div>
+          </div>
         </div>
     </div>
 </div>
 {% else %}
-    <!-- No AI Suggestions -->
-    <div class="card mb-4 shadow-sm border-secondary">
-        <div class="card-body text-center py-3">
-            <i class="fas fa-robot text-muted mb-2" style="font-size: 1.5rem;"></i>
-            <p class="text-muted mb-0">No AI suggestions available for this transaction</p>
-            <small class="text-muted">The AI will learn from your categorization choices</small>
-        </div>
+<!-- No AI Suggestions -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-light">
+        <h6 class="mb-0 text-muted">
+            <i class="fas fa-robot me-2"></i>AI Suggestions
+        </h6>
     </div>
+    <div class="card-body text-center py-4">
+        <i class="fas fa-search fa-2x text-muted mb-2"></i>
+        <p class="text-muted mb-1">No AI suggestions available for this transaction</p>
+        <small class="text-muted">The AI will learn from your categorization choices</small>
+    </div>
+</div>
 {% endif %}
+
+
+<!-- 
+<button type="button" class="btn btn-primary learn-from-current p-1"
+                    data-transaction-id="{{ transaction.id }}" title="Teach AI from current assignment">
+                    <i class="fas fa-brain me-1"></i>Teach AI  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-caret-right-square-fill" viewBox="0 0 16 16">
+  <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm5.5 10a.5.5 0 0 0 .832.374l4.5-4a.5.5 0 0 0 0-.748l-4.5-4A.5.5 0 0 0 5.5 4z"/>
+</svg>
+</button>
+-->

@@ -5,6 +5,51 @@
   <h2>All Transactions</h2>
   <style>.fs-12 { font-size: 12px; }</style>
 
+  <!-- Filter Controls -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <h6 class="card-title mb-3">
+        <i class="fas fa-filter me-2"></i>Filters
+      </h6>
+      <div class="row g-2">
+        <div class="col-auto">
+          <a href="?no_category=1" class="btn btn-outline-warning btn-sm {% if current_filters.no_category == '1' %}active{% endif %}">
+            <i class="fas fa-tag me-1"></i>No Category
+          </a>
+        </div>
+        <div class="col-auto">
+          <a href="?no_payoree=1" class="btn btn-outline-info btn-sm {% if current_filters.no_payoree == '1' %}active{% endif %}">
+            <i class="fas fa-user me-1"></i>No Payoree
+          </a>
+        </div>
+        <div class="col-auto">
+          <a href="?uncategorized=1" class="btn btn-outline-secondary btn-sm {% if current_filters.uncategorized == '1' %}active{% endif %}">
+            <i class="fas fa-question-circle me-1"></i>Uncategorized (Legacy)
+          </a>
+        </div>
+        <div class="col-auto">
+          <a href="{% url 'transactions:transactions_list' %}" class="btn btn-outline-dark btn-sm">
+            <i class="fas fa-times me-1"></i>Clear Filters
+          </a>
+        </div>
+      </div>
+
+      <!-- Search Form -->
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <form method="get" class="d-flex">
+            <input type="text" name="q" class="form-control form-control-sm me-2" 
+                   placeholder="Search descriptions..." 
+                   value="{{ current_filters.q }}">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="fas fa-search"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="table-responsive">
     {# ListView exposes "transactions" because of context_object_name #}
     {% include "transactions/transactions_list_partial.html" with transactions=transactions %}

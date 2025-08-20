@@ -13,9 +13,9 @@ from transactions.views.transactions_list import TransactionListView
 from transactions.views.dashboard import DashboardView
 from transactions.views.payorees import PayoreesListView
 from transactions.views.categorize import CategorizeTransactionView
-from transactions.views.uncategorized import UncategorizedTransactionsView
+# Legacy uncategorized view import - replaced with filters on transaction list
+# from transactions.views.uncategorized import UncategorizedTransactionsView
 from transactions.views.categories import CategoriesListView
-from transactions.views.resolve import ResolveTransactionView
 from transactions.views.set_field import SetTransactionFieldView
 from transactions.views.apply_current import ApplyCurrentToSimilarView
 from transactions.views.bank_accounts import BankAccountsListView
@@ -92,8 +92,8 @@ urlpatterns = [
 
     # Transactions list (CBV)
     path("list/", TransactionListView.as_view(), name="transactions_list"),
-    path("uncategorized/", UncategorizedTransactionsView.as_view(), name="uncategorized_transactions"),
-    path("resolve/<int:pk>/", ResolveTransactionView.as_view(), name="resolve_transaction"),
+    # Legacy uncategorized view - replaced with filters on transaction list
+    # path("uncategorized/", UncategorizedTransactionsView.as_view(), name="uncategorized_transactions"),
     path("set/<int:transaction_id>/<str:field>/<int:value_id>/", SetTransactionFieldView.as_view(), name="set_transaction_field"),
     path("apply_current/<int:transaction_id>/", ApplyCurrentToSimilarView.as_view(), name="apply_current_to_similar"),
     path("bank-accounts/", BankAccountsListView.as_view(), name="bank_accounts_list"),

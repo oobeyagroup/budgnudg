@@ -63,7 +63,8 @@
                 Transactions
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="{% url 'transactions:uncategorized_transactions' %}">Uncategorized</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:transactions_list' %}?no_category=1">No Category</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:transactions_list' %}?no_payoree=1">No Payoree</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:transactions_list' %}">All</a></li>
               </ul>
             </li>

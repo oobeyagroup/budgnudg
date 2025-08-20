@@ -28,6 +28,9 @@ class TransactionListView(ListView):
             # (since all transactions have a category now)
             qs = qs.filter(Q(payoree__isnull=True) | Q(payoree__name=""))
 
+        if self.request.GET.get("no_category") == "1":
+            qs = qs.filter(Q(category__isnull=True))
+
         if self.request.GET.get("no_payoree") == "1":
             qs = qs.filter(Q(payoree__isnull=True) | Q(payoree__name=""))
 
@@ -51,6 +54,7 @@ class TransactionListView(ListView):
         ctx["current_filters"] = {
             "account": self.request.GET.get("account", ""),
             "uncategorized": self.request.GET.get("uncategorized", ""),
+            "no_category": self.request.GET.get("no_category", ""),
             "no_payoree": self.request.GET.get("no_payoree", ""),
             "q": self.request.GET.get("q", ""),
             "order": self.request.GET.get("order", "-date"),

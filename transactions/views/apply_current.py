@@ -1,5 +1,5 @@
 from django.views import View
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.urls import reverse
 from django.utils.decorators import method_decorator
@@ -7,6 +7,7 @@ from django.contrib import messages
 from transactions.models import Transaction
 from transactions.utils import trace
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class ApplyCurrentToSimilarView(View):
         # Check if transaction has anything to apply
         if not transaction.category and not transaction.payoree:
             messages.warning(request, "No category or payoree to apply to similar transactions.")
-            return HttpResponseRedirect(reverse("transactions:resolve_transaction", args=[transaction_id]))
+            return HttpResponseRedirect(reverse("transactions:categorize_transaction", args=[transaction_id]))
         
         try:
             from rapidfuzz import fuzz
@@ -71,20 +72,39 @@ class ApplyCurrentToSimilarView(View):
                     updated_count += 1
             
             if updated_count > 0:
-                messages.success(
-                    request, 
-                    f"Applied current categorization to {updated_count} similar transaction{'s' if updated_count != 1 else ''}."
-                )
+                success_message = f"Applied current categorization to {updated_count} similar transaction{'s' if updated_count != 1 else ''}."
+                messages.success(request, success_message)
             else:
-                messages.info(request, "No similar transactions found that needed updating.")
+                success_message = "No similar transactions found that needed updating."
+                messages.info(request, success_message)
+            
+            # Return JSON response for AJAX requests
+            if request.headers.get('Content-Type') == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'updated_count': updated_count,
+                    'message': success_message
+                })
                 
         except ImportError:
-            messages.error(request, "Fuzzy matching not available. Cannot find similar transactions.")
+            error_message = "Fuzzy matching not available. Cannot find similar transactions."
+            messages.error(request, error_message)
+            if request.headers.get('Content-Type') == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'error': error_message
+                })
         except Exception as e:
             logger.error(f"Error applying current values to similar transactions: {e}")
-            messages.error(request, "Error occurred while applying values to similar transactions.")
+            error_message = "Error occurred while applying values to similar transactions."
+            messages.error(request, error_message)
+            if request.headers.get('Content-Type') == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'error': error_message
+                })
         
-        return HttpResponseRedirect(reverse("transactions:resolve_transaction", args=[transaction_id]))
+        return HttpResponseRedirect(reverse("transactions:categorize_transaction", args=[transaction_id]))
 
     @method_decorator(trace)
     def get(self, request, transaction_id):

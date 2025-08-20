@@ -25,8 +25,9 @@
         <td class="truncate" title="{{ txn.subcategory.name|default:"None" }}">{{ txn.subcategory.name|default:"None" }}</td>
         <td class="truncate" title="{{ txn.subcategory.parent.name|default:"None" }}">{{ txn.subcategory.parent.name|default:"None" }}</td>
         <td>
-          <a href="{% url 'transactions:categorize_transaction' txn.pk %}">Edit</a> |
-          <a href="{% url 'transactions:resolve_transaction' txn.pk %}">Suggest</a>
+          <a href="{% url 'transactions:categorize_transaction' txn.pk %}" class="btn btn-primary btn-sm">
+            <i class="fas fa-edit me-1"></i>Categorize
+          </a>
         </td>
       </tr>
       {% endfor %}

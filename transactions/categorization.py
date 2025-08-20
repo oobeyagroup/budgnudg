@@ -648,6 +648,75 @@ def suggest_subcategory(description: str, amount: float = 0.0) -> str | None:
     return sub or None
 
 @trace
+def calculate_suggestion_confidence(description: str, suggested_category: str = None, suggested_subcategory: str = None) -> dict:
+    """
+    Calculate confidence scores for AI suggestions based on learned data.
+    Returns a dict with confidence percentages and supporting data.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+    
+    key = extract_merchant_from_description(description)
+    confidence_data = {
+        'overall_confidence': 0.0,
+        'subcategory_confidence': 0.0,
+        'category_confidence': 0.0,
+        'learning_count': 0,
+        'total_possible': 100,  # Maximum confidence possible
+        'source': 'rule-based'  # or 'learned'
+    }
+    
+    logger.debug(f"Calculating confidence for: {description[:50]}... (key: {key})")
+    
+    if not key:
+        # No merchant key extracted, use lower confidence for rule-based categorization
+        confidence_data['overall_confidence'] = 45.0
+        confidence_data['source'] = 'rule-based'
+        logger.debug(f"No merchant key - returning rule-based confidence: {confidence_data['overall_confidence']}%")
+        return confidence_data
+    
+    # Get learned subcategory data
+    subcategory_name, subcat_count = _top_learned_subcat(key)
+    logger.debug(f"Learned data for key '{key}': subcategory='{subcategory_name}', count={subcat_count}")
+    logger.debug(f"Suggested subcategory: '{suggested_subcategory}'")
+    
+    if subcategory_name and suggested_subcategory and subcategory_name == suggested_subcategory:
+        # We have learned data that matches our suggestion
+        confidence_data['learning_count'] = subcat_count
+        confidence_data['source'] = 'learned'
+        
+        # Calculate confidence based on learning count
+        # More confirmations = higher confidence
+        if subcat_count >= 10:
+            confidence_data['subcategory_confidence'] = 95.0
+        elif subcat_count >= 5:
+            confidence_data['subcategory_confidence'] = 85.0
+        elif subcat_count >= 3:
+            confidence_data['subcategory_confidence'] = 75.0
+        elif subcat_count >= 2:
+            confidence_data['subcategory_confidence'] = 65.0
+        else:
+            confidence_data['subcategory_confidence'] = 55.0
+            
+        # Category confidence is slightly lower than subcategory
+        confidence_data['category_confidence'] = max(50.0, confidence_data['subcategory_confidence'] - 10.0)
+        
+        # Overall confidence is average of category and subcategory
+        confidence_data['overall_confidence'] = (confidence_data['category_confidence'] + confidence_data['subcategory_confidence']) / 2
+        
+        logger.debug(f"Learned match found - confidence: {confidence_data['overall_confidence']}% (based on {subcat_count} confirmations)")
+        
+    else:
+        # No learned data matches, use moderate confidence for rule-based
+        confidence_data['overall_confidence'] = 55.0
+        confidence_data['subcategory_confidence'] = 55.0
+        confidence_data['category_confidence'] = 50.0
+        confidence_data['source'] = 'rule-based'
+        logger.debug(f"No learned match - returning rule-based confidence: {confidence_data['overall_confidence']}%")
+    
+    return confidence_data
+
+@trace
 def suggest_payoree(description: str) -> str | None:
     key = extract_merchant_from_description(description)
     if key:
