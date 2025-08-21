@@ -14,38 +14,88 @@ class CategoryImportForm(forms.Form):
     )
 
 class TransactionForm(forms.ModelForm):
-    """Form for editing transactions with hierarchical category support."""
+    """Enhanced form for editing transactions with hierarchical category support."""
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         # Set up category choices (top-level only)
-        self.fields['category'].queryset = Category.objects.filter(parent=None)
+        self.fields['category'].queryset = Category.objects.filter(parent=None).order_by('name')
         self.fields['category'].empty_label = "-- Select Category --"
         
         # Set up subcategory choices based on current category
         if self.instance and self.instance.category:
             self.fields['subcategory'].queryset = Category.objects.filter(
                 parent=self.instance.category
-            )
+            ).order_by('name')
         else:
             self.fields['subcategory'].queryset = Category.objects.none()
         
         self.fields['subcategory'].empty_label = "-- No Subcategory --"
         
-        # Add CSS classes for better styling
-        self.fields['category'].widget.attrs.update({'class': 'form-control'})
-        self.fields['subcategory'].widget.attrs.update({'class': 'form-control'})
-        self.fields['date'].widget.attrs.update({'class': 'form-control'})
-        self.fields['description'].widget.attrs.update({'class': 'form-control'})
-        self.fields['amount'].widget.attrs.update({'class': 'form-control'})
+        # Add CSS classes and attributes for better styling and UX
+        form_control_class = 'form-control'
+        
+        self.fields['date'].widget.attrs.update({
+            'class': form_control_class,
+            'type': 'date'
+        })
+        self.fields['description'].widget.attrs.update({
+            'class': form_control_class,
+            'rows': 3,
+            'placeholder': 'Enter transaction description...'
+        })
+        self.fields['amount'].widget.attrs.update({
+            'class': form_control_class,
+            'step': '0.01',
+            'placeholder': '0.00'
+        })
+        self.fields['bank_account'].widget.attrs.update({
+            'class': form_control_class,
+            'placeholder': 'Bank or account name...'
+        })
+        self.fields['payoree'].widget.attrs.update({
+            'class': form_control_class,
+            'placeholder': 'Who was paid or who paid...'
+        })
+        self.fields['category'].widget.attrs.update({
+            'class': form_control_class,
+            'id': 'id_category'  # For JavaScript handling
+        })
+        self.fields['subcategory'].widget.attrs.update({
+            'class': form_control_class,
+            'id': 'id_subcategory'  # For JavaScript handling
+        })
+        self.fields['memo'].widget.attrs.update({
+            'class': form_control_class,
+            'rows': 2,
+            'placeholder': 'Additional notes...'
+        })
 
     class Meta:
         model = Transaction
-        fields = ['date', 'description', 'amount', 'category', 'subcategory']
+        fields = [
+            'date', 'description', 'amount', 'bank_account', 
+            'payoree', 'category', 'subcategory', 'memo'
+        ]
         widgets = {
             'date': forms.DateInput(attrs={'type': 'date'}),
-            'description': forms.Textarea(attrs={'rows': 2}),
+            'description': forms.Textarea(attrs={'rows': 3}),
+            'amount': forms.NumberInput(attrs={'step': '0.01'}),
+            'memo': forms.Textarea(attrs={'rows': 2}),
+        }
+        labels = {
+            'bank_account': 'Bank Account',
+            'payoree': 'Payee/Payer',
+            'memo': 'Notes/Memo'
+        }
+        help_texts = {
+            'description': 'Brief description of the transaction',
+            'amount': 'Transaction amount (positive for income, negative for expenses)',
+            'payoree': 'The person or business involved in this transaction',
+            'category': 'Main category for this transaction',
+            'subcategory': 'Optional subcategory (depends on main category)',
+            'memo': 'Additional notes or details about this transaction'
         }
 
     def clean(self):

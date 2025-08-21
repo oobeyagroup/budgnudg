@@ -309,3 +309,31 @@ class KeywordRule(models.Model):
                 raise ValidationError({
                     'subcategory': f'Subcategory "{self.subcategory.name}" must belong to category "{self.category.name}"'
                 })
+
+
+class ExcludedSimilarTransaction(models.Model):
+    """Track transactions that have been excluded from similar transaction suggestions."""
+    
+    source_transaction = models.ForeignKey(
+        Transaction, 
+        on_delete=models.CASCADE, 
+        related_name='excluded_similar_source',
+        help_text='The transaction being resolved'
+    )
+    excluded_transaction = models.ForeignKey(
+        Transaction, 
+        on_delete=models.CASCADE, 
+        related_name='excluded_similar_target',
+        help_text='The similar transaction to exclude'
+    )
+    excluded_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['source_transaction', 'excluded_transaction']
+        indexes = [
+            models.Index(fields=['source_transaction'], name='excl_sim_source_idx'),
+            models.Index(fields=['excluded_transaction'], name='excl_sim_target_idx'),
+        ]
+    
+    def __str__(self):
+        return f'Exclude T{self.excluded_transaction.id} from T{self.source_transaction.id} similar list'

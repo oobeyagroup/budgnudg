@@ -718,10 +718,43 @@ def calculate_suggestion_confidence(description: str, suggested_category: str = 
 
 @trace
 def suggest_payoree(description: str) -> str | None:
+    """
+    Suggest a payoree based on description analysis.
+    First checks learned patterns, then falls back to fuzzy matching existing payorees.
+    """
+    from transactions.models import Payoree
+    from rapidfuzz import fuzz
+    
+    # Method 1: Check learned patterns first
     key = extract_merchant_from_description(description)
     if key:
         name, cnt = _top_learned_payoree(key)
         if name:
             return name
-    # fallback: fuzzy from existing payorees or None
-    return None
+    
+    # Method 2: Check for exact payoree name matches in description
+    try:
+        all_payorees = Payoree.objects.all()
+        description_upper = description.upper()
+        
+        # Check for exact name matches
+        for payoree in all_payorees:
+            if payoree.name.upper() in description_upper:
+                return payoree.name
+        
+        # Method 3: Fuzzy matching as fallback
+        best_match = None
+        best_score = 0
+        
+        for payoree in all_payorees:
+            # Use token_set_ratio for partial matching
+            score = fuzz.token_set_ratio(payoree.name.upper(), description_upper)
+            if score > best_score and score >= 70:  # 70% similarity threshold
+                best_score = score
+                best_match = payoree.name
+        
+        return best_match
+        
+    except Exception as e:
+        logger.warning(f"Error in payoree suggestion for '{description}': {e}")
+        return None

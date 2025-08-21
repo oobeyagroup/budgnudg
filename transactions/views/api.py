@@ -6,7 +6,7 @@ from django.views import View
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from transactions.models import Category, Transaction
+from transactions.models import Category, Transaction, ExcludedSimilarTransaction
 from transactions.utils import trace
 import json
 import logging
@@ -119,10 +119,17 @@ class SimilarTransactionsAPIView(View):
                 from rapidfuzz import fuzz
                 from transactions.utils import normalize_description
                 
-                # Get other transactions for comparison
-                other_transactions = Transaction.objects.exclude(id=transaction.id).select_related(
-                    'category', 'subcategory', 'payoree'
+                # Get excluded transaction IDs
+                excluded_ids = set(
+                    ExcludedSimilarTransaction.objects.filter(
+                        source_transaction=transaction
+                    ).values_list('excluded_transaction_id', flat=True)
                 )
+                
+                # Get other transactions for comparison (excluding already excluded ones)
+                other_transactions = Transaction.objects.exclude(
+                    id__in=list(excluded_ids) + [transaction.id]
+                ).select_related('category', 'subcategory', 'payoree')
                 
                 # Find transactions with similar descriptions
                 current_desc_normalized = normalize_description(transaction.description)
@@ -182,4 +189,48 @@ class SimilarTransactionsAPIView(View):
             return JsonResponse({
                 'success': False,
                 'error': 'Failed to get similar transactions'
+            }, status=500)
+
+
+class ExcludeSimilarTransactionAPIView(View):
+    """API endpoint to exclude a transaction from similar transaction suggestions"""
+    
+    @method_decorator(csrf_exempt)
+    @method_decorator(trace)
+    def post(self, request, transaction_id):
+        try:
+            transaction = get_object_or_404(Transaction, id=transaction_id)
+            data = json.loads(request.body)
+            excluded_transaction_id = data.get('excluded_transaction_id')
+            
+            if not excluded_transaction_id:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'excluded_transaction_id is required'
+                }, status=400)
+            
+            excluded_transaction = get_object_or_404(Transaction, id=excluded_transaction_id)
+            
+            # Create or get the exclusion record
+            exclusion, created = ExcludedSimilarTransaction.objects.get_or_create(
+                source_transaction=transaction,
+                excluded_transaction=excluded_transaction
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Transaction {excluded_transaction_id} excluded from similar suggestions',
+                'created': created
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': 'Invalid JSON data'
+            }, status=400)
+        except Exception as e:
+            logger.error(f"Error excluding similar transaction: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to exclude transaction'
             }, status=500)

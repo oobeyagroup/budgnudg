@@ -25,11 +25,12 @@ class ResolveTransactionView(View):
         # Get AI suggestions using our categorization system
         category_suggestion = None
         subcategory_suggestion = None
+        payoree_suggestion = None
         ai_reasoning = None
         
         # Import here to avoid circular import
         try:
-            from transactions.categorization import categorize_transaction_with_reasoning
+            from transactions.categorization import categorize_transaction_with_reasoning, suggest_payoree
             
             # Get AI category and subcategory suggestions with reasoning
             suggested_category_name, suggested_subcategory_name, ai_reasoning = categorize_transaction_with_reasoning(
@@ -47,6 +48,12 @@ class ResolveTransactionView(View):
                     name=suggested_subcategory_name, 
                     parent__isnull=False
                 ).first()
+            
+            # Get payoree suggestion
+            suggested_payoree_name = suggest_payoree(transaction.description)
+            if suggested_payoree_name:
+                payoree_suggestion = Payoree.objects.filter(name=suggested_payoree_name).first()
+                
         except Exception as e:
             logger.warning(f"Error getting AI suggestions for transaction {pk}: {e}")
 
@@ -108,6 +115,7 @@ class ResolveTransactionView(View):
             "top_level_categories": top_level_categories,
             "category_suggestion": category_suggestion,
             "subcategory_suggestion": subcategory_suggestion,
+            "payoree_suggestion": payoree_suggestion,
             "ai_reasoning": ai_reasoning,
             "similar_categories": similar_categories,
             "payoree_matches": [],  # Could add fuzzy matching here if needed

@@ -10,95 +10,86 @@
     </div>
     <div class="card-body">
         <div class="row">
-            <div class="col-md-6">
-                <div class="mb-3">
-                    <label class="form-label text-muted small">Date</label>
-                    <div class="fw-medium">{{ transaction.date|date:"M j, Y" }}</div>
+            <div class="col-md-5">
+                <div class="mb-1">
+                    <label class="form-label mb-0 me-2 text-muted small">Date</label>
+                    <span class=" fs-5">{{ transaction.date|date:"M j, Y" }}</span>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted small">Amount</label>
-                    <div class="fw-medium text-success fs-5">
-                        ${{ transaction.amount|floatformat:2|intcomma }}
-                    </div>
+                <div class="mb-1">
+                    <label class="form-label mb-0 me-2 text-muted small pe-2">Check #</label>
+                    <span class="fw-medium">{{ transaction.check_number  }}</span>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label mb-0 me-2 text-muted small">Bank Account</label>
+                    <span class="fw-medium">{{ transaction.bank_account }}</span>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label mb-0 me-2 text-muted small">Files Source</label>
+                    <div class="fw-medium">{{ transaction.source.source_filename }}</div>
+                </div>
+                <div class="mb-1">
+                    <label class="form-label mb-0 me-2 text-muted small">Sheet Account</label>
+                    <span class="fw-medium">{{ transaction.sheet_account }}</span>
                 </div>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-7">
+                <div class="mb-1">
+                    <label class="form-label mb-0 me-2 text-muted small">Amount</label>
+                    <span class="fw-medium text-success fs-5">
+                        ${{ transaction.amount|floatformat:2|intcomma }}
+                    </span>
+                </div>
                 <div class="mb-3">
                     <label class="form-label text-muted small">Description</label>
-                    <div class="fw-medium text-primary">{{ transaction.description }}</div>
+                    <div class="fs-5 text-primary">{{ transaction.description }}</div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted small">Bank Account</label>
-                    <div class="fw-medium">{{ transaction.bank_account }}</div>
-                </div>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-md-6">
                 <div class="mb-3">
                     <label class="form-label text-muted small">Memo</label>
                     <div class="fw-medium">{{ transaction.memo }}</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted small">Check #</label>
-                    <div class="fw-medium">
-                        {{ transaction.check_number  }}
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="mb-3">
-                    <label class="form-label text-muted small">Files Source</label>
-                    <div class="fw-medium">{{ transaction.source.source_filename }}</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label text-muted small">Sheet Account</label>
-                    <div class="fw-medium">{{ transaction.sheet_account }}</div>
-                </div>
+                </div>                
             </div>
         </div>
-
         <!-- Current Assignments Section -->
-        <div class="row mt-4">
+        <div class="row">
             <div class="col-12">
                 <h6 class="text-muted mb-3">
-                    <i class="fas fa-tags me-2"></i>Current Assignments
+                    <i class="fas fa-tags"></i>Current Assignments
                 </h6>
                 <div class="row">
                     <div class="col-md-4">
-                        <div class="current-assignment-item">
-                            <label class="form-label text-muted small">Payoree</label>
-                            <div class="current-value">
+                        <div class="current-assignment-item p-1">
+                            <label class="form-label  me-2 text-muted small">Payoree</label>
+                            <span class="current-value">
                                 {% if transaction.payoree %}
-                                    <span class="badge bg-info">{{ transaction.payoree.name }}</span>
+                                    <span class="badge text-bg-info">{{ transaction.payoree.name }}</span>
                                 {% else %}
                                     <span class="text-muted fst-italic">Not assigned</span>
                                 {% endif %}
-                            </div>
+                            </span>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="current-assignment-item">
-                            <label class="form-label text-muted small">Category</label>
-                            <div class="current-value">
+                        <div class="current-assignment-item p-1">
+                            <label class="form-label   me-2text-muted small">Category</label>
+                            <span class="current-value">
                                 {% if transaction.category %}
-                                    <span class="badge bg-primary">{{ transaction.category.name }}</span>
+                                    <span class="badge text-bg-info">{{ transaction.category.name }}</span>
                                 {% else %}
-                                    <span class="text-muted fst-italic">Not assigned</span>
+                                    <span class="badge text-bg-warning">Not assigned</span>
                                 {% endif %}
-                            </div>
+                            </span>
                         </div>
                     </div>
                     <div class="col-md-4">
-                        <div class="current-assignment-item">
-                            <label class="form-label text-muted small">Subcategory</label>
-                            <div class="current-value">
+                        <div class="current-assignment-item p-1">
+                            <label class="form-label   me-2text-muted small">Subcategory</label>
+                            <span class="current-value">
                                 {% if transaction.subcategory %}
                                     <span class="badge bg-secondary">{{ transaction.subcategory.name }}</span>
                                 {% else %}
-                                    <span class="text-muted fst-italic">Not assigned</span>
+                                    <span class="badge text-bg-warning">Not assigned</span>
                                 {% endif %}
-                            </div>
+                            </span>
                         </div>
                     </div>
                 </div>

@@ -52,16 +52,7 @@
                                 Review and categorize transaction details
                             </p>
                         </div>
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-warning me-2">Pending Resolution</span>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="history.back()">
-                                <i class="fas fa-arrow-left me-1"></i>Back
-                            </button>
-                        </div>
                     </div>
-
-                    <!-- Progress Indicator -->
-                    <div class="progress-indicator mt-3"></div>
                 </div>
             </div>
         </div>
@@ -564,6 +555,63 @@
             });
         });
 
+        // Remove Similar Transaction button handler
+        document.querySelectorAll('.remove-similar').forEach(button => {
+            button.addEventListener('click', function () {
+                const excludedTransactionId = this.dataset.transactionId;
+                const currentTransactionId = {{ transaction.id }};
+                
+                console.log('Removing similar transaction:', excludedTransactionId);
+                
+                // Disable button and show loading state
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Removing...';
+                
+                // Make API call to exclude this transaction
+                fetch(`/transactions/api/exclude/${currentTransactionId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        excluded_transaction_id: excludedTransactionId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showToast('success', 'Transaction removed from similar suggestions');
+                        // Remove the row from the table
+                        const row = this.closest('tr');
+                        row.style.transition = 'opacity 0.3s ease';
+                        row.style.opacity = '0';
+                        setTimeout(() => {
+                            row.remove();
+                            // Check if table is now empty and update UI accordingly
+                            const tableBody = document.querySelector('.similar-transaction-row')?.closest('tbody');
+                            if (tableBody && tableBody.children.length === 0) {
+                                location.reload(); // Reload to show "no similar transactions" message
+                            }
+                        }, 300);
+                    } else {
+                        showToast('error', data.error || 'Failed to remove transaction');
+                        // Restore button
+                        this.innerHTML = '<i class="fas fa-times me-1"></i>Remove';
+                        this.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing similar transaction:', error);
+                    showToast('error', 'Error removing transaction from suggestions');
+                    // Restore button
+                    this.innerHTML = '<i class="fas fa-times me-1"></i>Remove';
+                    this.disabled = false;
+                });
+            });
+        });
+
         // Apply Current to All Similar button handler
         document.querySelectorAll('.apply-current-to-similar').forEach(button => {
             button.addEventListener('click', function () {
@@ -579,12 +627,6 @@
                 
                 if (!currentCategory && !currentPayoree) {
                     showToast('error', 'Please set a category or payoree first before applying to similar transactions');
-                    return;
-                }
-                
-                // Confirm action
-                const confirmMessage = `Apply current categorization to all ${document.querySelectorAll('.similar-transaction-row').length} similar transactions?`;
-                if (!confirm(confirmMessage)) {
                     return;
                 }
                 

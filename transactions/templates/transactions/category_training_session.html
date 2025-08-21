@@ -37,7 +37,7 @@
                 <div class="col-md-6">
                     <h6>Representative Transaction</h6>
                     <div class="alert alert-light">
-                        <strong>Description:</strong> {{ pattern.representative_description }}<br>
+                        <strong>Description:</strong><strong class="ms-1 text-primary">{{ pattern.representative_description }}</strong><br>
                         <strong>Amount:</strong> ${{ pattern.representative_amount|floatformat:2 }}<br>
                         <strong>Pattern Key:</strong> <code>{{ pattern.pattern_key }}</code>
                     </div>
@@ -150,6 +150,194 @@
                             <div id="newPayoreeInput" class="mt-2" style="display: none;">
                                 <input type="text" name="new_payoree" id="new_payoree" class="form-control" 
                                        placeholder="Enter new payoree name">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Enhanced Training Interface -->
+                <div class="card mt-4 border-info">
+                    <div class="card-header bg-info bg-opacity-10">
+                        <h6 class="mb-0"><i class="fas fa-brain me-2"></i>Enhanced Pattern Training</h6>
+                        <small class="text-muted">Train all categorization methods to maximize learning</small>
+                    </div>
+                    <div class="card-body">
+                        <!-- Pattern Analysis Display -->
+                        <div class="row mb-3">
+                            <!-- Extracted Merchant -->
+                            <div class="col-md-4">
+                                <h6><i class="fas fa-store me-1"></i>Extracted Merchant</h6>
+                                {% if pattern.extracted_merchant %}
+                                    <div class="alert alert-success py-2">
+                                        <code>{{ pattern.extracted_merchant }}</code>
+                                        <br><small class="text-muted">Can train merchant patterns</small>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-secondary py-2">
+                                        <small>No clear merchant pattern</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Potential Keywords -->
+                            <div class="col-md-4">
+                                <h6><i class="fas fa-key me-1"></i>Potential Keywords</h6>
+                                {% if potential_keywords %}
+                                    <div class="alert alert-success py-2">
+                                        {% for keyword in potential_keywords %}
+                                            <span class="badge bg-warning text-dark me-1">{{ keyword }}</span>
+                                        {% endfor %}
+                                        <br><small class="text-muted">Can create keyword rules</small>
+                                    </div>
+                                {% else %}
+                                    <div class="alert alert-secondary py-2">
+                                        <small>No obvious keywords found</small>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Description Pattern -->
+                            <div class="col-md-4">
+                                <h6><i class="fas fa-text-width me-1"></i>Description Pattern</h6>
+                                <div class="alert alert-primary py-2">
+                                    <code>{{ pattern.pattern_key }}</code>
+                                    <br><small class="text-muted">Always available for training</small>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Existing Patterns Display -->
+                        {% if existing_patterns.merchant or existing_patterns.description or existing_patterns.keywords %}
+                        <div class="alert alert-info mb-3">
+                            <h6><i class="fas fa-history me-1"></i>Existing Learned Patterns</h6>
+                            {% if existing_patterns.merchant %}
+                                <div><strong>Merchant:</strong> 
+                                    {% for pattern in existing_patterns.merchant %}
+                                        <span class="badge bg-secondary me-1">{{ pattern.key }} → {{ pattern.subcategory_name }} ({{ pattern.count }}×)</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if existing_patterns.description %}
+                                <div><strong>Description:</strong> 
+                                    {% for pattern in existing_patterns.description %}
+                                        <span class="badge bg-secondary me-1">{{ pattern.key }} → {{ pattern.subcategory_name }} ({{ pattern.count }}×)</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                            {% if existing_patterns.keywords %}
+                                <div><strong>Keywords:</strong> 
+                                    {% for pattern in existing_patterns.keywords %}
+                                        <span class="badge bg-secondary me-1">"{{ pattern.keyword }}" → {{ pattern.category_name }}{% if pattern.subcategory_name %}/{{ pattern.subcategory_name }}{% endif %}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <!-- Training Method Selection -->
+                        <div class="row">
+                            <!-- Method 1: Keyword Rules -->
+                            <div class="col-md-4">
+                                <div class="card border-warning h-100">
+                                    <div class="card-header bg-warning bg-opacity-10">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="create_keyword_rule" 
+                                                   id="create_keyword_rule">
+                                            <label class="form-check-label fw-bold" for="create_keyword_rule">
+                                                <i class="fas fa-star text-warning me-1"></i>Create Keyword Rule
+                                                <span class="badge bg-warning text-dark ms-1">Priority: 1</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="mb-2">
+                                            <label for="keyword_rule_text" class="form-label">Keyword Text</label>
+                                            <input type="text" name="keyword_rule_text" id="keyword_rule_text" 
+                                                   class="form-control" placeholder="Enter keyword or phrase">
+                                            <div class="form-text">Most specific, highest priority matching</div>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label for="keyword_rule_priority" class="form-label">Priority</label>
+                                            <input type="number" name="keyword_rule_priority" id="keyword_rule_priority" 
+                                                   class="form-control" value="100" min="1" max="1000">
+                                        </div>
+                                        {% if potential_keywords %}
+                                        <div class="mb-2">
+                                            <small class="text-muted">Suggested keywords:</small><br>
+                                            {% for keyword in potential_keywords %}
+                                                <button type="button" class="btn btn-outline-warning btn-sm me-1 mb-1 keyword-suggest"
+                                                        data-keyword="{{ keyword }}">{{ keyword }}</button>
+                                            {% endfor %}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Method 2: Merchant Pattern -->
+                            <div class="col-md-4">
+                                <div class="card border-success h-100">
+                                    <div class="card-header bg-success bg-opacity-10">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="train_merchant_pattern" 
+                                                   id="train_merchant_pattern" value="1" {% if pattern.extracted_merchant %}{% endif %}>
+                                            <label class="form-check-label fw-bold" for="train_merchant_pattern">
+                                                <i class="fas fa-store text-success me-1"></i>Train Merchant Pattern
+                                                <span class="badge bg-success ms-1">Priority: 2</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        {% if pattern.extracted_merchant %}
+                                            <div class="alert alert-success py-2">
+                                                <strong>Merchant:</strong> <code>{{ pattern.extracted_merchant }}</code>
+                                                <br><small class="text-muted">Will learn this merchant → selected category/subcategory</small>
+                                            </div>
+                                        {% else %}
+                                            <div class="alert alert-warning py-2">
+                                                <small>No clear merchant pattern detected</small>
+                                            </div>
+                                        {% endif %}
+                                        <div class="form-text">
+                                            Learns from company names, store identifiers
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Method 3: Description Pattern -->
+                            <div class="col-md-4">
+                                <div class="card border-primary h-100">
+                                    <div class="card-header bg-primary bg-opacity-10">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="train_description_pattern" 
+                                                   id="train_description_pattern" value="1" checked>
+                                            <label class="form-check-label fw-bold" for="train_description_pattern">
+                                                <i class="fas fa-text-width text-primary me-1"></i>Train Description Pattern
+                                                <span class="badge bg-primary ms-1">Priority: 3</span>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="alert alert-primary py-2">
+                                            <strong>Pattern:</strong> <code>{{ pattern.pattern_key }}</code>
+                                            <br><small class="text-muted">Will learn this pattern → selected category/subcategory</small>
+                                        </div>
+                                        <div class="form-text">
+                                            Learns from transaction description patterns (default)
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Training Impact Preview -->
+                        <div class="mt-3" id="training-impact" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-chart-line me-1"></i>Training Impact Preview</h6>
+                                <div id="impact-content">
+                                    <!-- Dynamic content populated by JavaScript -->
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -355,6 +543,100 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Enhanced Training Interface JavaScript
+    const keywordRuleCheckbox = document.getElementById('create_keyword_rule');
+    const merchantPatternCheckbox = document.getElementById('train_merchant_pattern');
+    const descriptionPatternCheckbox = document.getElementById('train_description_pattern');
+    const keywordRuleText = document.getElementById('keyword_rule_text');
+    const trainingImpact = document.getElementById('training-impact');
+    const impactContent = document.getElementById('impact-content');
+
+    // Handle keyword suggestion buttons
+    document.querySelectorAll('.keyword-suggest').forEach(button => {
+        button.addEventListener('click', function() {
+            const keyword = this.getAttribute('data-keyword');
+            keywordRuleText.value = keyword;
+            keywordRuleCheckbox.checked = true;
+            updateTrainingImpact();
+        });
+    });
+
+    // Enable/disable keyword text input based on checkbox
+    keywordRuleCheckbox.addEventListener('change', function() {
+        keywordRuleText.disabled = !this.checked;
+        if (!this.checked) {
+            keywordRuleText.value = '';
+        }
+        updateTrainingImpact();
+    });
+
+    // Update training impact when selections change
+    [keywordRuleCheckbox, merchantPatternCheckbox, descriptionPatternCheckbox, 
+     keywordRuleText, categorySelect, subcategorySelect].forEach(element => {
+        element.addEventListener('change', updateTrainingImpact);
+        element.addEventListener('input', updateTrainingImpact);
+    });
+
+    function updateTrainingImpact() {
+        const selectedCategory = categorySelect.options[categorySelect.selectedIndex]?.text || '';
+        const selectedSubcategory = subcategorySelect.options[subcategorySelect.selectedIndex]?.text || '';
+        
+        let methods = [];
+        let impactHtml = '';
+
+        if (keywordRuleCheckbox.checked && keywordRuleText.value.trim()) {
+            methods.push({
+                name: 'Keyword Rule',
+                priority: 1,
+                icon: 'fas fa-star text-warning',
+                description: `"${keywordRuleText.value.trim()}" → ${selectedCategory}${selectedSubcategory ? '/' + selectedSubcategory : ''}`,
+                impact: 'Highest priority - will match first'
+            });
+        }
+
+        if (merchantPatternCheckbox.checked && '{{ pattern.extracted_merchant }}') {
+            methods.push({
+                name: 'Merchant Pattern',
+                priority: 2,
+                icon: 'fas fa-store text-success',
+                description: `"{{ pattern.extracted_merchant }}" → ${selectedCategory}${selectedSubcategory ? '/' + selectedSubcategory : ''}`,
+                impact: 'Will learn merchant-based categorization'
+            });
+        }
+
+        if (descriptionPatternCheckbox.checked) {
+            methods.push({
+                name: 'Description Pattern',
+                priority: 3,
+                icon: 'fas fa-text-width text-primary',
+                description: `"{{ pattern.pattern_key }}" → ${selectedCategory}${selectedSubcategory ? '/' + selectedSubcategory : ''}`,
+                impact: 'Will learn description-based categorization'
+            });
+        }
+
+        if (methods.length > 0 && selectedCategory) {
+            impactHtml = '<strong>The following training will be applied:</strong><ul class="mb-0 mt-2">';
+            methods.forEach(method => {
+                impactHtml += `
+                    <li class="mb-1">
+                        <i class="${method.icon} me-1"></i>
+                        <strong>${method.name}:</strong> ${method.description}
+                        <br><small class="text-muted ms-3">${method.impact}</small>
+                    </li>
+                `;
+            });
+            impactHtml += '</ul>';
+            
+            impactContent.innerHTML = impactHtml;
+            trainingImpact.style.display = 'block';
+        } else {
+            trainingImpact.style.display = 'none';
+        }
+    }
+
+    // Initial impact calculation
+    updateTrainingImpact();
 });
 </script>
 {% endblock %}

@@ -1,0 +1,330 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}{{ page_title|default:"Edit Transaction" }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">Edit Transaction</h1>
+                    <p class="text-muted mb-0">{{ page_description|default:"Update transaction details and categorization" }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'transactions:transactions_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            <!-- Transaction Edit Form -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Transaction Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="transaction-edit-form">
+                                {% csrf_token %}
+                                
+                                <!-- Basic Transaction Info -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.date.id_for_label }}" class="form-label">
+                                                {{ form.date.label }}
+                                                {% if form.date.field.required %}<span class="text-danger">*</span>{% endif %}
+                                            </label>
+                                            {{ form.date }}
+                                            {% if form.date.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.date.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            {% if form.date.help_text %}
+                                                <small class="form-text text-muted">{{ form.date.help_text }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.amount.id_for_label }}" class="form-label">
+                                                {{ form.amount.label }}
+                                                {% if form.amount.field.required %}<span class="text-danger">*</span>{% endif %}
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                {{ form.amount }}
+                                            </div>
+                                            {% if form.amount.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.amount.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            {% if form.amount.help_text %}
+                                                <small class="form-text text-muted">{{ form.amount.help_text }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Description -->
+                                <div class="mb-3">
+                                    <label for="{{ form.description.id_for_label }}" class="form-label">
+                                        {{ form.description.label }}
+                                        {% if form.description.field.required %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    {{ form.description }}
+                                    {% if form.description.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.description.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    {% if form.description.help_text %}
+                                        <small class="form-text text-muted">{{ form.description.help_text }}</small>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Bank Account and Payoree -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.bank_account.id_for_label }}" class="form-label">
+                                                {{ form.bank_account.label }}
+                                                {% if form.bank_account.field.required %}<span class="text-danger">*</span>{% endif %}
+                                            </label>
+                                            {{ form.bank_account }}
+                                            {% if form.bank_account.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.bank_account.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            {% if form.bank_account.help_text %}
+                                                <small class="form-text text-muted">{{ form.bank_account.help_text }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.payoree.id_for_label }}" class="form-label">
+                                                {{ form.payoree.label }}
+                                                {% if form.payoree.field.required %}<span class="text-danger">*</span>{% endif %}
+                                            </label>
+                                            {{ form.payoree }}
+                                            {% if form.payoree.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.payoree.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            {% if form.payoree.help_text %}
+                                                <small class="form-text text-muted">{{ form.payoree.help_text }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Category and Subcategory -->
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.category.id_for_label }}" class="form-label">
+                                                {{ form.category.label }}
+                                                {% if form.category.field.required %}<span class="text-danger">*</span>{% endif %}
+                                            </label>
+                                            {{ form.category }}
+                                            {% if form.category.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.category.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            {% if form.category.help_text %}
+                                                <small class="form-text text-muted">{{ form.category.help_text }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.subcategory.id_for_label }}" class="form-label">
+                                                {{ form.subcategory.label }}
+                                                {% if form.subcategory.field.required %}<span class="text-danger">*</span>{% endif %}
+                                            </label>
+                                            {{ form.subcategory }}
+                                            {% if form.subcategory.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.subcategory.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                            {% if form.subcategory.help_text %}
+                                                <small class="form-text text-muted">{{ form.subcategory.help_text }}</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Memo -->
+                                <div class="mb-3">
+                                    <label for="{{ form.memo.id_for_label }}" class="form-label">
+                                        {{ form.memo.label }}
+                                        {% if form.memo.field.required %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    {{ form.memo }}
+                                    {% if form.memo.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.memo.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    {% if form.memo.help_text %}
+                                        <small class="form-text text-muted">{{ form.memo.help_text }}</small>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Form Errors -->
+                                {% if form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        {{ form.non_field_errors }}
+                                    </div>
+                                {% endif %}
+
+                                <!-- Form Actions -->
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save"></i> Save Changes
+                                        </button>
+                                        <a href="{% url 'transactions:transactions_list' %}" class="btn btn-secondary ms-2">
+                                            Cancel
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted">
+                                            <span class="text-danger">*</span> Required fields
+                                        </small>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction Info Sidebar -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">Transaction Info</h6>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">ID:</dt>
+                                <dd class="col-sm-8">{{ transaction.id }}</dd>
+                                
+                                <dt class="col-sm-4">Source:</dt>
+                                <dd class="col-sm-8">
+                                    <small class="text-muted">{{ transaction.source|default:"Manual Entry" }}</small>
+                                </dd>
+                                
+                                <dt class="col-sm-4">Account Type:</dt>
+                                <dd class="col-sm-8">
+                                    <small class="text-muted">{{ transaction.account_type|default:"N/A" }}</small>
+                                </dd>
+                                
+                                {% if transaction.check_num %}
+                                <dt class="col-sm-4">Check #:</dt>
+                                <dd class="col-sm-8">
+                                    <small class="text-muted">{{ transaction.check_num }}</small>
+                                </dd>
+                                {% endif %}
+                                
+                                {% if transaction.categorization_error %}
+                                <dt class="col-sm-4">Error:</dt>
+                                <dd class="col-sm-8">
+                                    <small class="text-danger">{{ transaction.get_error_description }}</small>
+                                </dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">Quick Actions</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'transactions:categorize_transaction' transaction.pk %}" 
+                                   class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-tags"></i> Categorize
+                                </a>
+                                <a href="{% url 'transactions:apply_current_to_similar' transaction.pk %}" 
+                                   class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-copy"></i> Apply to Similar
+                                </a>
+                                {% if transaction.category and transaction.payoree %}
+                                <a href="{% url 'transactions:learn_from_current' transaction.pk %}" 
+                                   class="btn btn-outline-success btn-sm">
+                                    <i class="fas fa-brain"></i> Learn Pattern
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle dynamic subcategory loading
+    const categoryField = document.getElementById('id_category');
+    const subcategoryField = document.getElementById('id_subcategory');
+    
+    if (categoryField && subcategoryField) {
+        categoryField.addEventListener('change', function() {
+            const categoryId = this.value;
+            
+            // Clear subcategory options
+            subcategoryField.innerHTML = '<option value="">-- No Subcategory --</option>';
+            
+            if (categoryId) {
+                // Fetch subcategories for selected category
+                fetch(`{% url 'transactions:api_subcategories' category_id=0 %}`.replace('0', categoryId))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.subcategories) {
+                            data.subcategories.forEach(function(subcategory) {
+                                const option = document.createElement('option');
+                                option.value = subcategory.id;
+                                option.textContent = subcategory.name;
+                                subcategoryField.appendChild(option);
+                            });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching subcategories:', error);
+                    });
+            }
+        });
+    }
+    
+    // Form validation feedback
+    const form = document.getElementById('transaction-edit-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

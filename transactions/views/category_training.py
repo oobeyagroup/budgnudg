@@ -6,7 +6,7 @@ from django.utils.decorators import method_decorator
 from django.http import JsonResponse
 from django.db import transaction as db_transaction
 from django.utils import timezone
-from transactions.models import Transaction, Category, Payoree, LearnedSubcat, LearnedPayoree
+from transactions.models import Transaction, Category, Payoree, LearnedSubcat, LearnedPayoree, KeywordRule
 from transactions.forms import TransactionImportForm
 from transactions.utils import trace, read_uploaded_file
 from transactions.categorization import categorize_transaction, suggest_subcategory, categorize_transaction_with_reasoning
@@ -76,7 +76,7 @@ class CategoryTrainingUploadView(View):
             request.session['training_profile_id'] = profile_id
             request.session['training_filename'] = file.name
             
-            return redirect('category_training_analyze')
+            return redirect('transactions:category_training_analyze')
         
         return render(request, self.template_name, {
             'form': form,
@@ -97,14 +97,14 @@ class CategoryTrainingAnalyzeView(View):
             filename = request.session['training_filename']
         except KeyError:
             messages.error(request, "No training file found. Please upload a CSV first.")
-            return redirect('category_training_upload')
+            return redirect('transactions:category_training_upload')
         
         from ingest.models import MappingProfile
         try:
             profile = MappingProfile.objects.get(id=profile_id)
         except MappingProfile.DoesNotExist:
             messages.error(request, "Invalid mapping profile.")
-            return redirect('category_training_upload')
+            return redirect('transactions:category_training_upload')
         
         # Parse CSV and extract unique patterns
         parsed_file = StringIO(file_content)
@@ -244,13 +244,29 @@ class CategoryTrainingSessionView(View):
             current_index = request.session.get('current_pattern_index', 0)
         except KeyError:
             messages.error(request, "No training session found. Please upload a CSV first.")
-            return redirect('category_training_upload')
+            return redirect('transactions:category_training_upload')
         
         if current_index >= len(patterns):
             # Training complete
-            return redirect('category_training_complete')
+            return redirect('transactions:category_training_complete')
         
         current_pattern = patterns[current_index]
+        
+        # Enhanced pattern analysis
+        description = current_pattern['representative_description']
+        
+        # Extract merchant for training insight
+        from transactions.categorization import extract_merchant_from_description
+        extracted_merchant = extract_merchant_from_description(description)
+        current_pattern['extracted_merchant'] = extracted_merchant
+        
+        # Identify potential keywords for rule creation
+        potential_keywords = self.identify_potential_keywords(description)
+        current_pattern['potential_keywords'] = potential_keywords
+        
+        # Check existing learned patterns to show user what already exists
+        current_pattern['existing_merchant_patterns'] = self.get_existing_patterns(extracted_merchant) if extracted_merchant else {}
+        current_pattern['existing_description_patterns'] = self.get_existing_patterns(description)
         
         # Get available categories for selection
         top_level_categories = Category.objects.filter(parent=None).prefetch_related('subcategories')
@@ -259,14 +275,89 @@ class CategoryTrainingSessionView(View):
         # Calculate progress
         progress_percentage = ((current_index + 1) / len(patterns)) * 100
         
+        # Prepare enhanced training interface data
+        potential_keywords = current_pattern.get('potential_keywords', [])
+        existing_patterns = {
+            'merchant': current_pattern.get('existing_merchant_patterns', {}).get('merchant', []),
+            'description': current_pattern.get('existing_description_patterns', {}).get('description', []),
+            'keywords': current_pattern.get('existing_description_patterns', {}).get('keywords', [])
+        }
+        
         return render(request, self.template_name, {
             'pattern': current_pattern,
             'current_index': current_index + 1,
             'total_patterns': len(patterns),
             'progress_percentage': progress_percentage,
             'top_level_categories': top_level_categories,
-            'payorees': payorees
+            'payorees': payorees,
+            'potential_keywords': potential_keywords,
+            'existing_patterns': existing_patterns
         })
+
+    def identify_potential_keywords(self, description):
+        """Identify potential keywords that could be used for rules."""
+        import re
+        keywords = []
+        
+        # Common patterns that make good keywords
+        patterns = [
+            r'\b(DIRECT DEP|DIRECTDEP|DIRECT DEPOSIT)\b',
+            r'\b(ATM|WITHDRAWAL|DEPOSIT)\b', 
+            r'\b([A-Z\s]+CO|[A-Z\s]+CORP|[A-Z\s]+INC|[A-Z\s]+LLC)\b',
+            r'\b(BILL|PAYMENT|PYMT|PMT)\b',
+            r'\b(TRANSFER|XFER)\b',
+            r'\b(REFUND|RETURN)\b',
+            r'\b(FEE|CHARGE)\b',
+            r'\b(CHECK|CHK)\b',
+            r'\b([A-Z]{3,}\s+[A-Z]{3,})\b',  # Multi-word caps like "MOBILE DEPOSIT"
+        ]
+        
+        description_upper = description.upper()
+        for pattern in patterns:
+            matches = re.findall(pattern, description_upper)
+            for match in matches:
+                if isinstance(match, tuple):
+                    # Handle groups in regex
+                    for group in match:
+                        if group and len(group.strip()) >= 3:
+                            keywords.append(group.strip())
+                else:
+                    if len(match.strip()) >= 3:
+                        keywords.append(match.strip())
+        
+        # Remove duplicates and filter out overly generic terms
+        filtered_keywords = []
+        generic_terms = {'THE', 'AND', 'FOR', 'WITH', 'FROM', 'TO'}
+        
+        for keyword in set(keywords):
+            if keyword not in generic_terms and len(keyword) >= 3:
+                filtered_keywords.append(keyword)
+        
+        return sorted(filtered_keywords)[:5]  # Limit to top 5 suggestions
+
+    def get_existing_patterns(self, key):
+        """Get existing learned patterns for this key."""
+        from transactions.models import LearnedSubcat, LearnedPayoree
+        
+        if not key:
+            return {'subcategories': [], 'payorees': []}
+        
+        try:
+            subcats = LearnedSubcat.objects.filter(key=key).select_related('subcategory').values(
+                'subcategory__name', 'count', 'last_seen'
+            )[:5]  # Limit to top 5
+            
+            payorees = LearnedPayoree.objects.filter(key=key).select_related('payoree').values(
+                'payoree__name', 'count', 'last_seen'
+            )[:5]  # Limit to top 5
+            
+            return {
+                'subcategories': list(subcats),
+                'payorees': list(payorees)
+            }
+        except Exception as e:
+            logger.warning(f"Error getting existing patterns for key '{key}': {e}")
+            return {'subcategories': [], 'payorees': []}
 
     @method_decorator(trace)
     def post(self, request):
@@ -275,10 +366,10 @@ class CategoryTrainingSessionView(View):
             current_index = request.session.get('current_pattern_index', 0)
         except KeyError:
             messages.error(request, "Training session expired.")
-            return redirect('category_training_upload')
+            return redirect('transactions:category_training_upload')
         
         if current_index >= len(patterns):
-            return redirect('category_training_complete')
+            return redirect('transactions:category_training_complete')
         
         # Process user's categorization choices
         category_id = request.POST.get('category')
@@ -288,6 +379,13 @@ class CategoryTrainingSessionView(View):
         new_subcategory_name = request.POST.get('new_subcategory', '').strip()
         new_payoree_name = request.POST.get('new_payoree', '').strip()
         action = request.POST.get('action', 'next')
+        
+        # Enhanced training options
+        keyword_rule_text = request.POST.get('keyword_rule_text', '').strip()
+        keyword_rule_priority = int(request.POST.get('keyword_rule_priority', 100))
+        create_keyword_rule = request.POST.get('create_keyword_rule') in ('on', '1')
+        train_merchant_pattern = request.POST.get('train_merchant_pattern') == 'on'
+        train_description_pattern = request.POST.get('train_description_pattern') == 'on'
         
         # Update current pattern with user's choices
         current_pattern = patterns[current_index]
@@ -360,7 +458,120 @@ class CategoryTrainingSessionView(View):
             except Payoree.DoesNotExist:
                 pass
         
-        # Save learning data if user provided corrections
+        # Enhanced training features - execute if user wants to save
+        if action == 'save_and_next':
+            # Get the selected/created category and subcategory objects for training
+            selected_category = None
+            selected_subcategory = None
+            selected_payoree = None
+            
+            # Get category object
+            if category_id == '__new__' and new_category_name:
+                selected_category = Category.objects.get(name=new_category_name)
+            elif category_id:
+                try:
+                    selected_category = Category.objects.get(id=category_id)
+                except Category.DoesNotExist:
+                    pass
+            
+            # Get subcategory object
+            if subcategory_id == '__new__' and new_subcategory_name and selected_category:
+                selected_subcategory = Category.objects.get(name=new_subcategory_name, parent=selected_category)
+            elif subcategory_id:
+                try:
+                    selected_subcategory = Category.objects.get(id=subcategory_id)
+                except Category.DoesNotExist:
+                    pass
+                    
+            # Get payoree object
+            if payoree_id == '__new__' and new_payoree_name:
+                selected_payoree = Payoree.objects.get(name=new_payoree_name)
+            elif payoree_id == '__suggested__' and current_pattern.get('extracted_merchant'):
+                selected_payoree, _ = Payoree.objects.get_or_create(name=current_pattern['extracted_merchant'])
+            elif payoree_id:
+                try:
+                    selected_payoree = Payoree.objects.get(id=payoree_id)
+                except Payoree.DoesNotExist:
+                    pass
+            
+            # Method 1: Create Keyword Rule (Highest Priority)
+            if create_keyword_rule and keyword_rule_text and selected_category:
+                try:
+                    rule, created = KeywordRule.objects.get_or_create(
+                        keyword=keyword_rule_text,
+                        category=selected_category,
+                        subcategory=selected_subcategory,
+                        defaults={
+                            'priority': keyword_rule_priority,
+                            'is_active': True,
+                            'created_by_user': True
+                        }
+                    )
+                    if created:
+                        messages.success(request, f'✅ Created keyword rule: "{keyword_rule_text}" → {selected_category.name}' + 
+                                       (f'/{selected_subcategory.name}' if selected_subcategory else ''))
+                    else:
+                        messages.info(request, f'ℹ️ Keyword rule already exists: "{keyword_rule_text}"')
+                except Exception as e:
+                    messages.error(request, f'❌ Error creating keyword rule: {e}')
+            
+            # Method 2: Train Merchant Pattern
+            if train_merchant_pattern and current_pattern.get('extracted_merchant') and selected_subcategory:
+                try:
+                    merchant_key = current_pattern['extracted_merchant']
+                    learned, created = LearnedSubcat.objects.get_or_create(
+                        key=merchant_key,
+                        subcategory=selected_subcategory,
+                        defaults={'count': 1}
+                    )
+                    if not created:
+                        learned.count += 1
+                        learned.save()
+                    
+                    # Also train payoree if provided
+                    if selected_payoree:
+                        learned_payoree, created = LearnedPayoree.objects.get_or_create(
+                            key=merchant_key,
+                            payoree=selected_payoree,
+                            defaults={'count': 1}
+                        )
+                        if not created:
+                            learned_payoree.count += 1
+                            learned_payoree.save()
+                    
+                    messages.success(request, f'🏪 Trained merchant pattern: "{merchant_key}" → {selected_subcategory.name}')
+                except Exception as e:
+                    messages.error(request, f'❌ Error training merchant pattern: {e}')
+            
+            # Method 3: Train Description Pattern  
+            if train_description_pattern and selected_subcategory:
+                try:
+                    description_key = current_pattern['pattern_key']
+                    learned, created = LearnedSubcat.objects.get_or_create(
+                        key=description_key,
+                        subcategory=selected_subcategory,
+                        defaults={'count': 1}
+                    )
+                    if not created:
+                        learned.count += 1
+                        learned.save()
+                        
+                    # Also train payoree if provided
+                    if selected_payoree:
+                        learned_payoree, created = LearnedPayoree.objects.get_or_create(
+                            key=description_key,
+                            payoree=selected_payoree,
+                            defaults={'count': 1}
+                        )
+                        if not created:
+                            learned_payoree.count += 1
+                            learned_payoree.save()
+                    
+                    messages.success(request, f'📝 Trained description pattern: "{description_key}" → {selected_subcategory.name}')
+                except Exception as e:
+                    messages.error(request, f'❌ Error training description pattern: {e}')
+        
+        # Save learning data if user provided corrections (legacy method - still needed for backward compatibility)
         if action == 'save_and_next' and (category_id or subcategory_id or payoree_id):
             self.save_learning_data(current_pattern)
         
@@ -376,7 +587,7 @@ class CategoryTrainingSessionView(View):
         patterns[current_index] = current_pattern
         request.session['training_patterns'] = patterns
         
-        return redirect('category_training_session')
+        return redirect('transactions:category_training_session')
 
     def save_learning_data(self, pattern):
         """Save the user's categorization as learning data."""
@@ -429,7 +640,7 @@ class CategoryTrainingCompleteView(View):
             filename = request.session.get('training_filename', 'Unknown')
         except KeyError:
             messages.error(request, "No training session found.")
-            return redirect('category_training_upload')
+            return redirect('transactions:category_training_upload')
         
         # Calculate statistics
         total_patterns = len(patterns)

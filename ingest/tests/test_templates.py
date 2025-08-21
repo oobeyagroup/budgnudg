@@ -247,7 +247,7 @@ class TestTransactionTemplates(TestCase):
         """Categorize template should render transaction categorization form"""
         # Try to access categorize view
         try:
-            url = reverse('transactions:categorize_transaction', kwargs={'transaction_id': self.transaction.id})
+            url = reverse('transactions:categorize_transaction', kwargs={'pk': self.transaction.id})
             response = self.client.get(url)
             
             if response.status_code == 200:

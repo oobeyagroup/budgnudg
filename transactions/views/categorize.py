@@ -3,7 +3,7 @@ from django.views.generic import TemplateView
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.utils.decorators import method_decorator
-from transactions.models import Transaction, Category, Payoree
+from transactions.models import Transaction, Category, Payoree, ExcludedSimilarTransaction
 from transactions.forms import TransactionForm
 from transactions.utils import trace
 import logging
@@ -29,11 +29,12 @@ class CategorizeTransactionView(TemplateView):
         # Get AI suggestions using our categorization system
         category_suggestion = None
         subcategory_suggestion = None
+        payoree_suggestion = None
         ai_reasoning = None
         confidence_data = {'overall_confidence': 0.0, 'source': 'none', 'learning_count': 0}
         
         # Import here to avoid circular import
-        from transactions.categorization import categorize_transaction_with_reasoning, suggest_subcategory, calculate_suggestion_confidence
+        from transactions.categorization import categorize_transaction_with_reasoning, suggest_subcategory, calculate_suggestion_confidence, suggest_payoree
         
         try:
             # Get AI category and subcategory suggestions with reasoning
@@ -60,6 +61,11 @@ class CategorizeTransactionView(TemplateView):
                 suggested_subcategory_name
             )
             
+            # Get payoree suggestion
+            suggested_payoree = suggest_payoree(transaction.description)
+            if suggested_payoree:
+                payoree_suggestion = Payoree.objects.filter(name=suggested_payoree).first()
+            
         except Exception as e:
             logger.warning(f"Error getting AI suggestions for transaction {pk}: {e}")
             confidence_data = {'overall_confidence': 0.0, 'source': 'error', 'learning_count': 0}
@@ -72,8 +78,17 @@ class CategorizeTransactionView(TemplateView):
             from rapidfuzz import fuzz
             from transactions.utils import normalize_description
             
-            # Get other transactions for comparison
-            other_transactions = Transaction.objects.exclude(id=transaction.id).select_related('category', 'subcategory', 'payoree')
+            # Get excluded transaction IDs
+            excluded_ids = set(
+                ExcludedSimilarTransaction.objects.filter(
+                    source_transaction=transaction
+                ).values_list('excluded_transaction_id', flat=True)
+            )
+            
+            # Get other transactions for comparison (excluding already excluded ones)
+            other_transactions = Transaction.objects.exclude(
+                id__in=list(excluded_ids) + [transaction.id]
+            ).select_related('category', 'subcategory', 'payoree')
             
             # Find transactions with similar descriptions
             current_desc_normalized = normalize_description(transaction.description)
@@ -122,6 +137,7 @@ class CategorizeTransactionView(TemplateView):
             "top_level_categories": top_level_categories,
             "category_suggestion": category_suggestion,
             "subcategory_suggestion": subcategory_suggestion,
+            "payoree_suggestion": payoree_suggestion,
             "ai_reasoning": ai_reasoning,
             "confidence_data": confidence_data,
             "similar_categories": similar_categories,
