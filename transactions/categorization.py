@@ -302,10 +302,10 @@ def extract_merchant_from_description(description: str) -> str:
     return original_cleaned
 
 @trace
-def check_keyword_rules(description: str) -> tuple[str, str, str] | None:
+def check_keyword_rules(description: str) -> tuple[str, str, str, str | None] | None:
     """
     Check if any user-defined keyword rules match this transaction.
-    Returns (category, subcategory, reasoning) or None if no match.
+    Returns (category, subcategory, reasoning, payoree) or None if no match.
     """
     from .models import KeywordRule
     
@@ -315,8 +315,9 @@ def check_keyword_rules(description: str) -> tuple[str, str, str] | None:
             if rule.keyword.upper() in description.upper():
                 category_name = rule.category.name
                 subcategory_name = rule.subcategory.name if rule.subcategory else ""
+                payoree_name = rule.payoree.name if rule.payoree else None
                 reasoning = f'Keyword "{rule.keyword}" matched (user-defined rule with priority {rule.priority})'
-                return (category_name, subcategory_name, reasoning)
+                return (category_name, subcategory_name, reasoning, payoree_name)
     except Exception as e:
         logger.warning(f"Error checking keyword rules: {e}")
     
@@ -336,7 +337,8 @@ def categorize_transaction_with_reasoning(description: str, amount: float = 0.0)
     # PRIORITY 1: Check keyword rules first (highest priority)
     keyword_result = check_keyword_rules(description)
     if keyword_result:
-        return keyword_result
+        # Extract only category, subcategory, reasoning (ignore payoree for this function)
+        return keyword_result[:3]
     
     merchant = extract_merchant_from_description(description)
     logger.debug(f"Extracted merchant: {merchant} from description: {description}")
@@ -720,19 +722,24 @@ def calculate_suggestion_confidence(description: str, suggested_category: str = 
 def suggest_payoree(description: str) -> str | None:
     """
     Suggest a payoree based on description analysis.
-    First checks learned patterns, then falls back to fuzzy matching existing payorees.
+    First checks keyword rules, then learned patterns, then falls back to fuzzy matching existing payorees.
     """
     from transactions.models import Payoree
     from rapidfuzz import fuzz
     
-    # Method 1: Check learned patterns first
+    # PRIORITY 1: Check keyword rules first (highest priority)
+    keyword_result = check_keyword_rules(description)
+    if keyword_result and keyword_result[3]:  # keyword_result[3] is the payoree
+        return keyword_result[3]
+    
+    # PRIORITY 2: Check learned patterns
     key = extract_merchant_from_description(description)
     if key:
         name, cnt = _top_learned_payoree(key)
         if name:
             return name
     
-    # Method 2: Check for exact payoree name matches in description
+    # PRIORITY 3: Check for exact payoree name matches in description
     try:
         all_payorees = Payoree.objects.all()
         description_upper = description.upper()
@@ -742,7 +749,7 @@ def suggest_payoree(description: str) -> str | None:
             if payoree.name.upper() in description_upper:
                 return payoree.name
         
-        # Method 3: Fuzzy matching as fallback
+        # PRIORITY 4: Fuzzy matching as fallback
         best_match = None
         best_score = 0
         

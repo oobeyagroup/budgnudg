@@ -115,8 +115,15 @@ class LearnedPayoreeAdmin(admin.ModelAdmin):
 
 @admin.register(KeywordRule)
 class KeywordRuleAdmin(admin.ModelAdmin):
-    list_display = ['keyword', 'category', 'subcategory', 'priority', 'is_active', 'created_by_user', 'created_at']
-    list_filter = ['category', 'is_active', 'created_by_user', 'priority']
-    search_fields = ['keyword', 'category__name', 'subcategory__name']
+    list_display = ['keyword', 'payoree', 'category', 'subcategory', 'priority', 'is_active', 'created_by_user', 'created_at']
+    list_filter = ['category', 'payoree', 'is_active', 'created_by_user', 'priority']
+    search_fields = ['keyword', 'category__name', 'subcategory__name', 'payoree__name']
     ordering = ['-priority', 'keyword']
     list_editable = ['priority', 'is_active']
+    
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        # Add help text for payoree field
+        if 'payoree' in form.base_fields:
+            form.base_fields['payoree'].help_text = 'Optional: Automatically assign this payoree when keyword matches'
+        return form

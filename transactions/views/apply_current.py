@@ -33,13 +33,23 @@ class ApplyCurrentToSimilarView(View):
         try:
             from rapidfuzz import fuzz
             from transactions.utils import normalize_description
+            from transactions.models import ExcludedSimilarTransaction
             
             # Find similar transactions
             other_transactions = Transaction.objects.exclude(id=transaction.id)
             current_desc_normalized = normalize_description(transaction.description)
             
+            # Get excluded transaction IDs for this source transaction
+            excluded_ids = ExcludedSimilarTransaction.objects.filter(
+                source_transaction=transaction
+            ).values_list('excluded_transaction_id', flat=True)
+            
             similar_transactions = []
             for t in other_transactions:
+                # Skip if this transaction has been excluded
+                if t.id in excluded_ids:
+                    continue
+                    
                 similarity = fuzz.token_set_ratio(
                     current_desc_normalized,
                     normalize_description(t.description)
@@ -52,18 +62,18 @@ class ApplyCurrentToSimilarView(View):
             for t in similar_transactions:
                 modified = False
                 
-                # Apply category if transaction doesn't have one
-                if transaction.category and not t.category:
+                # Apply category (override existing value)
+                if transaction.category and t.category != transaction.category:
                     t.category = transaction.category
                     modified = True
                 
-                # Apply subcategory if transaction doesn't have one
-                if transaction.subcategory and not t.subcategory:
+                # Apply subcategory (override existing value)
+                if transaction.subcategory and t.subcategory != transaction.subcategory:
                     t.subcategory = transaction.subcategory
                     modified = True
                 
-                # Apply payoree if transaction doesn't have one
-                if transaction.payoree and not t.payoree:
+                # Apply payoree (override existing value)
+                if transaction.payoree and t.payoree != transaction.payoree:
                     t.payoree = transaction.payoree
                     modified = True
                 
@@ -72,7 +82,7 @@ class ApplyCurrentToSimilarView(View):
                     updated_count += 1
             
             if updated_count > 0:
-                success_message = f"Applied current categorization to {updated_count} similar transaction{'s' if updated_count != 1 else ''}."
+                success_message = f"Updated categorization for {updated_count} similar transaction{'s' if updated_count != 1 else ''}."
                 messages.success(request, success_message)
             else:
                 success_message = "No similar transactions found that needed updating."

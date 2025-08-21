@@ -272,12 +272,15 @@ class LearnedPayoree(models.Model):
 
 class KeywordRule(models.Model):
     """
-    User-defined keyword rules for categorization.
-    Allows users to specify that certain words/phrases strongly influence category assignment.
+    User-defined keyword rules for categorization and payoree assignment.
+    Allows users to specify that certain words/phrases strongly influence category and payoree assignment.
     """
     keyword = models.CharField(max_length=100, help_text='Word or phrase that influences categorization')
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name='keyword_rules')
     subcategory = models.ForeignKey(Category, blank=True, null=True, on_delete=models.CASCADE, related_name='keyword_subcategory_rules')
+    payoree = models.ForeignKey(Payoree, blank=True, null=True, on_delete=models.CASCADE, 
+                               related_name='keyword_rules', 
+                               help_text='Optional: Assign specific payoree for this keyword')
     priority = models.IntegerField(default=100, help_text='Higher numbers = higher priority (1-1000)')
     is_active = models.BooleanField(default=True)
     created_by_user = models.BooleanField(default=True, help_text='True if created by user, False if system default')
@@ -292,13 +295,19 @@ class KeywordRule(models.Model):
             models.Index(fields=['is_active'], name='kw_rule_active_idx'),
         ]
         constraints = [
-            models.UniqueConstraint(fields=['keyword', 'category', 'subcategory'], name='unique_keyword_category'),
+            models.UniqueConstraint(fields=['keyword', 'category', 'subcategory', 'payoree'], name='unique_keyword_rule'),
         ]
 
     def __str__(self):
-        if self.subcategory:
-            return f'"{self.keyword}" → {self.category.name}/{self.subcategory.name}'
-        return f'"{self.keyword}" → {self.category.name}'
+        parts = [f'"{self.keyword}" →']
+        if self.payoree:
+            parts.append(f'Payoree: {self.payoree.name}')
+        if self.category:
+            if self.subcategory:
+                parts.append(f'Category: {self.category.name}/{self.subcategory.name}')
+            else:
+                parts.append(f'Category: {self.category.name}')
+        return ' '.join(parts)
 
     def clean(self):
         """Validate that subcategory belongs to the specified category."""
