@@ -11,12 +11,15 @@
             <label for="payoree" class="form-label">Select Payoree</label>
             <select name="payoree" id="payoree" class="form-select">
                 <option value="">-- Select Payoree --</option>
+                <option value="__new__">+ Add New Payoree</option>
+                <option disabled>────────────────────</option>
                 {% for payoree in payorees %}
                     <option value="{{ payoree.id }}" 
                             {% if transaction.payoree and transaction.payoree.id == payoree.id %}selected{% endif %}>
                         {{ payoree.name }}
                     </option>
                 {% endfor %}
+                <option disabled>────────────────────</option>
                 <option value="__new__">+ Add New Payoree</option>
             </select>
         </div>

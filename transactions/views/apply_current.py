@@ -25,9 +25,54 @@ class ApplyCurrentToSimilarView(View):
     def post(self, request, transaction_id):
         transaction = get_object_or_404(Transaction, pk=transaction_id)
         
-        # Check if transaction has anything to apply
-        if not transaction.category and not transaction.payoree:
-            messages.warning(request, "No category or payoree to apply to similar transactions.")
+        # Parse JSON data from AJAX request
+        category_id = None
+        subcategory_id = None
+        payoree_id = None
+        
+        if request.content_type == 'application/json':
+            try:
+                import json
+                data = json.loads(request.body)
+                category_id = data.get('category_id')
+                subcategory_id = data.get('subcategory_id')
+                payoree_id = data.get('payoree_id')
+                logger.info(f"Parsed JSON data: category_id={category_id}, subcategory_id={subcategory_id}, payoree_id={payoree_id}")
+            except json.JSONDecodeError:
+                logger.error("Invalid JSON in request body")
+        else:
+            logger.info(f"Request content type: {request.content_type}")
+        
+        # Convert empty strings to None for proper comparison
+        category_id = category_id if category_id else None
+        subcategory_id = subcategory_id if subcategory_id else None
+        payoree_id = payoree_id if payoree_id else None
+        
+        logger.info(f"Final IDs: category_id={category_id}, subcategory_id={subcategory_id}, payoree_id={payoree_id}")
+        
+        # Get the actual objects for the values to apply
+        from transactions.models import Category, Payoree
+        
+        apply_category = None
+        apply_subcategory = None
+        apply_payoree = None
+        
+        if category_id:
+            apply_category = Category.objects.filter(id=category_id).first()
+            logger.info(f"Found category: {apply_category}")
+        if subcategory_id:
+            apply_subcategory = Category.objects.filter(id=subcategory_id).first()
+            logger.info(f"Found subcategory: {apply_subcategory}")
+        if payoree_id:
+            apply_payoree = Payoree.objects.filter(id=payoree_id).first()
+            logger.info(f"Found payoree: {apply_payoree}")
+        
+        # Check if there's anything to apply
+        if not apply_category and not apply_payoree:
+            error_message = "No category or payoree to apply to similar transactions."
+            if request.headers.get('Content-Type') == 'application/json' or request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({'success': False, 'error': error_message})
+            messages.warning(request, error_message)
             return HttpResponseRedirect(reverse("transactions:categorize_transaction", args=[transaction_id]))
         
         try:
@@ -57,27 +102,38 @@ class ApplyCurrentToSimilarView(View):
                 if similarity >= 75:  # Lowered threshold for bulk operations
                     similar_transactions.append(t)
             
-            # Apply current transaction's values to similar ones
+            logger.info(f"Found {len(similar_transactions)} similar transactions")
+            
+            # Apply form values to similar transactions
             updated_count = 0
             for t in similar_transactions:
+                logger.info(f"Processing transaction {t.id}: current={t.category}/{t.subcategory}/{t.payoree}")
                 modified = False
                 
-                # Apply category (override existing value)
-                if transaction.category and t.category != transaction.category:
-                    t.category = transaction.category
+                # Apply category (always override - including clearing)
+                if t.category != apply_category:
+                    logger.info(f"Updating category from {t.category} to {apply_category}")
+                    t.category = apply_category
                     modified = True
                 
-                # Apply subcategory (override existing value)
-                if transaction.subcategory and t.subcategory != transaction.subcategory:
-                    t.subcategory = transaction.subcategory
+                # Apply subcategory (always override - including clearing)
+                if t.subcategory != apply_subcategory:
+                    logger.info(f"Updating subcategory from {t.subcategory} to {apply_subcategory}")
+                    t.subcategory = apply_subcategory
                     modified = True
                 
-                # Apply payoree (override existing value)
-                if transaction.payoree and t.payoree != transaction.payoree:
-                    t.payoree = transaction.payoree
+                # Apply payoree (always override - including clearing)
+                if t.payoree != apply_payoree:
+                    logger.info(f"Updating payoree from {t.payoree} to {apply_payoree}")
+                    t.payoree = apply_payoree
                     modified = True
                 
                 if modified:
+                    t.save()
+                    updated_count += 1
+                    logger.info(f"Saved transaction {t.id} with updates")
+                else:
+                    logger.info(f"No changes needed for transaction {t.id}")
                     t.save()
                     updated_count += 1
             

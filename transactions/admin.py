@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
 from django.shortcuts import redirect
-from django.db.models import Sum
+from django.db.models import Sum, Count
 from .models import Transaction, Category, Payoree, Tag, LearnedSubcat, LearnedPayoree, KeywordRule
 
 @admin.register(Transaction)
@@ -20,15 +20,53 @@ class TransactionAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ['name', 'parent', 'type']
-    search_fields = ['name',type]
-    list_filter = ['parent','type']
+    list_display = ['name', 'parent', 'type', 'category_transaction_count', 'subcategory_transaction_count']
+    search_fields = ['name', 'type']
+    list_filter = ['parent', 'type']
+    
+    def get_queryset(self, request):
+        """Override queryset to add transaction count annotations for sorting"""
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(
+            category_count=Count('transactions_in_category', distinct=True),
+            subcategory_count=Count('transactions_in_subcategory', distinct=True)
+        )
+        return queryset
+    
+    def category_transaction_count(self, obj):
+        """Count transactions directly assigned to this category"""
+        # Use the annotated value if available, otherwise fall back to direct count
+        return getattr(obj, 'category_count', obj.transactions_in_category.count())
+    category_transaction_count.short_description = "Category Transactions"
+    category_transaction_count.admin_order_field = 'category_count'
+    
+    def subcategory_transaction_count(self, obj):
+        """Count transactions assigned to this category as a subcategory"""
+        # Use the annotated value if available, otherwise fall back to direct count
+        return getattr(obj, 'subcategory_count', obj.transactions_in_subcategory.count())
+    subcategory_transaction_count.short_description = "Subcategory Transactions"
+    subcategory_transaction_count.admin_order_field = 'subcategory_count'
 
 @admin.register(Payoree)
 class PayoreeAdmin(admin.ModelAdmin):
-    list_display = ['name']
+    list_display = ['name', 'transaction_count']
     search_fields = ['name']
     ordering = ['name']
+    
+    def get_queryset(self, request):
+        """Override queryset to add transaction count annotation for sorting"""
+        queryset = super().get_queryset(request)
+        queryset = queryset.annotate(
+            trans_count=Count('transaction', distinct=True)
+        )
+        return queryset
+    
+    def transaction_count(self, obj):
+        """Count transactions assigned to this payoree"""
+        # Use the annotated value if available, otherwise fall back to direct count
+        return getattr(obj, 'trans_count', obj.transaction_set.count())
+    transaction_count.short_description = "Transactions"
+    transaction_count.admin_order_field = 'trans_count'
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):

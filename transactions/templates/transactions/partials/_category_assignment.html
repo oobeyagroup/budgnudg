@@ -12,12 +12,15 @@
                 <label for="category" class="form-label">Primary Category</label>
                 <select name="category" id="category" class="form-select" required>
                     <option value="">-- Select Category --</option>
+                    <option value="__new__">+ Add New Category</option>
+                    <option disabled>────────────────────</option>
                     {% for cat in top_level_categories %}
                         <option value="{{ cat.id }}" 
                                 {% if transaction.category and transaction.category.id == cat.id %}selected{% endif %}>
                             {{ cat.name }} ({{ cat.subcategories.all|length }} subcategories)
                         </option>
                     {% endfor %}
+                    <option disabled>────────────────────</option>
                     <option value="__new__">+ Add New Category</option>
                 </select>
                 

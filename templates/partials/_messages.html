@@ -4,13 +4,13 @@
       {% with tag=message.level_tag|default:"info" %}
         {% if tag == "error" %}
           {% with bs_tag="danger" %}
-            <div class="alert alert-{{ bs_tag }} alert-dismissible fade show" role="alert">
+            <div class="alert alert-{{ bs_tag }} alert-dismissible fade show auto-fade-message" role="alert">
               {{ message }}
               <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
           {% endwith %}
         {% else %}
-          <div class="alert alert-{{ tag }} alert-dismissible fade show" role="alert">
+          <div class="alert alert-{{ tag }} alert-dismissible fade show auto-fade-message" role="alert">
             {{ message }}
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
           </div>
@@ -18,4 +18,28 @@
       {% endwith %}
     {% endfor %}
   </div>
+
+  <script>
+    // Auto-fade messages after 5 seconds (except error messages)
+    document.addEventListener('DOMContentLoaded', function() {
+      const messages = document.querySelectorAll('.auto-fade-message');
+      
+      messages.forEach(function(message) {
+        // Skip auto-fade for error/danger messages
+        if (message.classList.contains('alert-danger')) {
+          return; // Don't auto-fade error messages
+        }
+        
+        // Set up auto-fade timer for non-error messages
+        setTimeout(function() {
+          // Check if message still exists and is visible
+          if (message && message.classList.contains('show')) {
+            // Use Bootstrap's alert close functionality
+            const bsAlert = new bootstrap.Alert(message);
+            bsAlert.close();
+          }
+        }, 5000); // 5 seconds
+      });
+    });
+  </script>
 {% endif %}
