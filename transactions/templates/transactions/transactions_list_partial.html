@@ -54,7 +54,7 @@
                        title="Edit Transaction">
                         <i class="fas fa-edit"></i>Edit
                     </a></div>
-                    <div><a href="{% url 'transactions:categorize_transaction' txn.pk %}" 
+                    <div><a href="{% url 'transactions:categorize_transaction' txn.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" 
                        class="btn btn-outline-secondary btn-sm" 
                        style="--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .5rem;"
                        title="Quick Categorize">

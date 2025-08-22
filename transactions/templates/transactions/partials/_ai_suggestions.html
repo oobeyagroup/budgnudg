@@ -6,254 +6,224 @@
         </h6>
     </div>
     <div class="card-body">
-        <!-- 5-column comparison table -->
-        <div class="container-fluid">
-            <!-- Header Row -->
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-2 mb-3 fw-bold text-center border-bottom pb-2">
-                <div class="col">Field</div>
-                <div class="col">Current</div>
-                <div class="col">Train AI</div>
-                <div class="col">AI Suggestion</div>
-                <div class="col">Apply</div>
-            </div>
-            
-            <!-- Payoree Row -->
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-2 mb-2 align-items-center">
-                <div class="col text-center"><strong>Payoree</strong></div>
-                <div class="col text-center">
-                    {% if transaction.payoree %}
-                        <span class="badge {% if payoree_suggestion and transaction.payoree.id == payoree_suggestion.id %}bg-success{% else %}bg-info{% endif %}">{{ transaction.payoree.name }}</span>
-                    {% else %}
-                        <span class="text-muted fst-italic">Not assigned</span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if transaction.payoree %}
-                        {% if payoree_suggestion and transaction.payoree.id == payoree_suggestion.id %}
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled
-                                title="AI suggestion matches current assignment">
-                                <i class="fas fa-check me-1"></i>Match
-                            </button>
-                        {% else %}
-                            <button type="button" class="btn btn-outline-primary btn-sm train-ai-payoree"
-                                data-transaction-id="{{ transaction.id }}" 
-                                data-payoree-id="{{ transaction.payoree.id }}"
-                                title="Teach AI from current payoree assignment">
-                                <i class="fas fa-arrow-right me-1"></i>Train
-                            </button>
-                        {% endif %}
-                    {% else %}
-                        <span class="text-muted">—</span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if payoree_suggestion %}
-                        <span class="badge {% if transaction.payoree and transaction.payoree.id == payoree_suggestion.id %}bg-success{% else %}bg-success{% endif %}">{{ payoree_suggestion.name }}</span>
-                    {% else %}
-                        <span class="text-warning">
-                            <i class="fas fa-clock me-1"></i>No suggestion
-                        </span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if payoree_suggestion %}
-                        {% if transaction.payoree and transaction.payoree.id == payoree_suggestion.id %}
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled
-                                title="Already applied - matches current assignment">
-                                <i class="fas fa-check me-1"></i>Applied
-                            </button>
-                        {% else %}
-                            <button type="button" class="btn btn-outline-success btn-sm apply-payoree-suggestion"
-                                data-payoree-id="{{ payoree_suggestion.id }}"
-                                title="Apply AI payoree suggestion">
-                                <i class="fas fa-arrow-left me-1"></i>Apply
-                            </button>
-                        {% endif %}
-                    {% else %}
-                        <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
-                            <i class="fas fa-clock me-1"></i>No suggestion
-                        </button>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <!-- Category Row -->
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-2 mb-2 align-items-center">
-                <div class="col text-center"><strong>Category</strong></div>
-                <div class="col text-center">
-                    {% if transaction.category %}
-                        <span class="badge {% if category_suggestion and transaction.category.id == category_suggestion.id %}bg-success{% else %}bg-primary{% endif %}">{{ transaction.category.name }}</span>
-                    {% else %}
-                        <span class="text-muted fst-italic">Not assigned</span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if transaction.category %}
-                        {% if category_suggestion and transaction.category.id == category_suggestion.id %}
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled
-                                title="AI suggestion matches current assignment">
-                                <i class="fas fa-check me-1"></i>Match
-                            </button>
-                        {% else %}
-                            <button type="button" class="btn btn-outline-primary btn-sm train-ai-category"
-                                data-transaction-id="{{ transaction.id }}" 
-                                data-category-id="{{ transaction.category.id }}"
-                                title="Teach AI from current category assignment">
-                                <i class="fas fa-arrow-right me-1"></i>Train
-                            </button>
-                        {% endif %}
-                    {% else %}
-                        <span class="text-muted">—</span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if category_suggestion %}
-                        <span class="badge bg-success">{{ category_suggestion.name }}</span>
-                    {% else %}
-                        <span class="text-muted fst-italic">No suggestion</span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if category_suggestion %}
-                        {% if transaction.category and transaction.category.id == category_suggestion.id %}
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled
-                                title="Already applied - matches current assignment">
-                                <i class="fas fa-check me-1"></i>Applied
-                            </button>
-                        {% else %}
-                            <button type="button" class="btn btn-outline-success btn-sm apply-category-suggestion"
-                                data-category-id="{{ category_suggestion.id }}"
-                                {% if subcategory_suggestion %}data-subcategory-id="{{ subcategory_suggestion.id }}"{% endif %}
-                                title="Apply AI category suggestion">
-                                <i class="fas fa-arrow-left me-1"></i>Apply
-                            </button>
-                        {% endif %}
-                    {% else %}
-                        <span class="text-muted">—</span>
-                    {% endif %}
-                </div>
-            </div>
-            
-            <!-- Subcategory Row -->
-            <div class="row row-cols-1 row-cols-sm-2 row-cols-md-5 g-2 mb-3 align-items-center">
-                <div class="col text-center"><strong>Subcategory</strong></div>
-                <div class="col text-center">
-                    {% if transaction.subcategory %}
-                        <span class="badge {% if subcategory_suggestion and transaction.subcategory.id == subcategory_suggestion.id %}bg-success{% else %}bg-secondary{% endif %}">{{ transaction.subcategory.name }}</span>
-                    {% else %}
-                        <span class="text-muted fst-italic">Not assigned</span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if transaction.subcategory %}
-                        {% if subcategory_suggestion and transaction.subcategory.id == subcategory_suggestion.id %}
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled
-                                title="AI suggestion matches current assignment">
-                                <i class="fas fa-check me-1"></i>Match
-                            </button>
-                        {% else %}
-                            <button type="button" class="btn btn-outline-primary btn-sm train-ai-subcategory"
-                                data-transaction-id="{{ transaction.id }}" 
-                                data-category-id="{{ transaction.category.id }}"
-                                data-subcategory-id="{{ transaction.subcategory.id }}"
-                                title="Teach AI from current subcategory assignment">
-                                <i class="fas fa-arrow-right me-1"></i>Train
-                            </button>
-                        {% endif %}
-                    {% else %}
-                        <span class="text-muted">—</span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if subcategory_suggestion %}
-                        <span class="badge bg-success">{{ subcategory_suggestion.name }}</span>
-                    {% else %}
-                        <span class="text-muted fst-italic">No suggestion</span>
-                    {% endif %}
-                </div>
-                <div class="col text-center">
-                    {% if subcategory_suggestion %}
-                        {% if transaction.subcategory and transaction.subcategory.id == subcategory_suggestion.id %}
-                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled
-                                title="Already applied - matches current assignment">
-                                <i class="fas fa-check me-1"></i>Applied
-                            </button>
-                        {% else %}
-                            <button type="button" class="btn btn-outline-success btn-sm apply-category-suggestion"
-                                data-category-id="{{ category_suggestion.id }}"
-                                data-subcategory-id="{{ subcategory_suggestion.id }}"
-                                title="Apply AI subcategory suggestion">
-                                <i class="fas fa-arrow-left me-1"></i>Apply
-                            </button>
-                        {% endif %}
-                    {% else %}
-                        <span class="text-muted">—</span>
-                    {% endif %}
-                </div>
-            </div>
+        <!-- Clean table structure for easy targeting -->
+        <div class="table-responsive">
+            <table class="table table-sm" id="ai-suggestions-table">
+                <thead>
+                    <tr class="text-center">
+                        <th scope="col">Field</th>
+                        <th scope="col">Current</th>
+                        <th scope="col">Train AI</th>
+                        <th scope="col">AI Suggestion</th>
+                        <th scope="col">Apply</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Payoree Row -->
+                    <tr class="text-center align-middle" data-field="payoree">
+                        <td><strong>Payoree</strong></td>
+                        <td class="current-value">
+                            {% if transaction.payoree %}
+                                <span class="badge {% if payoree_suggestion and transaction.payoree.id == payoree_suggestion.id %}bg-success{% else %}bg-info{% endif %}">{{ transaction.payoree.name }}</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if transaction.payoree %}
+                                {% if payoree_suggestion and transaction.payoree.id == payoree_suggestion.id %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                                        title="AI suggestion matches current assignment">
+                                        <i class="fas fa-check me-1"></i>Match
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-outline-primary btn-sm train-ai-payoree"
+                                        data-transaction-id="{{ transaction.id }}" 
+                                        data-payoree-id="{{ transaction.payoree.id }}"
+                                        title="Teach AI from current payoree assignment">
+                                        <i class="fas fa-arrow-right me-1"></i>Train
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if payoree_suggestion %}
+                                <span class="badge {% if transaction.payoree and transaction.payoree.id == payoree_suggestion.id %}bg-success{% else %}bg-success{% endif %}">{{ payoree_suggestion.name }}</span>
+                            {% else %}
+                                <span class="text-warning">
+                                    <i class="fas fa-clock me-1"></i>No suggestion
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if payoree_suggestion %}
+                                {% if transaction.payoree and transaction.payoree.id == payoree_suggestion.id %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                                        title="Already applied - matches current assignment">
+                                        <i class="fas fa-check me-1"></i>Applied
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-outline-success btn-sm apply-payoree-suggestion"
+                                        data-payoree-id="{{ payoree_suggestion.id }}"
+                                        title="Apply AI payoree suggestion">
+                                        <i class="fas fa-arrow-left me-1"></i>Apply
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <button type="button" class="btn btn-outline-secondary btn-sm" disabled>
+                                    <i class="fas fa-clock me-1"></i>No suggestion
+                                </button>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Category Row -->
+                    <tr class="text-center align-middle" data-field="category">
+                        <td><strong>Category</strong></td>
+                        <td class="current-value">
+                            {% if transaction.category %}
+                                <span class="badge {% if category_suggestion and transaction.category.id == category_suggestion.id %}bg-success{% else %}bg-primary{% endif %}">{{ transaction.category.name }}</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if transaction.category %}
+                                {% if category_suggestion and transaction.category.id == category_suggestion.id %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                                        title="AI suggestion matches current assignment">
+                                        <i class="fas fa-check me-1"></i>Match
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-outline-primary btn-sm train-ai-category"
+                                        data-transaction-id="{{ transaction.id }}" 
+                                        data-category-id="{{ transaction.category.id }}"
+                                        title="Teach AI from current category assignment">
+                                        <i class="fas fa-arrow-right me-1"></i>Train
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if category_suggestion %}
+                                <span class="badge bg-success">{{ category_suggestion.name }}</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">No suggestion</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if category_suggestion %}
+                                {% if transaction.category and transaction.category.id == category_suggestion.id %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                                        title="Already applied - matches current assignment">
+                                        <i class="fas fa-check me-1"></i>Applied
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-outline-success btn-sm apply-category-suggestion"
+                                        data-category-id="{{ category_suggestion.id }}"
+                                        {% if subcategory_suggestion %}data-subcategory-id="{{ subcategory_suggestion.id }}"{% endif %}
+                                        title="Apply AI category suggestion">
+                                        <i class="fas fa-arrow-left me-1"></i>Apply
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Subcategory Row -->
+                    <tr class="text-center align-middle" data-field="subcategory">
+                        <td><strong>Subcategory</strong></td>
+                        <td class="current-value">
+                            {% if transaction.subcategory %}
+                                <span class="badge {% if subcategory_suggestion and transaction.subcategory.id == subcategory_suggestion.id %}bg-success{% else %}bg-secondary{% endif %}">{{ transaction.subcategory.name }}</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">Not assigned</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if transaction.subcategory %}
+                                {% if subcategory_suggestion and transaction.subcategory.id == subcategory_suggestion.id %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                                        title="AI suggestion matches current assignment">
+                                        <i class="fas fa-check me-1"></i>Match
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-outline-primary btn-sm train-ai-subcategory"
+                                        data-transaction-id="{{ transaction.id }}" 
+                                        data-subcategory-id="{{ transaction.subcategory.id }}"
+                                        title="Teach AI from current subcategory assignment">
+                                        <i class="fas fa-arrow-right me-1"></i>Train
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if subcategory_suggestion %}
+                                <span class="badge bg-success">{{ subcategory_suggestion.name }}</span>
+                            {% else %}
+                                <span class="text-muted fst-italic">No suggestion</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if subcategory_suggestion %}
+                                {% if transaction.subcategory and transaction.subcategory.id == subcategory_suggestion.id %}
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" disabled
+                                        title="Already applied - matches current assignment">
+                                        <i class="fas fa-check me-1"></i>Applied
+                                    </button>
+                                {% else %}
+                                    <button type="button" class="btn btn-outline-success btn-sm apply-subcategory-suggestion"
+                                        data-subcategory-id="{{ subcategory_suggestion.id }}"
+                                        title="Apply AI subcategory suggestion">
+                                        <i class="fas fa-arrow-left me-1"></i>Apply
+                                    </button>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <div class="container p-2 bg-light rounded">
-          <div class="row">
-            <div class="col ">
-                <!-- AI Reasoning -->
+
+        <!-- AI Reasoning and Confidence Section -->
+        {% if ai_reasoning or confidence_data %}
+        <div class="container-fluid p-2 bg-light rounded mt-3">
+            <div class="row">
                 {% if ai_reasoning %}
-                    <div class="flex-grow-1">
-                        <small class="text-muted fw-bold">AI Reasoning:</small><br>
-                        <small class="text-secondary">{{ ai_reasoning }}</small>
-                    </div>
+                <div class="col">
+                    <small class="text-muted fw-bold">AI Reasoning:</small><br>
+                    <small class="text-secondary">{{ ai_reasoning }}</small>
+                </div>
                 {% endif %}
-            </div>
-            <div class="col">
-            <!-- Confidence Indicator -->
-            {% if category_suggestion and confidence_data %}
-                <div class="flex-grow-1">
+                
+                {% if category_suggestion and confidence_data %}
+                <div class="col-auto">
                     <small class="text-muted fw-bold me-2">AI Confidence:</small>
-                    <span class="progress mt-1" style="width: 120px; height: 12px;">
-                        <span class="progress-bar {% if confidence_data.overall_confidence >= 80 %}bg-success{% elif confidence_data.overall_confidence >= 60 %}bg-warning{% else %}bg-secondary{% endif %}" 
+                    <div class="progress mt-1" style="width: 120px; height: 12px;">
+                        <div class="progress-bar {% if confidence_data.overall_confidence >= 80 %}bg-success{% elif confidence_data.overall_confidence >= 60 %}bg-warning{% else %}bg-secondary{% endif %}" 
                              role="progressbar" 
                              style="width: {{ confidence_data.overall_confidence }}%"
-                             title="{{ confidence_data.overall_confidence|floatformat:0 }}% confidence">
-                        </span>
-                    </span>
-                    <small class="text-muted d-block mt-1">
-                        <i class="fas fa-info-circle me-1"></i>
-                        {{ confidence_data.overall_confidence|floatformat:0 }}% 
-                        {% if confidence_data.source == 'learned' %}
-                            ({{ confidence_data.learning_count }} confirmation{{ confidence_data.learning_count|pluralize }})
-                        {% else %}
-                            (rule-based)
-                        {% endif %}
-                    </small>
+                             aria-valuenow="{{ confidence_data.overall_confidence }}" 
+                             aria-valuemin="0" 
+                             aria-valuemax="100">
+                        </div>
+                    </div>
+                    <small class="text-muted">{{ confidence_data.overall_confidence }}%</small>
                 </div>
- 
-            {% endif %}
+                {% endif %}
             </div>
-          </div>
         </div>
-    </div>
-</div>
-{% else %}
-<!-- No AI Suggestions -->
-<div class="card shadow-sm border-0 mb-4">
-    <div class="card-header bg-light">
-        <h6 class="mb-0 text-muted">
-            <i class="fas fa-robot me-2"></i>AI Suggestions
-        </h6>
-    </div>
-    <div class="card-body text-center py-4">
-        <i class="fas fa-search fa-2x text-muted mb-2"></i>
-        <p class="text-muted mb-1">No AI suggestions available for this transaction</p>
-        <small class="text-muted">The AI will learn from your categorization choices</small>
+        {% endif %}
     </div>
 </div>
 {% endif %}
-
-
-<!-- 
-<button type="button" class="btn btn-primary learn-from-current p-1"
-                    data-transaction-id="{{ transaction.id }}" title="Teach AI from current assignment">
-                    <i class="fas fa-brain me-1"></i>Teach AI  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-caret-right-square-fill" viewBox="0 0 16 16">
-  <path d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm5.5 10a.5.5 0 0 0 .832.374l4.5-4a.5.5 0 0 0 0-.748l-4.5-4A.5.5 0 0 0 5.5 4z"/>
-</svg>
-</button>
--->

@@ -190,5 +190,5 @@ class ResolveTransactionView(View):
             transaction.subcategory = None
         
         transaction.save()
-        messages.success(request, f"Transaction {transaction.id} updated successfully.")
+        messages.success(request, f"Transaction {transaction.description} updated successfully.")
         return redirect("transactions:transactions_list")  # Fixed: add namespace

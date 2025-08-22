@@ -42,6 +42,30 @@
         <div class="col-12">
             <div class="card shadow-sm border-0">
                 <div class="card-body p-3">
+                    <!-- Filter Context Indicator -->
+                    {% if request.GET %}
+                    <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
+                        <i class="fas fa-filter me-2"></i>
+                        <strong>Filtered View Active:</strong> 
+                        Navigation will stay within your filtered results.
+                        {% if request.GET.q %}
+                            <span class="badge bg-primary ms-2">Search: "{{ request.GET.q }}"</span>
+                        {% endif %}
+                        {% if request.GET.no_category %}
+                            <span class="badge bg-warning ms-1">No Category</span>
+                        {% endif %}
+                        {% if request.GET.no_payoree %}
+                            <span class="badge bg-info ms-1">No Payoree</span>
+                        {% endif %}
+                        {% if request.GET.uncategorized %}
+                            <span class="badge bg-secondary ms-1">Uncategorized</span>
+                        {% endif %}
+                        <a href="{% url 'transactions:transactions_list' %}" class="btn btn-sm btn-outline-secondary ms-2">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </a>
+                    </div>
+                    {% endif %}
+                    
                     <div class="d-flex align-items-center justify-content-between">
                         <div>
                             <h4 class="mb-1">
@@ -60,6 +84,13 @@
 
     <form id="transaction-form" method="post" action="">
         {% csrf_token %}
+        
+        <!-- Preserve filter parameters through form submission -->
+        {% if request.GET %}
+            {% for key, value in request.GET.items %}
+                <input type="hidden" name="filter_{{ key }}" value="{{ value }}">
+            {% endfor %}
+        {% endif %}
 
         <div class="row">
             <!-- Left Column: Transaction Details & AI -->
@@ -195,6 +226,22 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
+        console.log('DOM Content Loaded - starting script initialization');
+        
+        // Test to see if we can find the AI suggestions card
+        const aiSuggestionsCard = document.querySelector('.card-header .text-info-emphasis');
+        console.log('AI Suggestions header element found:', aiSuggestionsCard);
+        if (aiSuggestionsCard) {
+            const card = aiSuggestionsCard.closest('.card');
+            console.log('AI Suggestions card found:', card);
+            const rows = card?.querySelectorAll('.row.row-cols-1.row-cols-sm-2.row-cols-md-5');
+            console.log('AI Suggestions rows found:', rows?.length);
+            rows?.forEach((row, index) => {
+                const fieldCol = row.querySelector('.col:first-child strong');
+                console.log(`Row ${index} field:`, fieldCol?.textContent);
+            });
+        }
+        
         // Initialize form validation
         const form = document.getElementById('transaction-form');
         const validationSummary = document.getElementById('validation-summary');
@@ -223,9 +270,13 @@
                 if (categoryId && categoryId !== '__new__') {
                     console.log('Loading subcategories for category:', categoryId);
                     loadSubcategories(categoryId);
+                    // Update current column display for category
+                    updateCurrentColumnDisplay(categoryId, null, null);
                 } else {
                     console.log('Clearing subcategories (empty selection)');
                     clearSubcategories();
+                    // Clear current category display
+                    updateCurrentCategoryDisplay('');
                 }
                 console.log('==============================');
             });
@@ -236,7 +287,81 @@
             console.log('=== PAGE LOAD INIT ===');
             console.log('Category already selected on load:', categorySelect.value);
             loadSubcategories(categorySelect.value);
-            console.log('======================');
+            // Add debug info about apply buttons
+        const applyButtons = document.querySelectorAll('.apply-category-suggestion, .apply-payoree-suggestion, .apply-subcategory-suggestion, .apply-category');
+        console.log('=== APPLY BUTTONS DEBUG ===');
+        console.log('Total apply buttons found:', applyButtons.length);
+        applyButtons.forEach((btn, index) => {
+            console.log(`Button ${index}:`, {
+                classes: btn.className,
+                categoryId: btn.dataset.categoryId,
+                subcategoryId: btn.dataset.subcategoryId,
+                payoreeId: btn.dataset.payoreeId,
+                text: btn.textContent.trim(),
+                section: btn.closest('.card')?.querySelector('.card-header')?.textContent?.trim() || 'Unknown'
+            });
+        });
+        console.log('============================');
+
+        // Test event delegation by adding click listener to document
+        document.addEventListener('click', function(e) {
+            console.log('=== DOCUMENT CLICK DETECTED ===');
+            console.log('Clicked element:', e.target);
+            console.log('Element classes:', e.target.className);
+            console.log('Element tag:', e.target.tagName);
+            
+            if (e.target.matches('.apply-category-suggestion, .apply-payoree-suggestion, .apply-subcategory-suggestion, .apply-category')) {
+                console.log('=== APPLY BUTTON CLICKED ===');
+                console.log('Button clicked:', e.target);
+                console.log('Button classes:', e.target.className);
+                console.log('Button dataset:', e.target.dataset);
+                console.log('============================');
+                
+                e.preventDefault();
+                
+                const categoryId = e.target.dataset.categoryId;
+                const subcategoryId = e.target.dataset.subcategoryId;
+                const payoreeId = e.target.dataset.payoreeId;
+                
+                console.log('Extracted data:', { categoryId, subcategoryId, payoreeId });
+                
+                // Apply the selections to the form
+                if (categoryId) {
+                    const categorySelect = document.getElementById('category');
+                    if (categorySelect) {
+                        categorySelect.value = categoryId;
+                        categorySelect.dispatchEvent(new Event('change'));
+                        console.log('Applied category:', categoryId);
+                    }
+                }
+                
+                if (subcategoryId) {
+                    setTimeout(() => {
+                        const subcategorySelect = document.getElementById('subcategory');
+                        if (subcategorySelect) {
+                            subcategorySelect.value = subcategoryId;
+                            subcategorySelect.dispatchEvent(new Event('change'));
+                            console.log('Applied subcategory:', subcategoryId);
+                        }
+                    }, 100);
+                }
+                
+                if (payoreeId) {
+                    const payoreeSelect = document.getElementById('payoree');
+                    if (payoreeSelect) {
+                        payoreeSelect.value = payoreeId;
+                        payoreeSelect.dispatchEvent(new Event('change'));
+                        console.log('Applied payoree:', payoreeId);
+                    }
+                }
+                
+                // Update the AI suggestions display
+                updateCurrentColumnDisplay(categoryId, subcategoryId, payoreeId);
+            } else {
+                console.log('Not an apply button click');
+            }
+            console.log('=================================');
+        });
         }
 
         // Subcategory change handler
@@ -259,6 +384,12 @@
                     if (newSubcategoryInput) {
                         newSubcategoryInput.style.display = 'none';
                     }
+                    // Update current column display for subcategory
+                    if (subcategoryId) {
+                        updateCurrentColumnDisplay(null, subcategoryId, null);
+                    } else {
+                        updateCurrentSubcategoryDisplay('');
+                    }
                 }
                 console.log('=================================');
             });
@@ -279,45 +410,61 @@
                     if (newPayoreeInput) {
                         newPayoreeInput.style.display = 'none';
                     }
+                    // Update current column display for payoree
+                    if (this.value) {
+                        updateCurrentColumnDisplay(null, null, this.value);
+                    } else {
+                        updateCurrentPayoreeDisplay('');
+                    }
                 }
             });
         }
 
-        // Apply suggestion functionality
-        document.querySelectorAll('.apply-suggestion, .apply-category-suggestion, .apply-payoree-suggestion').forEach(button => {
-            button.addEventListener('click', function () {
-                const categoryId = this.dataset.categoryId;
-                const subcategoryId = this.dataset.subcategoryId;
-                const payoreeId = this.dataset.payoreeId;
+        // Apply suggestion functionality using event delegation
+        document.addEventListener('click', function(e) {
+            if (e.target.closest('.apply-suggestion, .apply-category-suggestion, .apply-payoree-suggestion')) {
+                const button = e.target.closest('.apply-suggestion, .apply-category-suggestion, .apply-payoree-suggestion');
+                console.log('Apply button clicked:', button);
+                const categoryId = button.dataset.categoryId;
+                const subcategoryId = button.dataset.subcategoryId;
+                const payoreeId = button.dataset.payoreeId;
+                console.log('Button data:', { categoryId, subcategoryId, payoreeId });
 
                 // Add loading state
-                const originalContent = this.innerHTML;
-                this.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
-                this.disabled = true;
+                const originalContent = button.innerHTML;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Applying...';
+                button.disabled = true;
 
                 // Apply the suggestion
                 setTimeout(() => {
                     if (categoryId) {
+                        console.log('Applying category suggestion:', categoryId, subcategoryId);
                         applySuggestion(categoryId, subcategoryId);
+                        updateCurrentColumnDisplay(categoryId, subcategoryId, null);
                     }
 
                     if (payoreeId) {
+                        console.log('Applying payoree suggestion:', payoreeId);
                         const payoreeSelect = document.getElementById('payoree');
                         if (payoreeSelect) {
                             payoreeSelect.value = payoreeId;
+                            updateCurrentColumnDisplay(null, null, payoreeId);
                         }
                     }
 
                     // Reset button state and show feedback
-                    this.innerHTML = '<i class="fas fa-check me-1"></i>Applied!';
+                    button.innerHTML = '<i class="fas fa-check me-1"></i>Applied!';
                     setTimeout(() => {
-                        this.innerHTML = originalContent;
-                        this.disabled = false;
+                        button.innerHTML = originalContent;
+                        button.disabled = false;
                     }, 1500);
 
                     showToast('success', 'Suggestion applied successfully!');
                 }, 300);
-            });
+                
+                e.preventDefault();
+                return false;
+            }
         });
 
         // Skip button handler
@@ -418,6 +565,118 @@
                 messageElement.textContent = message;
                 const bsToast = new bootstrap.Toast(toast);
                 bsToast.show();
+            }
+        }
+
+        function updateCurrentColumnDisplay(categoryId, subcategoryId, payoreeId) {
+            console.log('updateCurrentColumnDisplay called with:', { categoryId, subcategoryId, payoreeId });
+            
+            // Update payoree current display
+            if (payoreeId) {
+                const payoreeSelect = document.getElementById('payoree');
+                if (payoreeSelect) {
+                    const selectedOption = payoreeSelect.querySelector(`option[value="${payoreeId}"]`);
+                    console.log('Payoree option found:', selectedOption?.textContent);
+                    if (selectedOption) {
+                        const payoreeRow = document.querySelector('#ai-suggestions-table tr[data-field="payoree"]');
+                        if (payoreeRow) {
+                            const currentCell = payoreeRow.querySelector('.current-value');
+                            if (currentCell) {
+                                currentCell.innerHTML = `<span class="badge bg-info">${selectedOption.textContent.trim()}</span>`;
+                                console.log('✅ Updated payoree current column');
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update category current display
+            if (categoryId) {
+                const categorySelect = document.getElementById('category');
+                if (categorySelect) {
+                    const selectedOption = categorySelect.querySelector(`option[value="${categoryId}"]`);
+                    if (selectedOption) {
+                        const categoryRow = document.querySelector('#ai-suggestions-table tr[data-field="category"]');
+                        if (categoryRow) {
+                            const currentCell = categoryRow.querySelector('.current-value');
+                            if (currentCell) {
+                                currentCell.innerHTML = `<span class="badge bg-primary">${selectedOption.textContent.trim()}</span>`;
+                                console.log('✅ Updated category current column');
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Update subcategory current display
+            if (subcategoryId) {
+                setTimeout(() => {
+                    const subcategorySelect = document.getElementById('subcategory');
+                    if (subcategorySelect) {
+                        const selectedOption = subcategorySelect.querySelector(`option[value="${subcategoryId}"]`);
+                        if (selectedOption) {
+                            const subcategoryRow = document.querySelector('#ai-suggestions-table tr[data-field="subcategory"]');
+                            if (subcategoryRow) {
+                                const currentCell = subcategoryRow.querySelector('.current-value');
+                                if (currentCell) {
+                                    currentCell.innerHTML = `<span class="badge bg-secondary">${selectedOption.textContent.trim()}</span>`;
+                                    console.log('✅ Updated subcategory current column');
+                                }
+                            }
+                        }
+                    }
+                }, 600); // Wait for subcategories to load
+            }
+        }
+
+        function updateCurrentCategoryDisplay(text) {
+            const aiSuggestionsCard = document.querySelector('.card-header .text-info-emphasis')?.closest('.card');
+            if (aiSuggestionsCard) {
+                const rows = aiSuggestionsCard.querySelectorAll('.row.row-cols-1.row-cols-sm-2.row-cols-md-5');
+                rows.forEach(row => {
+                    const fieldCol = row.querySelector('.col:first-child strong');
+                    if (fieldCol && fieldCol.textContent.trim() === 'Category') {
+                        const currentCol = row.children[1];
+                        const currentContent = currentCol.querySelector('.text-center');
+                        if (currentContent) {
+                            currentContent.innerHTML = text ? `<span class="badge bg-primary">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateCurrentSubcategoryDisplay(text) {
+            const aiSuggestionsCard = document.querySelector('.card-header .text-info-emphasis')?.closest('.card');
+            if (aiSuggestionsCard) {
+                const rows = aiSuggestionsCard.querySelectorAll('.row.row-cols-1.row-cols-sm-2.row-cols-md-5');
+                rows.forEach(row => {
+                    const fieldCol = row.querySelector('.col:first-child strong');
+                    if (fieldCol && fieldCol.textContent.trim() === 'Subcategory') {
+                        const currentCol = row.children[1];
+                        const currentContent = currentCol.querySelector('.text-center');
+                        if (currentContent) {
+                            currentContent.innerHTML = text ? `<span class="badge bg-secondary">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
+                        }
+                    }
+                });
+            }
+        }
+
+        function updateCurrentPayoreeDisplay(text) {
+            const aiSuggestionsCard = document.querySelector('.card-header .text-info-emphasis')?.closest('.card');
+            if (aiSuggestionsCard) {
+                const rows = aiSuggestionsCard.querySelectorAll('.row.row-cols-1.row-cols-sm-2.row-cols-md-5');
+                rows.forEach(row => {
+                    const fieldCol = row.querySelector('.col:first-child strong');
+                    if (fieldCol && fieldCol.textContent.trim() === 'Payoree') {
+                        const currentCol = row.children[1];
+                        const currentContent = currentCol.querySelector('.text-center');
+                        if (currentContent) {
+                            currentContent.innerHTML = text ? `<span class="badge bg-info">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
+                        }
+                    }
+                });
             }
         }
 
@@ -559,7 +818,7 @@
         document.querySelectorAll('.remove-similar').forEach(button => {
             button.addEventListener('click', function () {
                 const excludedTransactionId = this.dataset.transactionId;
-                const currentTransactionId = {{ transaction.id }};
+                const currentTransactionId = {{ transaction.id|default_if_none:0 }};
                 
                 console.log('Removing similar transaction:', excludedTransactionId);
                 

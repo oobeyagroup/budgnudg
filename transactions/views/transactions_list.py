@@ -1,6 +1,7 @@
 from django.views.generic import ListView
 from django.db.models import Q
 from transactions.models import Transaction
+from transactions.filtering import get_filtered_transaction_queryset
 from django.utils.decorators import method_decorator
 from transactions.utils import trace
 import logging
@@ -16,35 +17,7 @@ class TransactionListView(ListView):
 
     @method_decorator(trace)
     def get_queryset(self):
-        qs = Transaction.objects.select_related("category", "subcategory", "payoree").all()
-
-        # --- filters via query params ---
-        account = self.request.GET.get("account")
-        if account:
-            qs = qs.filter(bank_account=account)
-
-        if self.request.GET.get("uncategorized") == "1":
-            # With new model: transactions missing payoree are "uncategorized" 
-            # (since all transactions have a category now)
-            qs = qs.filter(Q(payoree__isnull=True) | Q(payoree__name=""))
-
-        if self.request.GET.get("no_category") == "1":
-            qs = qs.filter(Q(category__isnull=True))
-
-        if self.request.GET.get("no_payoree") == "1":
-            qs = qs.filter(Q(payoree__isnull=True) | Q(payoree__name=""))
-
-        # search in description
-        q = self.request.GET.get("q")
-        if q:
-            qs = qs.filter(description__icontains=q.strip())
-
-        # ordering override (?order=date or -amount etc.)
-        order = self.request.GET.get("order")
-        if order:
-            qs = qs.order_by(order)
-
-        return qs
+        return get_filtered_transaction_queryset(self.request)
 
     @method_decorator(trace)
     def get_context_data(self, **kwargs):

@@ -3,8 +3,11 @@ from django.views.generic import TemplateView
 from django.shortcuts import redirect, get_object_or_404
 from django.contrib import messages
 from django.utils.decorators import method_decorator
+from django.urls import reverse
+from django.db import models
 from transactions.models import Transaction, Category, Payoree, ExcludedSimilarTransaction
 from transactions.forms import TransactionForm
+from transactions.filtering import get_filtered_transaction_queryset
 from transactions.utils import trace
 import logging
 
@@ -16,6 +19,57 @@ class CategorizeTransactionView(TemplateView):
     @method_decorator(trace)
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
+
+    def get_next_transaction_from_filtered_results(self, request, current_transaction):
+        """
+        Get the next transaction from the filtered results, preserving the user's filter context.
+        Falls back to unfiltered results if no filter parameters are present.
+        """
+        try:
+            # Get filtered queryset using the same logic as the transaction list
+            filtered_queryset = get_filtered_transaction_queryset(request)
+            
+            # Debug logging
+            logger.info(f"Current transaction: {current_transaction.id}, date: {current_transaction.date}")
+            
+            # Find next transaction in the filtered results that comes AFTER the current one
+            # Use a combination of date and ID to ensure proper ordering
+            next_transaction = filtered_queryset.filter(
+                models.Q(date__gt=current_transaction.date) | 
+                models.Q(date=current_transaction.date, id__gt=current_transaction.id)
+            ).order_by('date', 'id').first()
+            
+            if next_transaction:
+                logger.info(f"Found next transaction in filtered results: {next_transaction.id}, date: {next_transaction.date}")
+                return next_transaction
+            else:
+                # If no transaction comes after, try to wrap around to the beginning
+                next_transaction = filtered_queryset.exclude(id=current_transaction.id).order_by('date', 'id').first()
+                if next_transaction:
+                    logger.info(f"Wrapping around to first transaction in filtered results: {next_transaction.id}")
+                    return next_transaction
+                else:
+                    logger.info("No more transactions in filtered results")
+                    return None
+                
+        except Exception as e:
+            logger.warning(f"Error getting next transaction from filtered results: {e}")
+            # Fall back to original behavior if filtering fails
+            return Transaction.objects.filter(
+                category__isnull=True
+            ).exclude(id=current_transaction.id).order_by('date', 'id').first()
+
+    def build_redirect_url_with_filters(self, request, view_name, *args):
+        """
+        Build a redirect URL that preserves the current filter parameters.
+        """
+        base_url = reverse(view_name, args=args)
+        query_params = request.GET.urlencode()
+        
+        if query_params:
+            return f"{base_url}?{query_params}"
+        else:
+            return base_url
 
     @method_decorator(trace)
     def get_context_data(self, **kwargs):
@@ -261,7 +315,7 @@ class CategorizeTransactionView(TemplateView):
             transaction.refresh_from_db()
             logger.info(f"After refresh - payoree: {transaction.payoree}")
             
-            messages.success(request, f"Transaction {transaction.id} updated successfully.")
+            messages.success(request, f"Transaction {transaction.description} updated successfully.")
         except Exception as e:
             logger.error(f"Error saving transaction {transaction.id}: {e}")
             messages.error(request, f"Error saving transaction: {e}")
@@ -270,27 +324,49 @@ class CategorizeTransactionView(TemplateView):
         logger.info(f"Processing action: {action}")
         
         if action == 'save_next':
-            # Find next uncategorized transaction
-            next_transaction = Transaction.objects.filter(
-                category__isnull=True
-            ).exclude(id=transaction.id).order_by('date', 'id').first()
+            # Use filtered navigation to find next transaction
+            next_transaction = self.get_next_transaction_from_filtered_results(request, transaction)
             
             if next_transaction:
                 logger.info(f"Redirecting to next transaction: {next_transaction.id}")
-                messages.info(request, f"Moving to next uncategorized transaction.")
-                return redirect("transactions:categorize_transaction", pk=next_transaction.id)
+                
+                # Determine appropriate message based on whether filters are active
+                if request.GET:
+                    messages.info(request, f"Moving to next transaction in filtered results.")
+                else:
+                    messages.info(request, f"Moving to next uncategorized transaction.")
+                
+                # Redirect with preserved filter parameters
+                redirect_url = self.build_redirect_url_with_filters(
+                    request, "transactions:categorize_transaction", next_transaction.id
+                )
+                return redirect(redirect_url)
             else:
-                logger.info("No more uncategorized transactions found")
-                messages.info(request, "No more uncategorized transactions! Returning to list.")
-                return redirect("transactions:transactions_list")
+                logger.info("No more transactions found in current filter")
+                
+                # Determine appropriate message based on whether filters are active
+                if request.GET:
+                    messages.info(request, "No more transactions in filtered results! Returning to list.")
+                else:
+                    messages.info(request, "No more uncategorized transactions! Returning to list.")
+                
+                # Return to filtered transaction list
+                list_url = self.build_redirect_url_with_filters(request, "transactions:transactions_list")
+                return redirect(list_url)
                 
         elif action == 'save_stay':
-            # Stay on the current transaction page
+            # Stay on the current transaction page with preserved filters
             logger.info(f"Staying on current transaction: {transaction.id}")
             messages.success(request, f"Transaction {transaction.id} saved successfully.")
-            return redirect("transactions:categorize_transaction", pk=transaction.id)
+            
+            # Redirect to same page with preserved filter parameters
+            redirect_url = self.build_redirect_url_with_filters(
+                request, "transactions:categorize_transaction", transaction.id
+            )
+            return redirect(redirect_url)
             
         else:  # action == 'save_return' or any other value
-            # Return to transaction list
+            # Return to transaction list with preserved filters
             logger.info("Returning to transaction list")
-            return redirect("transactions:transactions_list")
+            list_url = self.build_redirect_url_with_filters(request, "transactions:transactions_list")
+            return redirect(list_url)
