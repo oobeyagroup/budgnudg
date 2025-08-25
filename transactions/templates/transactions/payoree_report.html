@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+{% load static %}
+{% load dict_extras %}
+{% load humanize %}
+
+{% block title %}Payoree Report - Monthly Analysis{% endblock %}
+
+{% block extra_css %}
+<style>
+    .payoree-row {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        color: white;
+        font-weight: 600;
+    }
+    .transaction-row {
+        background-color: #f8f9fa;
+    }
+    .transaction-row:hover {
+        background-color: #e9ecef;
+    }
+    .sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .horizontal-scroll {
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+    .month-header {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        font-weight: 600;
+        padding: 0.5rem 0.25rem;
+        min-height: 100px;
+        min-width: 80px;
+    }
+    .description-cell {
+        min-width: 250px;
+        max-width: 300px;
+        position: sticky;
+        left: 0;
+        background: inherit;
+        z-index: 5;
+    }
+    .amount-cell {
+        min-width: 100px;
+        position: sticky;
+        left: 250px;
+        background: inherit;
+        z-index: 4;
+    }
+    .count-cell {
+        min-width: 80px;
+        position: sticky;
+        left: 350px;
+        background: inherit;
+        z-index: 3;
+    }
+    .monthly-column {
+        min-width: 80px;
+        text-align: right;
+        white-space: nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-users me-2 text-primary"></i>
+                        Payoree Report - Monthly Analysis
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Payoree breakdown with 12-month transaction patterns
+                    </p>
+                </div>
+                <div class="text-end">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="text-muted">
+                            <strong>{{ total_transactions }}</strong> transactions
+                        </div>
+                        <div class="text-muted">
+                            Total: <span class="{% if grand_total_amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
+                                ${{ grand_total_amount|floatformat:2|intcomma }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-12">
+            <div class="horizontal-scroll border rounded">
+                <table class="table table-sm table-bordered table-hover small mb-0">
+                    <thead class="sticky-header table-dark">
+                        <tr>
+                            <th class="description-cell">Payoree</th>
+                            <th class="amount-cell text-end">Total</th>
+                            <th class="count-cell text-center">Count</th>
+                            {% for month in months %}
+                            <th class="monthly-column">
+                                <div class="month-header small">{{ month.name }}</div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payoree, data in payoree_data %}
+                        <tr class="payoree-row">
+                            <td class="description-cell">{{ payoree }}</td>
+                            <td class="amount-cell text-end">
+                                <span class="{% if data.total_amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
+                                    ${{ data.total_amount|floatformat:2|intcomma }}
+                                </span>
+                            </td>
+                            <td class="count-cell text-center">{{ data.count }}</td>
+                            {% for month in months %}
+                                {% with month_key=month.date|date:"Y-m" %}
+                                    {% with amount=data.monthly_totals|lookup:month_key %}
+                                    <td class="monthly-column text-end">
+                                        {% if data.monthly_totals|lookup:month_key and data.monthly_totals|lookup:month_key != 0 %}
+                                            <span class="{% if data.monthly_totals|lookup:month_key >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
+                                                ${{ data.monthly_totals|lookup:month_key|floatformat:0|intcomma }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted fst-italic">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                        <tr class="table-dark fw-bold">
+                            <td class="description-cell"><strong>GRAND TOTAL</strong></td>
+                            <td class="amount-cell text-end">
+                                <strong class="{% if grand_total_amount >= 0 %}text-success-subtle{% else %}text-danger-subtle{% endif %}">
+                                    ${{ grand_total_amount|floatformat:2|intcomma }}
+                                </strong>
+                            </td>
+                            <td class="count-cell text-center"><strong>{{ grand_total_count }}</strong></td>
+                            {% for month in months %}
+                                {% with month_key=month.date|date:"Y-m" %}
+                                    {% with amount=grand_monthly_totals|lookup:month_key %}
+                                    <td class="monthly-column text-end">
+                                        <strong>
+                                            {% if amount != 0 %}
+                                                <span class="{% if amount >= 0 %}text-success-subtle{% else %}text-danger-subtle{% endif %}">
+                                                    ${{ amount|floatformat:0|intcomma }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </strong>
+                                    </td>
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

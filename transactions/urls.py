@@ -4,12 +4,14 @@ from django.urls import path
 # CBVs (import from submodules directly)
 from transactions.views.import_categories import ImportCategoriesView
 from transactions.views.transactions_list import TransactionListView
+from transactions.views.collapsible_list import CollapsibleTransactionListView
 from transactions.views.dashboard import DashboardView
 from transactions.views.payorees import PayoreesListView
 from transactions.views.categorize import CategorizeTransactionView
 # Legacy uncategorized view import - replaced with filters on transaction list
 # from transactions.views.uncategorized import UncategorizedTransactionsView
 from transactions.views.categories import CategoriesListView
+from transactions.views.payoree_report import PayoreeReportView
 from transactions.views.set_field import SetTransactionFieldView
 from transactions.views.apply_current import ApplyCurrentToSimilarView
 from transactions.views.bank_accounts import BankAccountsListView
@@ -50,6 +52,9 @@ urlpatterns = [
     # Dashboard
     path("", DashboardView.as_view(), name="dashboard"),
 
+    # Payoree Report
+    path("payoree-report/", PayoreeReportView.as_view(), name="payoree_report"),
+
     path("payorees/", PayoreesListView.as_view(), name="payorees_list"),
     path("categories/", CategoriesListView.as_view(), name="categories_list"),
     path("categorize/<int:pk>/", CategorizeTransactionView.as_view(), name="categorize_transaction"),
@@ -80,6 +85,9 @@ urlpatterns = [
 
     # Transactions list (CBV)
     path("list/", TransactionListView.as_view(), name="transactions_list"),
+    
+    # Collapsible transaction list (CBV)
+    path("collapsible/", CollapsibleTransactionListView.as_view(), name="collapsible_transaction_list"),
     
     # Transaction edit
     path("edit/<int:pk>/", TransactionEditView.as_view(), name="edit_transaction"),
