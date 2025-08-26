@@ -4,6 +4,9 @@ from transactions.models import Payoree
 from django.core.exceptions import ValidationError
 from django.forms.widgets import ClearableFileInput
 
+from transactions.models import Transaction
+
+
 class UploadCSVForm(forms.Form):
     file = forms.FileField()
     profile = forms.ModelChoiceField(queryset=MappingProfile.objects.all(), required=False)
@@ -62,3 +65,23 @@ class CheckReviewForm(forms.Form):
     memo_text = forms.CharField(max_length=255, required=False)
     # chose existing transaction or create new
     match_txn_id = forms.IntegerField(required=False)  # hidden/radio from UI
+
+def bank_account_choices() -> list[tuple[str, str]]:
+    qs = (
+        Transaction.objects.exclude(bank_account__isnull=True)
+        .exclude(bank_account__exact="")
+        .values_list("bank_account", flat=True)
+        .distinct()
+        .order_by("bank_account")
+    )
+    return [(b, b) for b in qs]
+
+class BankPickForm(forms.Form):
+    bank_account = forms.ChoiceField(choices=[], label="Bank account")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bank_account"].choices = bank_account_choices()
+
+class AttachCheckForm(forms.Form):
+    transaction_id = forms.IntegerField(widget=forms.HiddenInput())

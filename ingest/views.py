@@ -5,9 +5,11 @@ from django.contrib import messages
 from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods, require_POST
+from django.db import transaction as dbtx
 from transactions.utils import trace
+from transactions.models import Transaction, Payoree
 from ingest.models import ImportBatch, MappingProfile, ScannedCheck
-from ingest.forms import UploadCSVForm, AssignProfileForm, CheckUploadForm, CheckReviewForm
+from ingest.forms import UploadCSVForm, AssignProfileForm, CheckUploadForm, CheckReviewForm, BankPickForm, AttachCheckForm
 from ingest.services.staging import create_batch_from_csv
 from ingest.services.mapping import preview_batch, commit_batch, apply_profile_to_batch
 from .services.check_ingest import save_uploaded_checks, candidate_transactions, attach_or_create_transaction
@@ -21,13 +23,13 @@ class BatchPreviewView(DetailView):
     template_name = "ingest/preview.html"
     context_object_name = "batch"
     http_method_names = ['get', 'post']  # Allow POST for validation
-    
+
+    @method_decorator(trace)    
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         context = self.get_context_data(object=self.object)
         return self.render_to_response(context)
 
-    @method_decorator(trace)
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         batch = context.get("batch")
@@ -189,8 +191,9 @@ class MappingProfileDetailView(DetailView):
     template_name = "ingest/profile_detail.html"
     context_object_name = "profile"
 
-# ingest/views.py (check_upload)
+
 @require_http_methods(["GET", "POST"])
+@trace
 def check_upload(request):
     if request.method == "POST":
         logger.debug("FILES keys: %s", list(request.FILES.keys()))
@@ -212,13 +215,14 @@ def check_upload(request):
             messages.success(request, f"Uploaded {len(created)} image(s).")
         if skipped:
             messages.warning(request, f"Skipped {len(skipped)} duplicate image(s).")
-        return redirect("ingest:check_upload")
+        return redirect("ingest:check_list")
 
     # GET
     form = CheckUploadForm()
     return render(request, "ingest/check_upload.html", {"form": form})
 
 @require_http_methods(["GET", "POST"])
+@trace
 def check_review(request, pk: int):
     sc = get_object_or_404(ScannedCheck, pk=pk)
     initial = {
@@ -227,7 +231,7 @@ def check_review(request, pk: int):
         "date": sc.date,
         "amount": sc.amount,
         "payoree": sc.payoree_id,
-        "memo_text": sc.memo_text or "",
+        "memotext": sc.memotext or "",
     }
     form = CheckReviewForm(request.POST or None, initial=initial)
 
@@ -258,12 +262,13 @@ def check_review(request, pk: int):
                 initial["bank_account"], initial["date"], initial["amount"], initial["check_number"]
             )
 
-    return render(request, "transactions/check_review.html", {
+    return render(request, "ingest/check_review.html", {
         "form": form,
         "sc": sc,
         "candidates": candidates,
     })
 
+@trace
 def _redirect_to_next_unresolved():
     nxt = ScannedCheck.objects.filter(transaction__isnull=True).order_by("created_at").first()
     if nxt:
@@ -324,3 +329,117 @@ def unlink_check(request, check_id: int):
     check.save(update_fields=["matched_transaction"])
     messages.info(request, f"Unlinked check {check.check_number}.")
     return redirect("transactions:checks_reconcile")
+
+    # ingest/views.py
+from django.views.generic import ListView
+from django.db.models import Q
+from .models import ScannedCheck  # adjust import path if your model lives elsewhere
+
+class ScannedCheckListView(ListView):
+    model = ScannedCheck
+    template_name = "ingest/check_list.html"
+    context_object_name = "checks"
+    paginate_by = 50
+
+    @method_decorator(trace)    
+    def get_queryset(self):
+        qs = ScannedCheck.objects.all().order_by("-created_at")
+        q = (self.request.GET.get("q") or "").strip()
+        if q:
+            qs = qs.filter(
+                Q(original_filename__icontains=q)
+                | Q(bank_account__icontains=q)
+                | Q(check_number__icontains=q)
+                | Q(payoree__name__icontains=q)  # if you have FK to Payoree
+                | Q(memo_text__icontains=q)
+            )
+        return qs
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["q"] = self.request.GET.get("q", "")
+        return ctx
+
+@trace
+def review_scanned_check(request, pk: int):
+    """
+    Step 1: pick bank account (from existing Transactions)
+    Step 2: show candidates: transactions with that bank, "CHECK" in description, no payoree
+    Step 3: attach: copy fields from ScannedCheck into the chosen Transaction (if missing),
+            and record linkage (optional) on the ScannedCheck
+    """
+    check = get_object_or_404(ScannedCheck, pk=pk)
+
+    # --- Step 1: bank selection (GET or POST with bank pick) ---
+    bank = request.GET.get("bank") or None
+    bank_form = BankPickForm(data=request.POST or None, initial={"bank_account": check.bank_account or bank})
+
+    # Handle bank selection submit
+    if request.method == "POST" and "pick_bank" in request.POST:
+        if bank_form.is_valid():
+            bank = bank_form.cleaned_data["bank_account"]
+            # Persist on the check so refresh remembers it
+            ScannedCheck.objects.filter(pk=check.pk).update(bank_account=bank)
+            return redirect(f"{reverse('ingest:scannedcheck_review', args=[check.pk])}?bank={bank}")
+
+    # If we don’t have a bank yet, render only the picker + image
+    if not bank:
+        return render(
+            request,
+            "ingest/review_scanned_check.html",
+            {
+                "check": check,
+                "bank_form": bank_form,
+                "candidates": [],
+            },
+        )
+
+    # --- Step 2: candidate query ---
+    candidates = (
+        Transaction.objects
+        .filter(bank_account=bank, description__icontains="CHECK")
+        .order_by("-date")[:100]
+    )
+
+    # --- Step 3: attach check to a chosen transaction ---
+    attach_form = AttachCheckForm(data=request.POST or None)
+    if request.method == "POST" and "attach" in request.POST and attach_form.is_valid():
+        txn_id = attach_form.cleaned_data["transaction_id"]
+        txn = get_object_or_404(Transaction, pk=txn_id)
+
+        with dbtx.atomic():
+            # Update transaction with info from the scanned check, only when empty
+            if not txn.payoree and check.payoree:
+                txn.payoree = check.payoree
+            if not txn.subcategory and getattr(check, "suggested_subcategory", None):
+                txn.subcategory = check.suggested_subcategory  # if you later add this field
+            if (txn.memo or "").strip() == "" and (check.memotext or "").strip():
+                txn.memo = check.memotext
+
+            # Don’t blindly overwrite date/amount; only fill if missing
+            if not txn.date and check.date:
+                txn.date = check.date
+            if not txn.amount and check.amount:
+                txn.amount = check.amount
+
+            txn.save()
+
+            # Optional: link the check to the transaction if your model has such a field
+            if hasattr(check, "linked_transaction_id"):
+                check.linked_transaction = txn
+                check.save(update_fields=["linked_transaction"])
+
+        messages.success(request, f"Attached check to transaction #{txn.id}.")
+        return redirect(reverse("ingest:scannedcheck_review", args=[check.pk]) + f"?bank={bank}")
+
+    return render(
+        request,
+        "ingest/review_scanned_check.html",
+        {
+            "check": check,
+            "bank_form": bank_form,
+            "candidates": candidates,
+            "attach_form": attach_form,
+            "selected_bank": bank,
+        },
+    )        

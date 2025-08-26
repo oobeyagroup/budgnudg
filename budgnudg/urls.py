@@ -14,6 +14,8 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from transactions.views.dashboard import DashboardView  # NEW
@@ -25,5 +27,7 @@ urlpatterns = [
     path("transactions/", include("transactions.urls", namespace="transactions")),
     path("ingest/", include("ingest.urls", namespace="ingest")),
         # 
-
 ]
+
+if settings.DEBUG:  # Only serve media files through Django in dev
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Scanned Checks{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <h2 class="mb-0">Scanned Checks</h2>
+        <a class="btn btn-primary" href="{% url 'ingest:check_upload' %}">Upload Checks</a>
+    </div>
+
+    <form class="mb-3" method="get" role="search">
+        <div class="input-group" style="max-width: 420px;">
+            <input type="text" name="q" value="{{ q }}" class="form-control"
+                placeholder="Search filename, bank account, check #, payoree, memo">
+            <button class="btn btn-outline-secondary" type="submit">Search</button>
+        </div>
+    </form>
+
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col">Image</th>
+                    <th scope="col">Created<br>Filename</th>
+                    <th scope="col">Bank Acct</th>
+                    <th scope="col">Check #</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Payoree</th>
+                    <th scope="col">Memo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in checks %}
+                <tr>
+                    <td>
+                        {% if c.image_file %}
+                        <a href="{{ c.image_file.url }}" target="_blank" rel="noopener">
+                            <img src="{{ c.image_file.url }}" alt="{{ c.original_filename }}"
+                                style="height: 100px;px; max-width:240px; object-fit:contain;">
+                        </a>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="text-nowrap">{{ c.created_at|date:"Y-m-d H:i" }}</span><br>
+                        <span class="text-truncate" style="max-width: 260px;">
+                        {{ c.original_filename }}</span>
+                    </td>
+                    <td>{{ c.bank_account }}</td>
+                    <td>{{ c.check_number }}</td>
+                    <td>{% if c.amount %}${{ c.amount }}{% endif %}</td>
+                    <td>{% if c.payoree %}{{ c.payoree.name|default:c.payoree }}{% endif %}</td>
+                    <td class="text-truncate" style="max-width: 280px;">{{ c.memo_text }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">No scanned checks found.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if is_paginated %}
+    <nav aria-label="Pagination">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ q }}&page={{ page_obj.previous_page_number }}">Previous</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Previous</span></li>
+            {% endif %}
+
+            <li class="page-item disabled">
+                <span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+            </li>
+
+            {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?q={{ q }}&page={{ page_obj.next_page_number }}">Next</a>
+            </li>
+            {% else %}
+            <li class="page-item disabled"><span class="page-link">Next</span></li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

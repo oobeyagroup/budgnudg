@@ -6,16 +6,16 @@
   <h2>Review Check</h2>
 
   <div class="row">
-    <div class="col-md-5">
+    <div class="col-md-6">
       <div class="card mb-3">
         <div class="card-body text-center">
-          <img src="{{ sc.file.url }}" alt="{{ sc.original_filename }}" class="img-fluid" />
+          <img src="{{ sc.image_file.url }}" alt="{{ sc.original_filename }}" style="width: 640px;" class="img-fluid" />
           <div class="mt-2 text-muted small">{{ sc.original_filename }}</div>
         </div>
       </div>
     </div>
 
-    <div class="col-md-7">
+    <div class="col-md-6">
       <form method="post" class="card p-3">
         {% csrf_token %}
 
@@ -46,11 +46,11 @@
           </div>
         </div>
 
-        <input type="hidden" name="match_txn_id" id="match_txn_id" />
+        <input name="match_txn_id" id="match_txn_id" />
 
         <div class="mt-3 d-flex gap-2">
           <button name="create_new" value="1" class="btn btn-success">Create new transaction</button>
-          <a href="{% url 'transactions:check_upload' %}" class="btn btn-secondary">Back to upload</a>
+          <a href="{% url 'ingest:check_upload' %}" class="btn btn-secondary">Back to upload</a>
         </div>
       </form>
 

@@ -101,7 +101,7 @@ class ScannedCheck(models.Model):
     transaction = models.ForeignKey("transactions.Transaction", null=True, blank=True,
                                      on_delete=models.SET_NULL, related_name="scanned_checks")
     created_at = models.DateTimeField(auto_now_add=True)
-
+# linked_transaction = models.ForeignKey("transactions.Transaction", null=True, blank=True, on_delete=models.SET_NULL)
     class Meta:
         constraints = [
             # avoid dup imports; filename can collide across batches, so md5 is stronger

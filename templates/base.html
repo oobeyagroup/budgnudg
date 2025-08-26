@@ -83,6 +83,7 @@
               </a>
               <ul class="dropdown-menu" aria-labelledby="importDropdown">
                 <li><a class="dropdown-item" href="{% url 'ingest:batch_upload' %}">Transactions</a></li>
+                <li><a class="dropdown-item" href="{% url 'ingest:check_upload' %}">Check Images</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:import_categories' %}">Categories</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:import_payoree' %}">Payoree</a></li>
               </ul>
@@ -95,6 +96,7 @@
                 <li><a class="dropdown-item" href="{% url 'transactions:report_account_time_span' %}">Accounts</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:categories_list' %}">Categories</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:payorees_list' %}">Payor/ee</a></li>
+                <li><a class="dropdown-item" href="{% url 'ingest:scannedcheck_list' %}">Checks</a></li>
               </ul>
             </li>
            <li class="nav-item dropdown">

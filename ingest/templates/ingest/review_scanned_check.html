@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h3>Review Scanned Check</h3>
+
+<div class="row">
+  <div class="col-md-4">
+    {% if check.image_file %}
+      <img src="{{ check.image_file.url }}" style="width: 480px;" class="img-fluid mb-2" alt="{{ check.original_filename }}">
+    {% endif %}
+    <p><strong>Original file:</strong> {{ check.original_filename }}</p>
+    {% if check.check_number %}
+      <p><strong>Check #:</strong> {{ check.check_number }}</p>
+    {% endif %}
+    {% if check.amount %}
+      <p><strong>Amount:</strong> {{ check.amount }}</p>
+    {% endif %}
+    {% if check.date %}
+      <p><strong>Date:</strong> {{ check.date }}</p>
+    {% endif %}
+  </div>
+
+  <div class="col-md-8">
+    <form method="post" class="mb-3">
+      {% csrf_token %}
+      {{ bank_form.bank_account.label_tag }}
+      {{ bank_form.bank_account }}
+      <button class="btn btn-primary btn-sm" type="submit" name="pick_bank" value="1">Use this bank</button>
+    </form>
+
+    {% if selected_bank %}
+      <h5>Candidates for {{ selected_bank }}</h5>
+      {% if candidates %}
+        <form method="post">
+          {% csrf_token %}
+          <table class="table table-sm table-striped">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Date</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Payoree</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for t in candidates %}
+                <tr>
+                  <td>
+                    <input type="radio" name="transaction_id" value="{{ t.id }}" required>
+                  </td>
+                  <td>{{ t.date }}</td>
+                  <td>{{ t.description }}</td>
+                  <td>{{ t.amount }}</td>
+                  <td>{% if t.payoree %}{{ t.payoree.name }}{% endif %}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+          <button class="btn btn-success" type="submit" name="attach" value="1">
+            Attach check to selected transaction
+          </button>
+        </form>
+      {% else %}
+        <div class="alert alert-warning">No matching transactions found (look for “CHECK” + no payoree).</div>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
