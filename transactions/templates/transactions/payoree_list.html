@@ -8,7 +8,7 @@
       <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Search payorees">
       <button class="btn btn-outline-secondary" type="submit">Search</button>
     </div>
-  </form> 
+  </form>
   <div class="mb-3">
     <strong>Jump to:</strong>
     {% for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ" %}
@@ -33,20 +33,28 @@
         <tr>
           <th>Payoree</th>
           <th>Transaction Count</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {% regroup payorees by name.0|upper as payoree_sections %}
         {% for section in payoree_sections %}
         <tr id="section-{{ section.grouper }}">
-          <td colspan="2"><strong>{{ section.grouper }}</strong></td>
+          <td colspan="3"><strong>{{ section.grouper }}</strong></td>
         </tr>
-        {% for pay in section.list %}
-        <tr>
-          <td>{{ pay.name }}</td>
-          <td>{{ pay.transaction_count }}</td>
-        </tr>
-        {% endfor %}
+              {% for pay in section.list %}
+              <tr>
+                <td>
+                  <a href="{% url 'transactions:payoree_detail' pk=pay.id %}">{{ pay.name }}</a>
+                </td>
+                <td>{{ pay.transaction_count }}</td>
+                <td>
+                  <a class="btn btn-sm btn-outline-primary" href="{% url 'transactions:payoree_detail' pk=pay.id %}?action=recurring_new" title="Start a recurring rule for this payoree">
+                    Make recurring
+                  </a>
+                </td>
+              </tr>
+              {% endfor %}
         {% endfor %}
       </tbody>
     </table>
@@ -70,4 +78,4 @@
     });
   });
 </script>
-{% endblock %}
+{% endblock %} 

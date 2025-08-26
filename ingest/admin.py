@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import MappingProfile, ImportBatch, ImportRow
+from .models import MappingProfile, ImportBatch, ImportRow, ScannedCheck
 
 @admin.register(MappingProfile)
 class MappingProfileAdmin(admin.ModelAdmin):
@@ -21,3 +21,8 @@ class ImportBatchAdmin(admin.ModelAdmin):
 class ImportRowAdmin(admin.ModelAdmin):
     list_display = ("row_index","raw","norm_date","norm_amount","norm_description","suggestions","is_duplicate","errors")
     search_fields = ("norm_description","norm_date""norm_amount")
+
+@admin.register(ScannedCheck)
+class ScannedCheckAdmin(admin.ModelAdmin):
+    list_display = ("id", "original_filename", "bank_account", "check_number", "amount", "created_at")
+    search_fields = ("original_filename", "bank_account", "check_number")

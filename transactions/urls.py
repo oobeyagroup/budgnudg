@@ -45,6 +45,8 @@ from transactions.views.api import (
     SimilarTransactionsAPIView,
     ExcludeSimilarTransactionAPIView,
 )
+from transactions.views.checks import check_reconcile, match_check, unlink_check
+from ingest.views import check_upload, check_review
 
 app_name = 'transactions'
 
@@ -52,8 +54,10 @@ urlpatterns = [
     # Dashboard
     path("", DashboardView.as_view(), name="dashboard"),
 
+
     # Payoree Report
     path("payoree-report/", PayoreeReportView.as_view(), name="payoree_report"),
+    path("payoree/<int:pk>/", __import__('transactions.views.payoree_detail').views.payoree_detail.PayoreeDetailView.as_view(), name="payoree_detail"),
 
     path("payorees/", PayoreesListView.as_view(), name="payorees_list"),
     path("categories/", CategoriesListView.as_view(), name="categories_list"),

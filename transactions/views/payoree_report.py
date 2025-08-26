@@ -53,11 +53,12 @@ class PayoreeReportView(TemplateView):
                 month_key = f"{txn.date.year}-{txn.date.month:02d}"
                 payoree_data[key]['monthly_totals'][month_key] += float(txn.amount)
 
-        # Separate payorees with only one transaction
+
+        # Separate payorees with only one transaction, but only group into 'Other' if abs(total) < 250
         other_payoree = {'transactions': [], 'monthly_totals': defaultdict(float), 'total_amount': 0, 'count': 0}
         filtered_payorees = {}
         for payoree, data in payoree_data.items():
-            if data['count'] == 1:
+            if data['count'] == 1 and abs(data['total_amount']) < 250:
                 other_payoree['transactions'].extend(data['transactions'])
                 other_payoree['count'] += 1
                 other_payoree['total_amount'] += data['total_amount']
@@ -79,11 +80,16 @@ class PayoreeReportView(TemplateView):
             for month_key, amt in data['monthly_totals'].items():
                 grand_monthly_totals[month_key] += amt
 
-        # Sort payorees by total_amount descending (except 'Other Payoree' always last if present)
+
+        # Custom sort: positive totals descending, negative totals ascending, positives before negatives
+        def payoree_sort_key(item):
+            total = item[1]['total_amount']
+            # positives: (0, -total), negatives: (1, total)
+            return (0, -total) if total >= 0 else (1, total)
+
         sorted_payorees = sorted(
             ((k, v) for k, v in filtered_payorees.items() if k != 'Other Payoree'),
-            key=lambda item: item[1]['total_amount'],
-            reverse=True
+            key=payoree_sort_key
         )
         # Add 'Other Payoree' at the end if it exists
         if 'Other Payoree' in filtered_payorees:

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% load widget_tweaks %}
+
+{% block content %}
+<div class="container mt-4">
+  <h2>Review Check</h2>
+
+  <div class="row">
+    <div class="col-md-5">
+      <div class="card mb-3">
+        <div class="card-body text-center">
+          <img src="{{ sc.file.url }}" alt="{{ sc.original_filename }}" class="img-fluid" />
+          <div class="mt-2 text-muted small">{{ sc.original_filename }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-7">
+      <form method="post" class="card p-3">
+        {% csrf_token %}
+
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Bank Account</label>
+            {{ form.bank_account|add_class:"form-control" }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Check #</label>
+            {{ form.check_number|add_class:"form-control" }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Date</label>
+            {{ form.date|add_class:"form-control" }}
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Amount</label>
+            {{ form.amount|add_class:"form-control" }}
+          </div>
+          <div class="col-md-8">
+            <label class="form-label">Payoree</label>
+            {{ form.payoree|add_class:"form-select select2" }}
+          </div>
+          <div class="col-12">
+            <label class="form-label">Memo</label>
+            {{ form.memo_text|add_class:"form-control" }}
+          </div>
+        </div>
+
+        <input type="hidden" name="match_txn_id" id="match_txn_id" />
+
+        <div class="mt-3 d-flex gap-2">
+          <button name="create_new" value="1" class="btn btn-success">Create new transaction</button>
+          <a href="{% url 'transactions:check_upload' %}" class="btn btn-secondary">Back to upload</a>
+        </div>
+      </form>
+
+      <div class="mt-4">
+        <h5>Candidate existing transactions</h5>
+        {% if candidates %}
+          <div class="list-group">
+            {% for t in candidates %}
+              <button class="list-group-item list-group-item-action"
+                      onclick="document.getElementById('match_txn_id').value='{{ t.pk }}'; this.closest('form').submit();">
+                <div class="d-flex justify-content-between">
+                  <span>{{ t.date }} — {{ t.description|default:"(no description)" }}</span>
+                  <strong>${{ t.amount }}</strong>
+                </div>
+                <div class="small text-muted">
+                  {{ t.bank_account }}{% if t.payoree %} · {{ t.payoree.name }}{% endif %}
+                </div>
+              </button>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p class="text-muted">No likely matches found.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

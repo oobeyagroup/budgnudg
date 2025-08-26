@@ -6,6 +6,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class CategoryImportForm(forms.Form):
     file = forms.FileField(
         label="Categories CSV",

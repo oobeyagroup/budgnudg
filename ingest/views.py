@@ -4,16 +4,17 @@ from django.views.generic import ListView, DetailView
 from django.contrib import messages
 from django.urls import reverse
 from django.utils.decorators import method_decorator
+from django.views.decorators.http import require_http_methods, require_POST
 from transactions.utils import trace
-from ingest.models import ImportBatch, MappingProfile
-from ingest.forms import UploadCSVForm, AssignProfileForm
+from ingest.models import ImportBatch, MappingProfile, ScannedCheck
+from ingest.forms import UploadCSVForm, AssignProfileForm, CheckUploadForm, CheckReviewForm
 from ingest.services.staging import create_batch_from_csv
 from ingest.services.mapping import preview_batch, commit_batch, apply_profile_to_batch
+from .services.check_ingest import save_uploaded_checks, candidate_transactions, attach_or_create_transaction
 
 import logging
 
 logger = logging.getLogger(__name__)
-
 
 class BatchPreviewView(DetailView):
     model = ImportBatch
@@ -187,3 +188,139 @@ class MappingProfileDetailView(DetailView):
     model = MappingProfile
     template_name = "ingest/profile_detail.html"
     context_object_name = "profile"
+
+# ingest/views.py (check_upload)
+@require_http_methods(["GET", "POST"])
+def check_upload(request):
+    if request.method == "POST":
+        logger.debug("FILES keys: %s", list(request.FILES.keys()))
+        form = CheckUploadForm(request.POST, request.FILES)
+        logger.debug("Form is_valid? %s", form.is_valid())
+        if not form.is_valid():
+            logger.debug("Form errors: %s", form.errors)
+            return render(request, "ingest/check_upload.html", {"form": form})
+
+        files = form.cleaned_data["images"]  # <-- list[UploadedFile]
+        logger.debug("Got %d files: %s", len(files), [f.name for f in files])
+
+        if not files:
+            messages.error(request, "Please select at least one image.")
+            return render(request, "ingest/check_upload.html", {"form": form})
+
+        created, skipped = save_uploaded_checks(files)
+        if created:
+            messages.success(request, f"Uploaded {len(created)} image(s).")
+        if skipped:
+            messages.warning(request, f"Skipped {len(skipped)} duplicate image(s).")
+        return redirect("ingest:check_upload")
+
+    # GET
+    form = CheckUploadForm()
+    return render(request, "ingest/check_upload.html", {"form": form})
+
+@require_http_methods(["GET", "POST"])
+def check_review(request, pk: int):
+    sc = get_object_or_404(ScannedCheck, pk=pk)
+    initial = {
+        "bank_account": sc.bank_account or "",
+        "check_number": sc.check_number or "",
+        "date": sc.date,
+        "amount": sc.amount,
+        "payoree": sc.payoree_id,
+        "memo_text": sc.memo_text or "",
+    }
+    form = CheckReviewForm(request.POST or None, initial=initial)
+
+    candidates = []
+    if request.method == "POST" and form.is_valid():
+        cleaned = form.cleaned_data
+        # discover candidates for this submission (use posted values)
+        candidates = candidate_transactions(
+            cleaned["bank_account"], cleaned["date"], cleaned["amount"], cleaned.get("check_number")
+        )
+
+        # If the user selected a candidate (via hidden/radio in template), attach immediately
+        if cleaned.get("match_txn_id"):
+            attach_or_create_transaction(sc, cleaned)
+            messages.success(request, "Image linked to existing transaction.")
+            return _redirect_to_next_unresolved()
+
+        # else we’ll show candidates and let them confirm create or select
+        # If user clicked “Create new now”, you can branch on a form button name
+        if "create_new" in request.POST:
+            attach_or_create_transaction(sc, cleaned)
+            messages.success(request, "New transaction created from check image.")
+            return _redirect_to_next_unresolved()
+    else:
+        # compute candidates off initial to pre-show
+        if initial["bank_account"] and initial["date"] and initial["amount"] is not None:
+            candidates = candidate_transactions(
+                initial["bank_account"], initial["date"], initial["amount"], initial["check_number"]
+            )
+
+    return render(request, "transactions/check_review.html", {
+        "form": form,
+        "sc": sc,
+        "candidates": candidates,
+    })
+
+def _redirect_to_next_unresolved():
+    nxt = ScannedCheck.objects.filter(transaction__isnull=True).order_by("created_at").first()
+    if nxt:
+        return redirect("transactions:check_review", pk=nxt.pk)
+    return redirect("transactions:transactions_list")
+
+
+@trace
+def check_reconcile(request):
+    account = request.GET.get("account") or ""
+    txns = check_like_transactions(account=account)
+    checks = ScannedCheck.objects.filter(matched_transaction__isnull=True)
+    context = {
+        "account": account,
+        "transactions": txns,
+        "checks": checks.order_by("-date", "-id"),
+    }
+    return render(request, "transactions/checks_reconcile.html", context)
+
+@trace
+@require_POST
+def match_check(request):
+    check_id = request.POST.get("check_id")
+    txn_id = request.POST.get("txn_id")
+    payee = request.POST.get("payee") or ""
+    memo = request.POST.get("memo") or ""
+
+    check = get_object_or_404(ScannedCheck, pk=check_id)
+    txn = get_object_or_404(Transaction, pk=txn_id)
+
+    with dbtx.atomic():
+        # link
+        check.matched_transaction = txn
+        check.save(update_fields=["matched_transaction"])
+
+        # optionally set payee/memo on the txn if missing
+        updates = []
+        if payee and not getattr(txn, "payoree", None):
+            # if you have a Payoree model with a helper:
+            from transactions.models import Payoree
+            pyo = Payoree.get_existing(payee) or Payoree.objects.create(name=payee)
+            txn.payoree = pyo
+            updates.append("payoree")
+        if memo and not txn.memo:
+            txn.memo = memo
+            updates.append("memo")
+        if updates:
+            txn.save(update_fields=updates)
+
+    messages.success(request, f"Matched check {check.check_number} to txn {txn.pk}.")
+    return redirect("transactions:checks_reconcile")
+
+@trace
+@require_POST
+def unlink_check(request, check_id: int):
+    check = get_object_or_404(ScannedCheck, pk=check_id)
+    check.matched_transaction = None
+    check.save(update_fields=["matched_transaction"])
+    messages.info(request, f"Unlinked check {check.check_number}.")
+    return redirect("transactions:checks_reconcile")
