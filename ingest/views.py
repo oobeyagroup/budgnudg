@@ -17,7 +17,7 @@ from ingest.forms import (
     AttachCheckForm,
     TransactionQuickEditForm,
     AttachEditForm,
-    CreateNewTransactionForm
+    CreateNewTransactionForm,
 )
 from ingest.services.staging import create_batch_from_csv
 from ingest.services.mapping import preview_batch, commit_batch, apply_profile_to_batch
@@ -540,23 +540,14 @@ def match_check(request):
     messages.success(request, f"Matched check {check.check_number} to txn {txn.pk}.")
     return redirect("ingest:checks_reconcile")
 
-
 @trace
 @require_POST
 def unlink_check(request, check_id: int):
     check = get_object_or_404(ScannedCheck, pk=check_id)
-    check.matched_transaction = None
-    check.save(update_fields=["matched_transaction"])
+    check.linked_transaction = None
+    check.save(update_fields=["linked_transaction"])
     messages.info(request, f"Unlinked check {check.check_number}.")
-    return redirect("ingest:checks_reconcile")
-
-    # ingest/views.py
-
-
-from django.views.generic import ListView
-from django.db.models import Q
-from .models import ScannedCheck  # adjust import path if your model lives elsewhere
-
+    return redirect("ingest:scannedcheck_list")
 
 class ScannedCheckListView(ListView):
     model = ScannedCheck
@@ -767,7 +758,13 @@ def _extract_check_num(desc: str | None) -> str:
 
 def _existing_bank_accounts() -> list[str]:
     from transactions.models import Transaction
-    return list(Transaction.objects.exclude(bank_account__exact="").values_list("bank_account", flat=True).distinct())
+
+    return list(
+        Transaction.objects.exclude(bank_account__exact="")
+        .values_list("bank_account", flat=True)
+        .distinct()
+    )
+
 
 @require_http_methods(["GET", "POST"])
 def match_check(request, pk: int):
@@ -784,13 +781,23 @@ def match_check(request, pk: int):
         if bank_form.is_valid():
             bank = bank_form.cleaned_data["bank_account"]
             ScannedCheck.objects.filter(pk=sc.pk).update(bank_account=bank)
-            return redirect(f"{reverse('ingest:match_check', args=[sc.pk])}?bank={bank}")
+            return redirect(
+                f"{reverse('ingest:match_check', args=[sc.pk])}?bank={bank}"
+            )
 
     if not bank:
-        return render(request, "ingest/match_check.html", {
-            "sc": sc, "bank_form": bank_form, "candidates": [], "selected": None,
-            "desc_preview": "", "why": [],
-        })
+        return render(
+            request,
+            "ingest/match_check.html",
+            {
+                "sc": sc,
+                "bank_form": bank_form,
+                "candidates": [],
+                "selected": None,
+                "desc_preview": "",
+                "why": [],
+            },
+        )
 
     # 2) Candidate list (scored)
     cands = find_candidates(
@@ -811,15 +818,22 @@ def match_check(request, pk: int):
             new_desc = render_description(
                 csv_desc=txn.description or "",
                 check_no=sc.check_number or None,
-                payoree=form.cleaned_data["payoree"].name if form.cleaned_data["payoree"] else None,
+                payoree=(
+                    form.cleaned_data["payoree"].name
+                    if form.cleaned_data["payoree"]
+                    else None
+                ),
                 memo=form.cleaned_data["memo_text"] or None,
             )
             # Update transaction fields
             if form.cleaned_data["payoree"]:
                 txn.payoree = form.cleaned_data["payoree"]
             if form.cleaned_data.get("subcategory_id"):
-                sub = Category.objects.filter(pk=form.cleaned_data["subcategory_id"]).first()
-                if sub: txn.subcategory = sub
+                sub = Category.objects.filter(
+                    pk=form.cleaned_data["subcategory_id"]
+                ).first()
+                if sub:
+                    txn.subcategory = sub
             if form.cleaned_data.get("set_account_type_check"):
                 txn.account_type = "Check"  # or your canonical value
             txn.description = new_desc
@@ -832,10 +846,21 @@ def match_check(request, pk: int):
             sc.status = "confirmed"
             sc.save(update_fields=["linked_transaction", "status"])
 
-            messages.success(request, f"Attached check #{sc.check_number or ''} to T-{txn.pk}.")
+            messages.success(
+                request, f"Attached check #{sc.check_number or ''} to T-{txn.pk}."
+            )
             # Next workflow: go to next unmatched
-            nxt = ScannedCheck.objects.filter(status="unmatched").exclude(pk=sc.pk).order_by("id").first()
-            return redirect(reverse("ingest:match_check", args=[nxt.pk]) if nxt else reverse("ingest:scannedcheck_list"))
+            nxt = (
+                ScannedCheck.objects.filter(status="unmatched")
+                .exclude(pk=sc.pk)
+                .order_by("id")
+                .first()
+            )
+            return redirect(
+                reverse("ingest:match_check", args=[nxt.pk])
+                if nxt
+                else reverse("ingest:scannedcheck_list")
+            )
 
         messages.error(request, "Please fix the errors below.")
 
@@ -845,7 +870,9 @@ def match_check(request, pk: int):
         if form.is_valid():
             sub = None
             if form.cleaned_data.get("subcategory_id"):
-                sub = Category.objects.filter(pk=form.cleaned_data["subcategory_id"]).first()
+                sub = Category.objects.filter(
+                    pk=form.cleaned_data["subcategory_id"]
+                ).first()
             txn = Transaction.objects.create(
                 date=form.cleaned_data["date"],
                 amount=form.cleaned_data["amount"],
@@ -859,8 +886,17 @@ def match_check(request, pk: int):
             sc.status = "confirmed"
             sc.save(update_fields=["linked_transaction", "status"])
             messages.success(request, f"Created T-{txn.pk} and linked check.")
-            nxt = ScannedCheck.objects.filter(status="unmatched").exclude(pk=sc.pk).order_by("id").first()
-            return redirect(reverse("ingest:match_check", args=[nxt.pk]) if nxt else reverse("ingest:scannedcheck_list"))
+            nxt = (
+                ScannedCheck.objects.filter(status="unmatched")
+                .exclude(pk=sc.pk)
+                .order_by("id")
+                .first()
+            )
+            return redirect(
+                reverse("ingest:match_check", args=[nxt.pk])
+                if nxt
+                else reverse("ingest:scannedcheck_list")
+            )
 
         messages.error(request, "Please correct the new transaction form.")
 
@@ -881,14 +917,20 @@ def match_check(request, pk: int):
         "selected": cands[0].txn if cands else None,
         "why": why,
         "desc_preview": desc_preview,
-        "payoree_qs": Payoree.objects.order_by("name")[:500],  # or whatever limit/filter you prefer
+        "payoree_qs": Payoree.objects.order_by("name")[
+            :500
+        ],  # or whatever limit/filter you prefer
     }
 
-    return render(request, "ingest/match_check.html", {
-        "sc": sc,
-        "bank_form": bank_form,
-        "candidates": cands,
-        "selected": top_txn,
-        "desc_preview": desc_preview,
-        "why": why,
-    })
+    return render(
+        request,
+        "ingest/match_check.html",
+        {
+            "sc": sc,
+            "bank_form": bank_form,
+            "candidates": cands,
+            "selected": top_txn,
+            "desc_preview": desc_preview,
+            "why": why,
+        },
+    )

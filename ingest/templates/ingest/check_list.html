@@ -48,6 +48,12 @@
                                class="btn btn-sm btn-outline-secondary">
                                View Transaction
                             </a>
+                            <form method="post" action="{% url 'ingest:checks_unlink' sc.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-sm btn-danger ms-1" title="Unlink this check from transaction" onclick="return confirm('Unlink this check from its transaction?');">
+                                    Unlink
+                                </button>
+                            </form>
                         {% else %}
                             <a href="{% url 'ingest:match_check' sc.id %}" 
                                class="btn btn-sm btn-primary">
