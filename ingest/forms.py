@@ -3,9 +3,8 @@ from ingest.models import MappingProfile, ScannedCheck
 from transactions.models import Payoree, Transaction
 from django.core.exceptions import ValidationError
 from django.forms.widgets import ClearableFileInput
-
-from transactions.models import Transaction
-
+from django.utils.decorators import method_decorator
+from transactions.utils import trace
 
 class UploadCSVForm(forms.Form):
     file = forms.FileField()
@@ -31,6 +30,7 @@ class MultiFileField(forms.FileField):
     """
     Accepts one or many files. Returns a list[UploadedFile].
     """
+    @method_decorator(trace)
     def to_python(self, data):
         if not data:
             return []
@@ -66,6 +66,7 @@ class CheckReviewForm(forms.ModelForm):
             "memo_text": forms.Textarea(attrs={"rows": 2}),
         }
 
+    @method_decorator(trace)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Optional niceties
@@ -73,6 +74,7 @@ class CheckReviewForm(forms.ModelForm):
             self.fields["payoree"].queryset = Payoree.objects.all().order_by("name")
             self.fields["payoree"].required = False
             
+@trace
 def bank_account_choices() -> list[tuple[str, str]]:
     qs = (
         Transaction.objects.exclude(bank_account__isnull=True)
@@ -86,6 +88,7 @@ def bank_account_choices() -> list[tuple[str, str]]:
 class BankPickForm(forms.Form):
     bank_account = forms.ChoiceField(choices=[], label="Bank account")
 
+    @method_decorator(trace)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["bank_account"].choices = bank_account_choices()
@@ -106,3 +109,27 @@ class TransactionQuickEditForm(forms.ModelForm):
             "subcategory": forms.Select(attrs={"class": "form-select"}),
             "memo": forms.TextInput(attrs={"class": "form-control"}),
         }
+
+
+class BankPickForm(forms.Form):
+    bank_account = forms.ChoiceField(choices=[], required=True, label="Bank account")
+
+    @method_decorator(trace)
+    def __init__(self, *args, accounts: list[str], **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["bank_account"].choices = [(a, a) for a in accounts]
+
+class AttachEditForm(forms.Form):
+    transaction_id = forms.IntegerField(widget=forms.HiddenInput)
+    payoree = forms.ModelChoiceField(queryset=Payoree.objects.all(), required=False)
+    subcategory_id = forms.IntegerField(required=False)  # keep as int; resolve in view
+    memo_text = forms.CharField(required=False, max_length=255)
+    set_account_type_check = forms.BooleanField(required=False)
+
+class CreateNewTransactionForm(forms.Form):
+    date = forms.DateField(required=True)
+    amount = forms.DecimalField(required=True, max_digits=12, decimal_places=2)
+    description = forms.CharField(required=True, max_length=255)
+    payoree = forms.ModelChoiceField(queryset=Payoree.objects.all(), required=False)
+    subcategory_id = forms.IntegerField(required=False)
+    bank_account = forms.CharField(required=True, max_length=64)

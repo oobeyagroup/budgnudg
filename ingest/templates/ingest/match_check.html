@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block content %}
+<h4>Match Check</h4>
+
+<div class="row g-3">
+  <div class="col-md-4">
+    <div class="card p-3">
+      <img src="{{ sc.image_file.url }}" alt="check" style="max-width:100%;height:auto;">
+      <div class="mt-2 small text-muted">
+        <div><strong>Bank:</strong> {{ sc.bank_account|default:"—" }}</div>
+        <div><strong>Check #:</strong> {{ sc.check_number|default:"—" }}</div>
+        <div><strong>Written date:</strong> {{ sc.date|date:"Y-m-d"|default:"—" }}</div>
+        <div><strong>Amount:</strong> {{ sc.amount|floatformat:2|default:"—" }}</div>
+        <div><strong>Payee:</strong> {{ sc.payoree.name|default:"—" }}</div>
+        <div><strong>Memo:</strong> {{ sc.memo_text|default:"—" }}</div>
+        <div><strong>Status:</strong> {{ sc.status }}</div>
+      </div>
+
+      <form method="post" class="mt-3">
+        {% csrf_token %}
+        {{ bank_form.bank_account.label_tag }}
+        {{ bank_form.bank_account }}
+        <button name="pick_bank" class="btn btn-sm btn-outline-primary mt-2">Use Bank</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-md-8">
+    {% if not bank_form.cleaned_data.bank_account and not sc.bank_account %}
+      <div class="alert alert-info">Pick a bank to see candidate matches.</div>
+    {% else %}
+      {% if candidates %}
+        <div class="mb-2">
+          <span class="badge bg-success-subtle text-success-emphasis">Top match</span>
+          <small class="ms-2 text-muted">{{ why|join:" · " }}</small>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table table-sm align-middle">
+            <thead><tr><th>Date</th><th>Description</th><th class="text-end">Amount</th><th></th></tr></thead>
+            <tbody>
+            {% for c in candidates %}
+              <tr class="{% if forloop.first %}table-primary{% endif %}">
+                <td>{{ c.txn.date|date:"Y-m-d" }}</td>
+                <td>{{ c.txn.description }}</td>
+                <td class="text-end">{{ c.txn.amount|floatformat:2 }}</td>
+                <td>
+                  {% if forloop.first %}
+                    <span class="badge bg-primary">selected</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card p-3">
+          <h6 class="mb-2">Edit & Attach to selected</h6>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="transaction_id" value="{{ selected.id }}">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label">Payee</label>
+                <select class="form-select" name="payoree">
+                  <option value="">—</option>
+                  {% for p in payoree_qs %}
+                    <option value="{{ p.id }}" {% if sc.payoree and sc.payoree.id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Subcategory (id)</label>
+                <input type="number" class="form-control" name="subcategory_id" placeholder="e.g. 12">
+              </div>
+              <div class="col-md-4 d-flex align-items-end">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="set_account_type_check" id="setacct">
+                  <label class="form-check-label" for="setacct">Set account type = Check</label>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Memo</label>
+                <input type="text" class="form-control" name="memo_text" value="{{ sc.memo_text }}">
+              </div>
+            </div>
+            <div class="mt-2">
+              <div class="small text-muted">Preview:</div>
+              <div class="border rounded p-2 bg-light">{{ desc_preview }}</div>
+            </div>
+            <button name="attach_save" class="btn btn-primary mt-2">Attach & Save</button>
+            <a class="btn btn-outline-secondary mt-2" href="{% url 'ingest:scannedcheck_list' %}">Cancel</a>
+          </form>
+        </div>
+
+        <details class="mt-3">
+          <summary>Create new transaction instead</summary>
+          <form method="post" class="mt-2">
+            {% csrf_token %}
+            <input type="hidden" name="create_new" value="1">
+            <div class="row g-2">
+              <div class="col-md-4">
+                <label class="form-label">Date</label>
+                <input type="date" name="date" class="form-control" value="{{ sc.date|date:'Y-m-d' }}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Amount</label>
+                <input type="number" step="0.01" name="amount" class="form-control" value="{{ sc.amount }}">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Bank</label>
+                <input type="text" name="bank_account" class="form-control" value="{{ sc.bank_account }}">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Description</label>
+                <input type="text" name="description" class="form-control"
+                       value="{{ selected.description|default:'' }}">
+              </div>
+            </div>
+            <button class="btn btn-outline-primary mt-2">Create New</button>
+          </form>
+        </details>
+      {% else %}
+        <div class="alert alert-warning">No candidates found for this bank/check. You can still create a new transaction below.</div>
+        <!-- reuse the create-new form if desired -->
+      {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

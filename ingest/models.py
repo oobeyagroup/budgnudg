@@ -5,6 +5,7 @@ from django.contrib.auth import get_user_model
 from decimal import Decimal 
 from django.conf import settings 
 from django.core.validators import MinValueValidator
+from transactions.models import Transaction
 
 User = get_user_model()
 
@@ -98,10 +99,19 @@ class ScannedCheck(models.Model):
     payoree = models.ForeignKey("transactions.Payoree", null=True, blank=True, on_delete=models.SET_NULL)
     memo_text = models.CharField(max_length=255, blank=True)
     # link to a Transaction if matched/resolved
-    transaction = models.ForeignKey("transactions.Transaction", null=True, blank=True,
-                                     on_delete=models.SET_NULL, related_name="scanned_checks")
+  
+    linked_transaction = models.OneToOneField(
+        Transaction, null=True, blank=True, on_delete=models.SET_NULL, related_name="scanned_check"
+    )
+    status = models.CharField(
+        max_length=16,
+        choices=[("unmatched","Unmatched"),("matched","Matched"),("confirmed","Confirmed")],
+        default="unmatched",
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
-# linked_transaction = models.ForeignKey("transactions.Transaction", null=True, blank=True, on_delete=models.SET_NULL)
+    updated_at = models.DateTimeField(auto_now=True)
+
     class Meta:
         constraints = [
             # avoid dup imports; filename can collide across batches, so md5 is stronger
