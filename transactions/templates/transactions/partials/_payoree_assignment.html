@@ -32,14 +32,6 @@
             <div class="form-text">This will create a new payoree in the system</div>
         </div>
         
-        <!-- Current Payoree Display (if assigned) -->
-        {% if transaction.payoree %}
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                Current payoree: <strong>{{ transaction.payoree.name }}</strong>
-            </div>
-        {% endif %}
-        
         <!-- Payoree Suggestions from Similar Transactions -->
         {% if payoree_matches %}
             <div class="alert alert-info">

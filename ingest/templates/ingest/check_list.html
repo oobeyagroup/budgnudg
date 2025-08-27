@@ -35,9 +35,9 @@
                 <tr>
                     <td>
                         {% if c.image_file %}
-                        <a href="{{ c.image_file.url }}" target="_blank" rel="noopener">
+                        <a href="{% url 'ingest:check_review' c.id %}">
                             <img src="{{ c.image_file.url }}" alt="{{ c.original_filename }}"
-                                style="height: 100px;px; max-width:240px; object-fit:contain;">
+                                style="height: 100px; max-width:240px; object-fit:contain;">
                         </a>
                         {% endif %}
                     </td>

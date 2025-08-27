@@ -1,4 +1,3 @@
-
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.generic import ListView, DetailView
 from django.contrib import messages
@@ -9,27 +8,39 @@ from django.db import transaction as dbtx
 from transactions.utils import trace
 from transactions.models import Transaction, Payoree
 from ingest.models import ImportBatch, MappingProfile, ScannedCheck
-from ingest.forms import UploadCSVForm, AssignProfileForm, CheckUploadForm, CheckReviewForm, BankPickForm, AttachCheckForm, TransactionQuickEditForm
+from ingest.forms import (
+    UploadCSVForm,
+    AssignProfileForm,
+    CheckUploadForm,
+    CheckReviewForm,
+    BankPickForm,
+    AttachCheckForm,
+    TransactionQuickEditForm,
+)
 from ingest.services.staging import create_batch_from_csv
 from ingest.services.mapping import preview_batch, commit_batch, apply_profile_to_batch
-from .services.check_ingest import save_uploaded_checks, candidate_transactions, attach_or_create_transaction
+from .services.check_ingest import (
+    save_uploaded_checks,
+    candidate_transactions,
+    attach_or_create_transaction,
+)
 
 from django.http import HttpResponse
 from django.db.models import Q
-
 
 
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class BatchPreviewView(DetailView):
     model = ImportBatch
     template_name = "ingest/preview.html"
     context_object_name = "batch"
-    http_method_names = ['get', 'post']  # Allow POST for validation
+    http_method_names = ["get", "post"]  # Allow POST for validation
 
-    @method_decorator(trace)    
+    @method_decorator(trace)
     def post(self, request, *args, **kwargs):
         self.object = self.get_object()
         context = self.get_context_data(object=self.object)
@@ -38,40 +49,58 @@ class BatchPreviewView(DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         batch = context.get("batch")
-        
+
         # First, try to find and assign a matching profile if none is assigned
         if batch and not batch.profile and batch.header:
             from ingest.models import MappingProfile
+
             profiles = MappingProfile.objects.all()
-            
+
             # Convert batch headers to a set for comparison, filtering out None and normalizing
-            batch_headers = {h.strip() for h in batch.header if h is not None and h.strip()}
+            batch_headers = {
+                h.strip() for h in batch.header if h is not None and h.strip()
+            }
             logger.debug("Looking for profile matching headers: %s", batch_headers)
-            
+
             # Look for a profile whose column_map keys match our headers exactly
             for profile in profiles:
                 # Normalize profile headers too
-                profile_headers = {k.strip() for k in profile.column_map.keys() if k and k.strip()}
-                logger.debug("Comparing with profile '%s' headers: %s", profile.name, profile_headers)
-                
+                profile_headers = {
+                    k.strip() for k in profile.column_map.keys() if k and k.strip()
+                }
+                logger.debug(
+                    "Comparing with profile '%s' headers: %s",
+                    profile.name,
+                    profile_headers,
+                )
+
                 if profile_headers == batch_headers:
                     logger.debug("Found exact matching profile: %s", profile.name)
                     batch.profile = profile
                     batch.save()
                     # Automatically apply the profile to process the data
                     updated, dup_count = apply_profile_to_batch(batch, profile)
-                    messages.success(self.request, f"Automatically matched and processed with profile: {profile.name} ({updated} rows processed, {dup_count} duplicates found)")
+                    messages.success(
+                        self.request,
+                        f"Automatically matched and processed with profile: {profile.name} ({updated} rows processed, {dup_count} duplicates found)",
+                    )
                     break
                 elif profile_headers.issubset(batch_headers):
                     # Profile headers are a subset of CSV headers (CSV has extra columns)
-                    logger.debug("Found subset matching profile: %s (profile is subset of CSV)", profile.name)
+                    logger.debug(
+                        "Found subset matching profile: %s (profile is subset of CSV)",
+                        profile.name,
+                    )
                     batch.profile = profile
                     batch.save()
                     # Automatically apply the profile to process the data
                     updated, dup_count = apply_profile_to_batch(batch, profile)
-                    messages.success(self.request, f"Automatically matched and processed with profile: {profile.name} ({updated} rows processed, {dup_count} duplicates found, ignoring extra CSV columns)")
+                    messages.success(
+                        self.request,
+                        f"Automatically matched and processed with profile: {profile.name} ({updated} rows processed, {dup_count} duplicates found, ignoring extra CSV columns)",
+                    )
                     break
-        
+
         if not batch or not batch.profile:
             # Don't return redirect here - let the template handle the missing profile case
             context["missing_profile"] = True
@@ -80,58 +109,92 @@ class BatchPreviewView(DetailView):
                 context["csv_headers"] = [h for h in batch.header if h is not None]
             # Include first 5 mapping profiles to show what's available
             from ingest.models import MappingProfile
+
             profiles = MappingProfile.objects.all()[:5]
             context["available_profiles"] = [
                 {
                     "name": p.name,
-                    "headers": list(p.column_map.keys()) if p.column_map else []
+                    "headers": list(p.column_map.keys()) if p.column_map else [],
                 }
                 for p in profiles
             ]
             return context
-            
+
         # Get field mappings from profile
         column_map = batch.profile.column_map
         # Add field mappings to context for template
-        context.update({
-            'date_field': next((k for k, v in column_map.items() if v == 'date'), None),
-            'amount_field': next((k for k, v in column_map.items() if v == 'amount'), None),
-            'description_field': next((k for k, v in column_map.items() if v == 'description'), None),
-            'account_field': next((k for k, v in column_map.items() if v == 'sheet_account'), None),
-            'payoree_field': next((k for k, v in column_map.items() if v == 'payoree'), None),
-            'subcategory_field': next((k for k, v in column_map.items() if v == 'subcategory'), None),
-            'memo_field': next((k for k, v in column_map.items() if v == 'memo'), None),
-            'check_num_field': next((k for k, v in column_map.items() if v == 'check_num'), None),
-        })
+        context.update(
+            {
+                "date_field": next(
+                    (k for k, v in column_map.items() if v == "date"), None
+                ),
+                "amount_field": next(
+                    (k for k, v in column_map.items() if v == "amount"), None
+                ),
+                "description_field": next(
+                    (k for k, v in column_map.items() if v == "description"), None
+                ),
+                "account_field": next(
+                    (k for k, v in column_map.items() if v == "sheet_account"), None
+                ),
+                "payoree_field": next(
+                    (k for k, v in column_map.items() if v == "payoree"), None
+                ),
+                "subcategory_field": next(
+                    (k for k, v in column_map.items() if v == "subcategory"), None
+                ),
+                "memo_field": next(
+                    (k for k, v in column_map.items() if v == "memo"), None
+                ),
+                "check_num_field": next(
+                    (k for k, v in column_map.items() if v == "check_num"), None
+                ),
+            }
+        )
 
         # Build mapping_table for preview
         mapping_table = []
         first_row = batch.rows.first()
         txn_fields = [
-            'date', 'description', 'subcategory', 'sheet_account',
-            'amount', 'memo', 'payoree', 'check_num'
+            "date",
+            "description",
+            "subcategory",
+            "sheet_account",
+            "amount",
+            "memo",
+            "payoree",
+            "check_num",
         ]
         for txn_field in txn_fields:
-            csv_field = next((csv_f for csv_f, txn_f in column_map.items() if txn_f == txn_field), 'tbd')
-            sample_value = ''
-            if csv_field != 'tbd' and first_row and hasattr(first_row, 'raw'):
-                sample_value = first_row.raw.get(csv_field, '')
-            mapping_table.append({
-                'csv_field': csv_field,
-                'sample_value': sample_value,
-                'txn_field': txn_field
-            })
-        mapping_table.append({
-            'csv_field': 'filename',
-            'sample_value': batch.source_filename,
-            'txn_field': 'source'
-        })
+            csv_field = next(
+                (csv_f for csv_f, txn_f in column_map.items() if txn_f == txn_field),
+                "tbd",
+            )
+            sample_value = ""
+            if csv_field != "tbd" and first_row and hasattr(first_row, "raw"):
+                sample_value = first_row.raw.get(csv_field, "")
+            mapping_table.append(
+                {
+                    "csv_field": csv_field,
+                    "sample_value": sample_value,
+                    "txn_field": txn_field,
+                }
+            )
+        mapping_table.append(
+            {
+                "csv_field": "filename",
+                "sample_value": batch.source_filename,
+                "txn_field": "source",
+            }
+        )
         context["mapping_table"] = mapping_table
-        
+
         # Add profile to context explicitly for template access
         context["profile"] = batch.profile
-        
+
         return context
+
+
 @trace
 def upload_csv(request):
     if request.method == "POST":
@@ -148,34 +211,46 @@ def upload_csv(request):
         form = UploadCSVForm()
     return render(request, "ingest/upload_form.html", {"form": form})
 
+
 @trace
 def apply_profile(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk)
     profile_id = request.POST.get("profile_id")
     logger.debug("Received profile_id=%s", profile_id)  # Debug log
     profile = get_object_or_404(MappingProfile, pk=profile_id)
-    updated, dup_count = apply_profile_to_batch(batch, profile, bank_account_hint=request.POST.get("bank_account"))
+    updated, dup_count = apply_profile_to_batch(
+        batch, profile, bank_account_hint=request.POST.get("bank_account")
+    )
     batch.refresh_from_db()
-    messages.success(request, f"Mapped {updated} rows. Duplicates flagged: {dup_count}.")
+    messages.success(
+        request, f"Mapped {updated} rows. Duplicates flagged: {dup_count}."
+    )
     return redirect("ingest:batch_preview", pk=batch.id)
+
 
 @trace
 def commit(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk)
-    
+
     if request.method == "POST":
         bank_account = request.POST.get("bank_account")
         if not bank_account:
             messages.error(request, "Bank account is required.")
             return redirect("ingest:batch_preview", pk=batch.pk)
-        
-        logger.debug("Committing batch %s with bank_account: %s", batch.pk, bank_account)
+
+        logger.debug(
+            "Committing batch %s with bank_account: %s", batch.pk, bank_account
+        )
         imported, dups, skipped = commit_batch(batch, bank_account)
-        messages.success(request, f"Imported {len(imported)} transactions; skipped {len(skipped)} (duplicates: {len(dups)}).")
+        messages.success(
+            request,
+            f"Imported {len(imported)} transactions; skipped {len(skipped)} (duplicates: {len(dups)}).",
+        )
         return redirect("transactions:transactions_list")
     else:
         # If GET request, redirect back to preview
         return redirect("ingest:batch_preview", pk=batch.pk)
+
 
 class BatchListView(ListView):
     model = ImportBatch
@@ -226,6 +301,7 @@ def check_upload(request):
     form = CheckUploadForm()
     return render(request, "ingest/check_upload.html", {"form": form})
 
+
 @require_http_methods(["GET", "POST"])
 @trace
 def check_review_old(request, pk: int):
@@ -238,7 +314,7 @@ def check_review_old(request, pk: int):
         "payoree": sc.payoree_id,
         "memo_text": sc.memo_text or "",
     }
-    
+
     form = CheckReviewForm(request.POST or None, initial=initial)
 
     candidates = []
@@ -246,7 +322,10 @@ def check_review_old(request, pk: int):
         cleaned = form.cleaned_data
         # discover candidates for this submission (use posted values)
         candidates = candidate_transactions(
-            cleaned["bank_account"], cleaned["date"], cleaned["amount"], cleaned.get("check_number")
+            cleaned["bank_account"],
+            cleaned["date"],
+            cleaned["amount"],
+            cleaned.get("check_number"),
         )
 
         # If the user selected a candidate (via hidden/radio in template), attach immediately
@@ -263,9 +342,16 @@ def check_review_old(request, pk: int):
             return _redirect_to_next_unresolved()
     else:
         # compute candidates off initial to pre-show
-        if initial["bank_account"] and initial["date"] and initial["amount"] is not None:
+        if (
+            initial["bank_account"]
+            and initial["date"]
+            and initial["amount"] is not None
+        ):
             candidates = candidate_transactions(
-                initial["bank_account"], initial["date"], initial["amount"], initial["check_number"]
+                initial["bank_account"],
+                initial["date"],
+                initial["amount"],
+                initial["check_number"],
             )
 
     # figure out prev/next among unresolved checks (or all checks if you prefer)
@@ -287,17 +373,22 @@ def check_review_old(request, pk: int):
     cancel_url = reverse("ingest:scannedcheck_list")
 
     context = {
-    "sc": sc,
-    "form": form,
-    "prev_url": reverse("ingest:check_review", args=[prev_id]) if prev_id else None,
-    "next_url": reverse("ingest:check_review", args=[next_id]) if next_id else None,
-    "cancel_url": reverse("ingest:scannedcheck_list"),  # or any route you prefer
+        "sc": sc,
+        "form": form,
+        "prev_url": reverse("ingest:check_review", args=[prev_id]) if prev_id else None,
+        "next_url": reverse("ingest:check_review", args=[next_id]) if next_id else None,
+        "cancel_url": reverse("ingest:scannedcheck_list"),  # or any route you prefer
     }
     return render(request, "ingest/check_review.html", context)
 
+
 @trace
 def _redirect_to_next_unresolved():
-    nxt = ScannedCheck.objects.filter(transaction__isnull=True).order_by("created_at").first()
+    nxt = (
+        ScannedCheck.objects.filter(transaction__isnull=True)
+        .order_by("created_at")
+        .first()
+    )
     if nxt:
         return redirect("ingest:check_review", pk=nxt.pk)
     return redirect("transactions:transactions_list")
@@ -308,15 +399,25 @@ def _redirect_to_next_unresolved():
 def check_review(request, pk: int):
     sc = get_object_or_404(ScannedCheck, pk=pk)
 
+    # If POST and user selected to add a new payoree, create it and update POST data
+    post_data = request.POST.copy() if request.method == "POST" else None
+    if request.method == "POST":
+        payoree_val = post_data.get("payoree")
+        new_payoree_name = post_data.get("new_payoree", "").strip()
+        if payoree_val == "__new__" and new_payoree_name:
+            # Create new payoree
+            from transactions.models import Payoree
+
+            payoree_obj, _ = Payoree.objects.get_or_create(name=new_payoree_name)
+            post_data["payoree"] = str(payoree_obj.id)
     # Form bound to the instance for both GET and POST
-    form = CheckReviewForm(request.POST or None, instance=sc)
+    form = CheckReviewForm(post_data or None, instance=sc)
 
     # pick bank account (query param)
     bank = request.GET.get("bank") or ""
     # get list of known bank accounts (distinct from transactions)
     bank_accounts = (
-        Transaction.objects
-        .exclude(bank_account__isnull=True)
+        Transaction.objects.exclude(bank_account__isnull=True)
         .exclude(bank_account__exact="")
         .values_list("bank_account", flat=True)
         .distinct()
@@ -330,7 +431,9 @@ def check_review(request, pk: int):
             # persist the choice on the ScannedCheck
             ScannedCheck.objects.filter(pk=sc.pk).update(bank_account=picked)
             # reflect selection in querystring so template shows it selected
-            return redirect(f"{reverse('ingest:check_review', args=[sc.pk])}?bank={picked}")
+            return redirect(
+                f"{reverse('ingest:check_review', args=[sc.pk])}?bank={picked}"
+            )
 
     # Build prev/next among unresolved (or all, if you prefer)
     unresolved_ids = list(
@@ -368,6 +471,9 @@ def check_review(request, pk: int):
         else:
             messages.error(request, "Please fix the errors below.")
 
+    # For payoree assignment partial
+    payorees = form.fields["payoree"].queryset if "payoree" in form.fields else []
+    payoree_matches = []  # You can add logic for suggestions if desired
     return render(
         request,
         "ingest/check_review.html",
@@ -379,8 +485,11 @@ def check_review(request, pk: int):
             "cancel_url": cancel_url,
             "bank": bank,
             "bank_accounts": bank_accounts,
+            "payorees": payorees,
+            "payoree_matches": payoree_matches,
         },
     )
+
 
 @trace
 def check_reconcile(request):
@@ -393,6 +502,7 @@ def check_reconcile(request):
         "checks": checks.order_by("-date", "-id"),
     }
     return render(request, "transactions/checks_reconcile.html", context)
+
 
 @trace
 @require_POST
@@ -415,6 +525,7 @@ def match_check(request):
         if payee and not getattr(txn, "payoree", None):
             # if you have a Payoree model with a helper:
             from transactions.models import Payoree
+
             pyo = Payoree.get_existing(payee) or Payoree.objects.create(name=payee)
             txn.payoree = pyo
             updates.append("payoree")
@@ -427,6 +538,7 @@ def match_check(request):
     messages.success(request, f"Matched check {check.check_number} to txn {txn.pk}.")
     return redirect("ingest:checks_reconcile")
 
+
 @trace
 @require_POST
 def unlink_check(request, check_id: int):
@@ -437,9 +549,12 @@ def unlink_check(request, check_id: int):
     return redirect("ingest:checks_reconcile")
 
     # ingest/views.py
+
+
 from django.views.generic import ListView
 from django.db.models import Q
 from .models import ScannedCheck  # adjust import path if your model lives elsewhere
+
 
 class ScannedCheckListView(ListView):
     model = ScannedCheck
@@ -447,7 +562,7 @@ class ScannedCheckListView(ListView):
     context_object_name = "checks"
     paginate_by = 50
 
-    @method_decorator(trace)    
+    @method_decorator(trace)
     def get_queryset(self):
         qs = ScannedCheck.objects.all().order_by("-created_at")
         q = (self.request.GET.get("q") or "").strip()
@@ -466,6 +581,7 @@ class ScannedCheckListView(ListView):
         ctx["q"] = self.request.GET.get("q", "")
         return ctx
 
+
 @trace
 def review_scanned_check(request, pk: int):
     """
@@ -478,7 +594,9 @@ def review_scanned_check(request, pk: int):
 
     # --- Step 1: bank selection (GET or POST with bank pick) ---
     bank = request.GET.get("bank") or None
-    bank_form = BankPickForm(data=request.POST or None, initial={"bank_account": check.bank_account or bank})
+    bank_form = BankPickForm(
+        data=request.POST or None, initial={"bank_account": check.bank_account or bank}
+    )
 
     # Handle bank selection submit
     if request.method == "POST" and "pick_bank" in request.POST:
@@ -486,7 +604,9 @@ def review_scanned_check(request, pk: int):
             bank = bank_form.cleaned_data["bank_account"]
             # Persist on the check so refresh remembers it
             ScannedCheck.objects.filter(pk=check.pk).update(bank_account=bank)
-            return redirect(f"{reverse('ingest:scannedcheck_review', args=[check.pk])}?bank={bank}")
+            return redirect(
+                f"{reverse('ingest:scannedcheck_review', args=[check.pk])}?bank={bank}"
+            )
 
     # If we don’t have a bank yet, render only the picker + image
     if not bank:
@@ -501,11 +621,9 @@ def review_scanned_check(request, pk: int):
         )
 
     # --- Step 2: candidate query ---
-    candidates = (
-        Transaction.objects
-        .filter(bank_account=bank, description__icontains="CHECK")
-        .order_by("-date")[:100]
-    )
+    candidates = Transaction.objects.filter(
+        bank_account=bank, description__icontains="CHECK"
+    ).order_by("-date")[:100]
 
     # --- Step 3: attach check to a chosen transaction ---
     attach_form = AttachCheckForm(data=request.POST or None)
@@ -518,7 +636,9 @@ def review_scanned_check(request, pk: int):
             if not txn.payoree and check.payoree:
                 txn.payoree = check.payoree
             if not txn.subcategory and getattr(check, "suggested_subcategory", None):
-                txn.subcategory = check.suggested_subcategory  # if you later add this field
+                txn.subcategory = (
+                    check.suggested_subcategory
+                )  # if you later add this field
             if (txn.memo or "").strip() == "" and (check.memo_text or "").strip():
                 txn.memo = check.memo_text
 
@@ -536,7 +656,9 @@ def review_scanned_check(request, pk: int):
                 check.save(update_fields=["linked_transaction"])
 
         messages.success(request, f"Attached check to transaction #{txn.id}.")
-        return redirect(reverse("ingest:scannedcheck_review", args=[check.pk]) + f"?bank={bank}")
+        return redirect(
+            reverse("ingest:scannedcheck_review", args=[check.pk]) + f"?bank={bank}"
+        )
 
     return render(
         request,
@@ -548,7 +670,8 @@ def review_scanned_check(request, pk: int):
             "attach_form": attach_form,
             "selected_bank": bank,
         },
-    )        
+    )
+
 
 @trace
 def review_scanned_check(request, pk):
@@ -556,27 +679,34 @@ def review_scanned_check(request, pk):
     # pick bank account (query param)
     bank = request.GET.get("bank") or ""
     # get list of known bank accounts (distinct from transactions)
-    bank_accounts = (Transaction.objects
-                     .exclude(bank_account__isnull=True)
-                     .exclude(bank_account__exact="")
-                     .values_list("bank_account", flat=True)
-                     .distinct()
-                     .order_by("bank_account"))
+    bank_accounts = (
+        Transaction.objects.exclude(bank_account__isnull=True)
+        .exclude(bank_account__exact="")
+        .values_list("bank_account", flat=True)
+        .distinct()
+        .order_by("bank_account")
+    )
 
     candidates = Transaction.objects.none()
     if bank:
-        candidates = (Transaction.objects
-                      .filter(bank_account=bank)
-                      .filter(Q(description__icontains="CHECK") | Q(description__icontains="CHK"))
-                      .filter(payoree__isnull=True)
-                      .order_by("-date")[:200])
+        candidates = (
+            Transaction.objects.filter(bank_account=bank)
+            .filter(Q(description__icontains="CHECK") | Q(description__icontains="CHK"))
+            .filter(payoree__isnull=True)
+            .order_by("-date")[:200]
+        )
 
-    return render(request, "ingest/scannedcheck_review.html", {
-        "check": check,
-        "bank": bank,
-        "bank_accounts": bank_accounts,
-        "candidates": candidates,
-    })
+    return render(
+        request,
+        "ingest/scannedcheck_review.html",
+        {
+            "check": check,
+            "bank": bank,
+            "bank_accounts": bank_accounts,
+            "candidates": candidates,
+        },
+    )
+
 
 @trace
 def txn_edit_partial(request, pk):
@@ -592,18 +722,35 @@ def txn_edit_partial(request, pk):
             if check:
                 check.transaction = obj
                 check.bank_account = obj.bank_account or check.bank_account
-                check.check_number = check.check_number or _extract_check_num(obj.description)
+                check.check_number = check.check_number or _extract_check_num(
+                    obj.description
+                )
                 check.amount = check.amount or obj.amount
-                check.save(update_fields=["transaction","bank_account","check_number","amount"])
-            return render(request, "ingest/_txn_edit_cancel.html")  # collapse panel back to “Pick Select…”
+                check.save(
+                    update_fields=[
+                        "transaction",
+                        "bank_account",
+                        "check_number",
+                        "amount",
+                    ]
+                )
+            return render(
+                request, "ingest/_txn_edit_cancel.html"
+            )  # collapse panel back to “Pick Select…”
     else:
         form = TransactionQuickEditForm(instance=txn)
 
-    return render(request, "ingest/_txn_edit_form.html", {"form": form, "txn": txn, "check": check})
+    return render(
+        request,
+        "ingest/_txn_edit_form.html",
+        {"form": form, "txn": txn, "check": check},
+    )
+
 
 @trace
 def txn_edit_cancel(request):
     return render(request, "ingest/_txn_edit_cancel.html")
+
 
 @trace
 def _extract_check_num(desc: str | None) -> str:
@@ -611,10 +758,9 @@ def _extract_check_num(desc: str | None) -> str:
         return ""
     # naive pull like "CHECK 1234"
     import re
+
     m = re.search(r"\b(?:CHECK|CHK)\s*(\d{3,6})\b", desc.upper())
     return m.group(1) if m else ""
-
-
 
 
 # DELETE AT SOME POINT
@@ -630,7 +776,7 @@ def check_review_old(request, pk: int):
         "payoree": sc.payoree_id,
         "memo_text": sc.memo_text or "",
     }
-    
+
     form = CheckReviewForm(request.POST or None, initial=initial)
 
     candidates = []
@@ -638,7 +784,10 @@ def check_review_old(request, pk: int):
         cleaned = form.cleaned_data
         # discover candidates for this submission (use posted values)
         candidates = candidate_transactions(
-            cleaned["bank_account"], cleaned["date"], cleaned["amount"], cleaned.get("check_number")
+            cleaned["bank_account"],
+            cleaned["date"],
+            cleaned["amount"],
+            cleaned.get("check_number"),
         )
 
         # If the user selected a candidate (via hidden/radio in template), attach immediately
@@ -655,9 +804,16 @@ def check_review_old(request, pk: int):
             return _redirect_to_next_unresolved()
     else:
         # compute candidates off initial to pre-show
-        if initial["bank_account"] and initial["date"] and initial["amount"] is not None:
+        if (
+            initial["bank_account"]
+            and initial["date"]
+            and initial["amount"] is not None
+        ):
             candidates = candidate_transactions(
-                initial["bank_account"], initial["date"], initial["amount"], initial["check_number"]
+                initial["bank_account"],
+                initial["date"],
+                initial["amount"],
+                initial["check_number"],
             )
 
     # figure out prev/next among unresolved checks (or all checks if you prefer)
@@ -679,10 +835,10 @@ def check_review_old(request, pk: int):
     cancel_url = reverse("ingest:scannedcheck_list")
 
     context = {
-    "sc": sc,
-    "form": form,
-    "prev_url": reverse("ingest:check_review", args=[prev_id]) if prev_id else None,
-    "next_url": reverse("ingest:check_review", args=[next_id]) if next_id else None,
-    "cancel_url": reverse("ingest:scannedcheck_list"),  # or any route you prefer
+        "sc": sc,
+        "form": form,
+        "prev_url": reverse("ingest:check_review", args=[prev_id]) if prev_id else None,
+        "next_url": reverse("ingest:check_review", args=[next_id]) if next_id else None,
+        "cancel_url": reverse("ingest:scannedcheck_list"),  # or any route you prefer
     }
     return render(request, "ingest/check_review.html", context)

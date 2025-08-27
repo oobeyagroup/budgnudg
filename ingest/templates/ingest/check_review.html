@@ -10,32 +10,33 @@
       <div class="card mb-3">
         <div class="card-body text-center">
           {% if sc.image_file %}
-            <img src="{{ sc.image_file.url }}" alt="{{ sc.original_filename }}" class="img-fluid" style="width: 640px;" />
+          <img src="{{ sc.image_file.url }}" alt="{{ sc.original_filename }}" class="img-fluid" style="width: 640px;" />
           {% else %}
-            <div class="text-muted">(no image)</div>
+          <div class="text-muted">(no image)</div>
           {% endif %}
           <div class="mt-2 text-muted small">{{ sc.original_filename }}</div>
         </div>
       </div>
     </div>
     <div class="col-md-6 card p-3">
-    <form method="post" class="mb-3">
-      {% csrf_token %}
-      <div class="row g-2 align-items-end">
-        <div class="col-auto">
-          <label class="form-label mb-0">Bank account</label>
-          <select name="bank_account" class="form-select">
-            <option value="" {% if not bank %}selected{% endif %} disabled>Choose…</option>
-            {% for acct in bank_accounts %}
-              <option value="{{ acct }}" {% if bank == acct or sc.bank_account == acct %}selected{% endif %}>{{ acct }}</option>
-            {% endfor %}
-          </select>
+      <form method="post" class="mb-3">
+        {% csrf_token %}
+        <div class="row g-2 align-items-end">
+          <div class="col-auto">
+            <label class="form-label mb-0">Bank account</label>
+            <select name="bank_account" class="form-select">
+              <option value="" {% if not bank %}selected{% endif %} disabled>Choose…</option>
+              {% for acct in bank_accounts %}
+              <option value="{{ acct }}" {% if bank == acct or sc.bank_account == acct %}selected{% endif %}>{{ acct }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-auto">
+            <button type="submit" name="pick_bank" class="btn btn-outline-primary">Use Account</button>
+          </div>
         </div>
-        <div class="col-auto">
-          <button type="submit" name="pick_bank" class="btn btn-outline-primary">Use Account</button>
-        </div>
-      </div>
-    </form>
+      </form>
 
       {% url 'ingest:check_upload' as fallback_cancel_url %}
       <form method="post" class="p-3">
@@ -55,8 +56,7 @@
             {{ form.amount|add_class:"form-control" }}
           </div>
           <div class="col-md-8">
-            <label class="form-label">Payoree</label>
-            {{ form.payoree|add_class:"form-select select2" }}
+            {% include "transactions/partials/_payoree_assignment.html" with payorees=payorees transaction=sc payoree_matches=payoree_matches %}
           </div>
           <div class="col-12">
             <label class="form-label">Memo</label>
@@ -74,4 +74,27 @@
     </div>
   </div>
 </div>
+
+  {% block extra_js %}
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        const payoreeSelect = document.getElementById('payoree');
+        if (payoreeSelect) {
+          payoreeSelect.addEventListener('change', function () {
+            const newPayoreeInput = document.getElementById('newPayoreeInput');
+            if (this.value === '__new__') {
+              if (newPayoreeInput) {
+                newPayoreeInput.style.display = 'block';
+                newPayoreeInput.querySelector('input').focus();
+              }
+            } else {
+              if (newPayoreeInput) {
+                newPayoreeInput.style.display = 'none';
+              }
+            }
+          });
+        }
+      });
+    </script>
+  {% endblock %}
 {% endblock %}
