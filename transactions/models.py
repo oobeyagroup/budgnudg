@@ -1,6 +1,7 @@
 import re
 from django.db import models
 from django.db.models import Q
+from django.core.exceptions import ObjectDoesNotExist
 
 # -----------------------------------------------------
 class Payoree(models.Model):
@@ -178,6 +179,13 @@ class Transaction(models.Model):
     
     tags = models.ManyToManyField(Tag, blank=True, related_name='transactions')
 
+    @property
+    def scanned_check_or_none(self):
+        try:
+            return self.scanned_check  # reverse accessor from related_name
+        except ObjectDoesNotExist:
+            return None
+        
     def __str__(self):
         truncated = self.description
         if len(truncated) > 50:

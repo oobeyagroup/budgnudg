@@ -68,3 +68,4 @@ budgnudg_backup/
 # Exclude specific directories if needed
 reports/
 /data/*
+/media/*

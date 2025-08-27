@@ -297,7 +297,7 @@ def check_upload(request):
             messages.success(request, f"Uploaded {len(created)} image(s).")
         if skipped:
             messages.warning(request, f"Skipped {len(skipped)} duplicate image(s).")
-        return redirect("ingest:check_list")
+        return redirect("ingest:scannedcheck_list")
 
     # GET
     form = CheckUploadForm()
@@ -835,7 +835,7 @@ def match_check(request, pk: int):
             messages.success(request, f"Attached check #{sc.check_number or ''} to T-{txn.pk}.")
             # Next workflow: go to next unmatched
             nxt = ScannedCheck.objects.filter(status="unmatched").exclude(pk=sc.pk).order_by("id").first()
-            return redirect(reverse("ingest:match_check", args=[nxt.pk]) if nxt else reverse("ingest:scanned_check_list"))
+            return redirect(reverse("ingest:match_check", args=[nxt.pk]) if nxt else reverse("ingest:scannedcheck_list"))
 
         messages.error(request, "Please fix the errors below.")
 
@@ -860,7 +860,7 @@ def match_check(request, pk: int):
             sc.save(update_fields=["linked_transaction", "status"])
             messages.success(request, f"Created T-{txn.pk} and linked check.")
             nxt = ScannedCheck.objects.filter(status="unmatched").exclude(pk=sc.pk).order_by("id").first()
-            return redirect(reverse("ingest:match_check", args=[nxt.pk]) if nxt else reverse("ingest:scanned_check_list"))
+            return redirect(reverse("ingest:match_check", args=[nxt.pk]) if nxt else reverse("ingest:scannedcheck_list"))
 
         messages.error(request, "Please correct the new transaction form.")
 

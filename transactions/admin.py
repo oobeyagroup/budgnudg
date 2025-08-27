@@ -1,3 +1,4 @@
+from urllib import request
 from django.contrib import admin
 from django.utils.html import format_html
 from django.urls import reverse
@@ -5,13 +6,13 @@ from django.shortcuts import redirect
 from django.db.models import Sum, Count
 from .models import Transaction, Category, Payoree, Tag, LearnedSubcat, LearnedPayoree, KeywordRule
 from transactions.utils import trace
-from django.core.exceptions import ObjectDoesNotExist
-
+from django.db.models import Exists, OuterRef
+from ingest.models import ScannedCheck  # wherever your model lives
 
 @admin.register(Transaction)
 class TransactionAdmin(admin.ModelAdmin):
     list_display = ['bank_account','date', 'description', 'amount', 'subcategory', 'categorization_error', 'parent_category', 'account_type','payoree','has_scanned_check']
-    search_fields = ['description', 'payoree']
+    search_fields = ['description', 'payoree__name']
     list_filter = ['subcategory']
 
     def parent_category(self, obj):
@@ -20,17 +21,19 @@ class TransactionAdmin(admin.ModelAdmin):
         return "—"
     parent_category.short_description = "Category"
 
-    def has_scanned_check(self, obj):
-        try:
-            # Accessing the reverse O2O will either return the object or
-            # raise RelatedObjectDoesNotExist (subclass of ObjectDoesNotExist)
-            return obj.scanned_check is not None
-        except ObjectDoesNotExist:
-            return False
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        return qs.annotate(
+            has_scanned_check=Exists(
+                ScannedCheck.objects.filter(linked_transaction=OuterRef("pk"))
+            )
+        )
     
+    def has_scanned_check(self, obj):
+        return bool(getattr(obj, "has_scanned_check", False))
     has_scanned_check.boolean = True
     has_scanned_check.short_description = "Check image"
-
+    
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = ['name', 'parent', 'type', 'category_transaction_count', 'subcategory_transaction_count']

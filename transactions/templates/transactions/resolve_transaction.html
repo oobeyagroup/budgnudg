@@ -115,6 +115,12 @@
 
             <!-- Right Column: Assignment Forms & Actions -->
             <div class="col-lg-4 col-xl-4">
+                {% if transaction.scanned_check_or_none %} 
+                    <div class="card mb-4 p-2">
+                        <img src="{{ transaction.scanned_check_or_none.image_file.url }}" alt="Check" style="width:100%">
+                    </div>
+                {% endif %}
+
                 <div class="sticky-actions">
                     <!-- Payoree Assignment -->
                     {% include "transactions/partials/_payoree_assignment.html" %}

@@ -22,7 +22,8 @@
             <thead class="table-dark">
                 <tr>
                     <th scope="col">Image</th>
-                    <th scope="col">Created<br>Filename</th>
+                    <th scope="col">Action</th>
+                    <th scope="col">Filename</th>
                     <th scope="col">Bank Acct</th>
                     <th scope="col">Check #</th>
                     <th scope="col">Amount</th>
@@ -31,26 +32,39 @@
                 </tr>
             </thead>
             <tbody>
-                {% for c in checks %}
+                {% for sc in checks %}
                 <tr>
                     <td>
-                        {% if c.image_file %}
-                        <a href="{% url 'ingest:check_review' c.id %}">
-                            <img src="{{ c.image_file.url }}" alt="{{ c.original_filename }}"
+                        {% if sc.image_file %}
+                        <a href="{% url 'ingest:check_review' sc.id %}">
+                            <img src="{{ sc.image_file.url }}" alt="{{ sc.original_filename }}"
                                 style="height: 100px; max-width:240px; object-fit:contain;">
                         </a>
                         {% endif %}
                     </td>
                     <td>
-                        <span class="text-nowrap">{{ c.created_at|date:"Y-m-d H:i" }}</span><br>
-                        <span class="text-truncate" style="max-width: 260px;">
-                        {{ c.original_filename }}</span>
+                        {% if sc.linked_transaction %}
+                            <a href="{% url 'transactions:categorize_transaction' sc.linked_transaction.id %}" 
+                               class="btn btn-sm btn-outline-secondary">
+                               View Transaction
+                            </a>
+                        {% else %}
+                            <a href="{% url 'ingest:match_check' sc.id %}" 
+                               class="btn btn-sm btn-primary">
+                               Match Check
+                            </a>
+                        {% endif %}
                     </td>
-                    <td>{{ c.bank_account }}</td>
-                    <td>{{ c.check_number }}</td>
-                    <td>{% if c.amount %}${{ c.amount }}{% endif %}</td>
-                    <td>{% if c.payoree %}{{ c.payoree.name|default:c.payoree }}{% endif %}</td>
-                    <td class="text-truncate" style="max-width: 280px;">{{ c.memo_text }}</td>
+                    <td>
+                        <span class="text-nowrap">{{ sc.created_at|date:"Y-m-d H:i" }}</span><br>
+                        <span class="text-truncate" style="max-width: 260px;">
+                        {{ sc.original_filename }}</span>
+                    </td>
+                    <td>{{ sc.bank_account }}</td>
+                    <td>{{ sc.check_number }}</td>
+                    <td>{% if sc.amount %}${{ sc.amount }}{% endif %}</td>
+                    <td>{% if sc.payoree %}{{ sc.payoree.name|default:sc.payoree }}{% endif %}</td>
+                    <td class="text-truncate" style="max-width: 280px;">{{ sc.memo_text }}</td>
                 </tr>
                 {% empty %}
                 <tr>
