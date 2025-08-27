@@ -96,7 +96,7 @@ class ScannedCheck(models.Model):
         validators=[MinValueValidator(Decimal("0.00"))]
     )
     payoree = models.ForeignKey("transactions.Payoree", null=True, blank=True, on_delete=models.SET_NULL)
-    memotext = models.CharField(max_length=255, blank=True)
+    memo_text = models.CharField(max_length=255, blank=True)
     # link to a Transaction if matched/resolved
     transaction = models.ForeignKey("transactions.Transaction", null=True, blank=True,
                                      on_delete=models.SET_NULL, related_name="scanned_checks")

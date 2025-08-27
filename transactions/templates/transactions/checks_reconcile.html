@@ -49,7 +49,7 @@
 
     <div class="col-lg-5">
       <h5>Unmatched scanned checks</h5>
-      <form id="match-form" method="post" action="{% url 'transactions:checks_match' %}">
+      <form id="match-form" method="post" action="{% url 'ingest:checks_match' %}">
         {% csrf_token %}
         <div class="row g-3">
           {% for c in checks %}
@@ -65,7 +65,7 @@
                   <div class="text-muted small">{{ c.payee_text }}</div>
                   <div class="mt-2">
                     <input type="radio" name="check_id" value="{{ c.id }}"> Select
-                    <button formaction="{% url 'transactions:checks_unlink' c.id %}" formmethod="post" class="btn btn-link btn-sm">
+                    <button formaction="{% url 'ingest:checks_unlink' c.id %}" formmethod="post" class="btn btn-link btn-sm">
                       {% csrf_token %}Unlink
                     </button>
                   </div>

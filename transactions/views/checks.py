@@ -52,7 +52,7 @@ def match_check(request):
             txn.save(update_fields=updates)
 
     messages.success(request, f"Matched check {check.check_number} to txn {txn.pk}.")
-    return redirect("transactions:checks_reconcile")
+    return redirect("ingest:checks_reconcile")
 
 @trace
 @require_POST
@@ -61,4 +61,4 @@ def unlink_check(request, check_id: int):
     check.matched_transaction = None
     check.save(update_fields=["matched_transaction"])
     messages.info(request, f"Unlinked check {check.check_number}.")
-    return redirect("transactions:checks_reconcile")
+    return redirect("ingest:checks_reconcile")

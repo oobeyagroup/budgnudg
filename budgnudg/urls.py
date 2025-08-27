@@ -19,7 +19,6 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import path, include
 from transactions.views.dashboard import DashboardView  # NEW
-from ingest.views import check_upload, check_review, check_reconcile, match_check, unlink_check
 
 urlpatterns = [
     path("", DashboardView.as_view(), name="home"),  # root → dashboard

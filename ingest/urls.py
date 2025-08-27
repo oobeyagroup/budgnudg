@@ -22,4 +22,7 @@ urlpatterns = [
 
     path("checks/", ScannedCheckListView.as_view(), name="scannedcheck_list"),
     path("checks/<int:pk>/review/", v.review_scanned_check, name="scannedcheck_review"),
+    path("checks/txn/<int:pk>/edit/", v.txn_edit_partial, name="txn_edit_partial"),
+    path("checks/txn/cancel/", v.txn_edit_cancel, name="txn_edit_cancel"),
+
 ]

@@ -1,0 +1,28 @@
+{# templates/ingest/_candidate_transactions.html #}
+<table class="table table-sm align-middle">
+  <thead>
+    <tr>
+      <th>Date</th><th>Description</th><th>Amount</th><th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for txn in candidates %}
+    <tr id="row-{{ txn.pk }}">
+      <td>{{ txn.date|date:"Y-m-d" }}</td>
+      <td>{{ txn.description|default:"—" }}</td>
+      <td>{{ txn.amount }}</td>
+      <td class="text-end">
+        <button
+          class="btn btn-primary btn-sm"
+          hx-get="{% url 'ingest:txn_edit_partial' txn.pk %}?check_id={{ check.pk }}"
+          hx-target="#txn-edit-panel"
+          hx-swap="innerHTML">
+          Select
+        </button>
+      </td>
+    </tr>
+  {% empty %}
+    <tr><td colspan="4" class="text-muted">No candidates found.</td></tr>
+  {% endfor %}
+  </tbody>
+</table>

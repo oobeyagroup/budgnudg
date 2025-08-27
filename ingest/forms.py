@@ -1,6 +1,6 @@
 from django import forms
 from ingest.models import MappingProfile, ScannedCheck
-from transactions.models import Payoree
+from transactions.models import Payoree, Transaction
 from django.core.exceptions import ValidationError
 from django.forms.widgets import ClearableFileInput
 
@@ -56,16 +56,23 @@ class CheckUploadForm(forms.Form):
         help_text="Select one or more GIF files.",
     )
 
-class CheckReviewForm(forms.Form):
-    bank_account = forms.CharField(max_length=50)
-    check_number = forms.CharField(max_length=20, required=False)
-    date = forms.DateField(input_formats=["%Y-%m-%d", "%m/%d/%Y"], required=True)
-    amount = forms.DecimalField(max_digits=12, decimal_places=2)
-    payoree = forms.ModelChoiceField(queryset=Payoree.objects.all(), required=False)
-    memo_text = forms.CharField(max_length=255, required=False)
-    # chose existing transaction or create new
-    match_txn_id = forms.IntegerField(required=False)  # hidden/radio from UI
+class CheckReviewForm(forms.ModelForm):
+    class Meta:
+        model = ScannedCheck
+        # include the fields you want editable in the check review screen
+        fields = ["bank_account", "check_number", "date", "amount", "payoree", "memo_text"]
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date"}),
+            "memo_text": forms.Textarea(attrs={"rows": 2}),
+        }
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Optional niceties
+        if "payoree" in self.fields:
+            self.fields["payoree"].queryset = Payoree.objects.all().order_by("name")
+            self.fields["payoree"].required = False
+            
 def bank_account_choices() -> list[tuple[str, str]]:
     qs = (
         Transaction.objects.exclude(bank_account__isnull=True)
@@ -85,3 +92,17 @@ class BankPickForm(forms.Form):
 
 class AttachCheckForm(forms.Form):
     transaction_id = forms.IntegerField(widget=forms.HiddenInput())
+
+
+class TransactionQuickEditForm(forms.ModelForm):
+    class Meta:
+        model = Transaction
+        fields = ["date", "amount", "description", "payoree", "subcategory", "memo"]
+        widgets = {
+            "date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "amount": forms.NumberInput(attrs={"step": "0.01", "class": "form-control"}),
+            "description": forms.TextInput(attrs={"class": "form-control"}),
+            "payoree": forms.Select(attrs={"class": "form-select"}),
+            "subcategory": forms.Select(attrs={"class": "form-select"}),
+            "memo": forms.TextInput(attrs={"class": "form-control"}),
+        }

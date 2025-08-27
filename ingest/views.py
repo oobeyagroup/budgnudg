@@ -9,10 +9,15 @@ from django.db import transaction as dbtx
 from transactions.utils import trace
 from transactions.models import Transaction, Payoree
 from ingest.models import ImportBatch, MappingProfile, ScannedCheck
-from ingest.forms import UploadCSVForm, AssignProfileForm, CheckUploadForm, CheckReviewForm, BankPickForm, AttachCheckForm
+from ingest.forms import UploadCSVForm, AssignProfileForm, CheckUploadForm, CheckReviewForm, BankPickForm, AttachCheckForm, TransactionQuickEditForm
 from ingest.services.staging import create_batch_from_csv
 from ingest.services.mapping import preview_batch, commit_batch, apply_profile_to_batch
 from .services.check_ingest import save_uploaded_checks, candidate_transactions, attach_or_create_transaction
+
+from django.http import HttpResponse
+from django.db.models import Q
+
+
 
 import logging
 
@@ -223,7 +228,7 @@ def check_upload(request):
 
 @require_http_methods(["GET", "POST"])
 @trace
-def check_review(request, pk: int):
+def check_review_old(request, pk: int):
     sc = get_object_or_404(ScannedCheck, pk=pk)
     initial = {
         "bank_account": sc.bank_account or "",
@@ -231,8 +236,9 @@ def check_review(request, pk: int):
         "date": sc.date,
         "amount": sc.amount,
         "payoree": sc.payoree_id,
-        "memotext": sc.memotext or "",
+        "memo_text": sc.memo_text or "",
     }
+    
     form = CheckReviewForm(request.POST or None, initial=initial)
 
     candidates = []
@@ -262,19 +268,119 @@ def check_review(request, pk: int):
                 initial["bank_account"], initial["date"], initial["amount"], initial["check_number"]
             )
 
-    return render(request, "ingest/check_review.html", {
-        "form": form,
-        "sc": sc,
-        "candidates": candidates,
-    })
+    # figure out prev/next among unresolved checks (or all checks if you prefer)
+    unresolved_ids = list(
+        ScannedCheck.objects.filter(transaction__isnull=True)
+        .order_by("created_at")
+        .values_list("id", flat=True)
+    )
+    try:
+        i = unresolved_ids.index(sc.id)
+    except ValueError:
+        i = -1
+
+    prev_id = unresolved_ids[i - 1] if i > 0 else None
+    next_id = unresolved_ids[i + 1] if i != -1 and i + 1 < len(unresolved_ids) else None
+
+    prev_url = reverse("ingest:check_review", args=[prev_id]) if prev_id else None
+    next_url = reverse("ingest:check_review", args=[next_id]) if next_id else None
+    cancel_url = reverse("ingest:scannedcheck_list")
+
+    context = {
+    "sc": sc,
+    "form": form,
+    "prev_url": reverse("ingest:check_review", args=[prev_id]) if prev_id else None,
+    "next_url": reverse("ingest:check_review", args=[next_id]) if next_id else None,
+    "cancel_url": reverse("ingest:scannedcheck_list"),  # or any route you prefer
+    }
+    return render(request, "ingest/check_review.html", context)
 
 @trace
 def _redirect_to_next_unresolved():
     nxt = ScannedCheck.objects.filter(transaction__isnull=True).order_by("created_at").first()
     if nxt:
-        return redirect("transactions:check_review", pk=nxt.pk)
+        return redirect("ingest:check_review", pk=nxt.pk)
     return redirect("transactions:transactions_list")
 
+
+@require_http_methods(["GET", "POST"])
+@trace
+def check_review(request, pk: int):
+    sc = get_object_or_404(ScannedCheck, pk=pk)
+
+    # Form bound to the instance for both GET and POST
+    form = CheckReviewForm(request.POST or None, instance=sc)
+
+    # pick bank account (query param)
+    bank = request.GET.get("bank") or ""
+    # get list of known bank accounts (distinct from transactions)
+    bank_accounts = (
+        Transaction.objects
+        .exclude(bank_account__isnull=True)
+        .exclude(bank_account__exact="")
+        .values_list("bank_account", flat=True)
+        .distinct()
+        .order_by("bank_account")
+    )
+
+    # Handle bank selection submit (separate from the ModelForm submit)
+    if request.method == "POST" and "pick_bank" in request.POST:
+        picked = (request.POST.get("bank_account") or "").strip()
+        if picked:
+            # persist the choice on the ScannedCheck
+            ScannedCheck.objects.filter(pk=sc.pk).update(bank_account=picked)
+            # reflect selection in querystring so template shows it selected
+            return redirect(f"{reverse('ingest:check_review', args=[sc.pk])}?bank={picked}")
+
+    # Build prev/next among unresolved (or all, if you prefer)
+    unresolved_ids = list(
+        ScannedCheck.objects.filter(transaction__isnull=True)
+        .order_by("created_at")
+        .values_list("id", flat=True)
+    )
+    try:
+        i = unresolved_ids.index(sc.id)
+    except ValueError:
+        i = -1
+
+    prev_id = unresolved_ids[i - 1] if i > 0 else None
+    next_id = unresolved_ids[i + 1] if i != -1 and i + 1 < len(unresolved_ids) else None
+
+    prev_url = reverse("ingest:check_review", args=[prev_id]) if prev_id else None
+    next_url = reverse("ingest:check_review", args=[next_id]) if next_id else None
+    cancel_url = reverse("ingest:scannedcheck_list")  # make sure this URL name exists
+
+    if request.method == "POST":
+        if form.is_valid():
+            form.save()  # <-- persist changes to ScannedCheck
+            messages.success(request, "Check saved.")
+
+            # Navigate if user clicked a nav button
+            if "next" in request.POST and next_url:
+                return redirect(next_url)
+            if "prev" in request.POST and prev_url:
+                return redirect(prev_url)
+            if "cancel" in request.POST:
+                return redirect(cancel_url)
+
+            # Default after save: stay on the page
+            return redirect(reverse("ingest:check_review", args=[sc.pk]))
+        else:
+            messages.error(request, "Please fix the errors below.")
+
+    return render(
+        request,
+        "ingest/check_review.html",
+        {
+            "sc": sc,
+            "form": form,
+            "prev_url": prev_url,
+            "next_url": next_url,
+            "cancel_url": cancel_url,
+            "bank": bank,
+            "bank_accounts": bank_accounts,
+        },
+    )
 
 @trace
 def check_reconcile(request):
@@ -319,7 +425,7 @@ def match_check(request):
             txn.save(update_fields=updates)
 
     messages.success(request, f"Matched check {check.check_number} to txn {txn.pk}.")
-    return redirect("transactions:checks_reconcile")
+    return redirect("ingest:checks_reconcile")
 
 @trace
 @require_POST
@@ -328,7 +434,7 @@ def unlink_check(request, check_id: int):
     check.matched_transaction = None
     check.save(update_fields=["matched_transaction"])
     messages.info(request, f"Unlinked check {check.check_number}.")
-    return redirect("transactions:checks_reconcile")
+    return redirect("ingest:checks_reconcile")
 
     # ingest/views.py
 from django.views.generic import ListView
@@ -413,8 +519,8 @@ def review_scanned_check(request, pk: int):
                 txn.payoree = check.payoree
             if not txn.subcategory and getattr(check, "suggested_subcategory", None):
                 txn.subcategory = check.suggested_subcategory  # if you later add this field
-            if (txn.memo or "").strip() == "" and (check.memotext or "").strip():
-                txn.memo = check.memotext
+            if (txn.memo or "").strip() == "" and (check.memo_text or "").strip():
+                txn.memo = check.memo_text
 
             # Don’t blindly overwrite date/amount; only fill if missing
             if not txn.date and check.date:
@@ -443,3 +549,140 @@ def review_scanned_check(request, pk: int):
             "selected_bank": bank,
         },
     )        
+
+@trace
+def review_scanned_check(request, pk):
+    check = get_object_or_404(ScannedCheck, pk=pk)
+    # pick bank account (query param)
+    bank = request.GET.get("bank") or ""
+    # get list of known bank accounts (distinct from transactions)
+    bank_accounts = (Transaction.objects
+                     .exclude(bank_account__isnull=True)
+                     .exclude(bank_account__exact="")
+                     .values_list("bank_account", flat=True)
+                     .distinct()
+                     .order_by("bank_account"))
+
+    candidates = Transaction.objects.none()
+    if bank:
+        candidates = (Transaction.objects
+                      .filter(bank_account=bank)
+                      .filter(Q(description__icontains="CHECK") | Q(description__icontains="CHK"))
+                      .filter(payoree__isnull=True)
+                      .order_by("-date")[:200])
+
+    return render(request, "ingest/scannedcheck_review.html", {
+        "check": check,
+        "bank": bank,
+        "bank_accounts": bank_accounts,
+        "candidates": candidates,
+    })
+
+@trace
+def txn_edit_partial(request, pk):
+    txn = get_object_or_404(Transaction, pk=pk)
+    check_id = request.GET.get("check_id") or request.POST.get("link_scanned_check_id")
+    check = get_object_or_404(ScannedCheck, pk=check_id) if check_id else None
+
+    if request.method == "POST":
+        form = TransactionQuickEditForm(request.POST, instance=txn)
+        if form.is_valid():
+            obj = form.save()
+            # link the scanned check to this transaction (adjust fields as per your model)
+            if check:
+                check.transaction = obj
+                check.bank_account = obj.bank_account or check.bank_account
+                check.check_number = check.check_number or _extract_check_num(obj.description)
+                check.amount = check.amount or obj.amount
+                check.save(update_fields=["transaction","bank_account","check_number","amount"])
+            return render(request, "ingest/_txn_edit_cancel.html")  # collapse panel back to “Pick Select…”
+    else:
+        form = TransactionQuickEditForm(instance=txn)
+
+    return render(request, "ingest/_txn_edit_form.html", {"form": form, "txn": txn, "check": check})
+
+@trace
+def txn_edit_cancel(request):
+    return render(request, "ingest/_txn_edit_cancel.html")
+
+@trace
+def _extract_check_num(desc: str | None) -> str:
+    if not desc:
+        return ""
+    # naive pull like "CHECK 1234"
+    import re
+    m = re.search(r"\b(?:CHECK|CHK)\s*(\d{3,6})\b", desc.upper())
+    return m.group(1) if m else ""
+
+
+
+
+# DELETE AT SOME POINT
+@require_http_methods(["GET", "POST"])
+@trace
+def check_review_old(request, pk: int):
+    sc = get_object_or_404(ScannedCheck, pk=pk)
+    initial = {
+        "bank_account": sc.bank_account or "",
+        "check_number": sc.check_number or "",
+        "date": sc.date,
+        "amount": sc.amount,
+        "payoree": sc.payoree_id,
+        "memo_text": sc.memo_text or "",
+    }
+    
+    form = CheckReviewForm(request.POST or None, initial=initial)
+
+    candidates = []
+    if request.method == "POST" and form.is_valid():
+        cleaned = form.cleaned_data
+        # discover candidates for this submission (use posted values)
+        candidates = candidate_transactions(
+            cleaned["bank_account"], cleaned["date"], cleaned["amount"], cleaned.get("check_number")
+        )
+
+        # If the user selected a candidate (via hidden/radio in template), attach immediately
+        if cleaned.get("match_txn_id"):
+            attach_or_create_transaction(sc, cleaned)
+            messages.success(request, "Image linked to existing transaction.")
+            return _redirect_to_next_unresolved()
+
+        # else we’ll show candidates and let them confirm create or select
+        # If user clicked “Create new now”, you can branch on a form button name
+        if "create_new" in request.POST:
+            attach_or_create_transaction(sc, cleaned)
+            messages.success(request, "New transaction created from check image.")
+            return _redirect_to_next_unresolved()
+    else:
+        # compute candidates off initial to pre-show
+        if initial["bank_account"] and initial["date"] and initial["amount"] is not None:
+            candidates = candidate_transactions(
+                initial["bank_account"], initial["date"], initial["amount"], initial["check_number"]
+            )
+
+    # figure out prev/next among unresolved checks (or all checks if you prefer)
+    unresolved_ids = list(
+        ScannedCheck.objects.filter(transaction__isnull=True)
+        .order_by("created_at")
+        .values_list("id", flat=True)
+    )
+    try:
+        i = unresolved_ids.index(sc.id)
+    except ValueError:
+        i = -1
+
+    prev_id = unresolved_ids[i - 1] if i > 0 else None
+    next_id = unresolved_ids[i + 1] if i != -1 and i + 1 < len(unresolved_ids) else None
+
+    prev_url = reverse("ingest:check_review", args=[prev_id]) if prev_id else None
+    next_url = reverse("ingest:check_review", args=[next_id]) if next_id else None
+    cancel_url = reverse("ingest:scannedcheck_list")
+
+    context = {
+    "sc": sc,
+    "form": form,
+    "prev_url": reverse("ingest:check_review", args=[prev_id]) if prev_id else None,
+    "next_url": reverse("ingest:check_review", args=[next_id]) if next_id else None,
+    "cancel_url": reverse("ingest:scannedcheck_list"),  # or any route you prefer
+    }
+    return render(request, "ingest/check_review.html", context)

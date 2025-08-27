@@ -1,0 +1,33 @@
+{# templates/ingest/scannedcheck_review.html #}
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<h2>Review scanned check: {{ check.original_filename }}</h2>
+
+<form method="get" class="mb-3">
+  <label class="form-label">Bank account</label>
+  <select name="bank" class="form-select" onchange="this.form.submit()">
+    <option value="">— pick an account —</option>
+    {% for acct in bank_accounts %}
+      <option value="{{ acct }}" {% if acct == bank %}selected{% endif %}>{{ acct }}</option>
+    {% endfor %}
+  </select>
+</form>
+
+<div class="row">
+  <div class="col-md-7">
+    <h5>Candidate existing transactions</h5>
+    <div id="candidate-list">
+      {% include "ingest/_candidate_transactions.html" %}
+    </div>
+  </div>
+  <div class="col-md-5">
+    <h5>Edit selected transaction</h5>
+    <div id="txn-edit-panel" class="border rounded p-3 text-muted">
+      Pick “Select” on a transaction to edit it here.
+    </div>
+  </div>
+</div>
+
+{% endblock %}
