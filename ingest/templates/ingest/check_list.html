@@ -36,7 +36,7 @@
                 <tr>
                     <td>
                         {% if sc.image_file %}
-                        <a href="{% url 'ingest:check_review' sc.id %}">
+                        <a href="{% url 'ingest:match_check' sc.id %}">
                             <img src="{{ sc.image_file.url }}" alt="{{ sc.original_filename }}"
                                 style="height: 100px; max-width:240px; object-fit:contain;">
                         </a>

@@ -12,26 +12,25 @@
         <form method="post" class="p-3">
           {% csrf_token %}
           <div class="row g-3">
-            <label class="form-label">Check #</label>
+            <label class="form-label mb-0">Check #</label>
             {{ form.check_number|add_class:"form-control" }}
           </div>
-          <div class="row g-3">
-            <label class="form-label">Date</label>
+          <div class="row g-3 mt-1">
+            <label class="form-label mb-0">Date</label>
             {{ form.date|add_class:"form-control" }}
           </div>
-          <div class="row g-3">
-            <label class="form-label">Amount</label>
+          <div class="row g-3 mt-1">
+            <label class="form-label mb-0">Amount</label>
             {{ form.amount|add_class:"form-control" }}
           </div>
-          <div class="row g-3">
-            {% include "ingest/_dropdown_assignment.html" with items=payorees field_name="payoree" label="Select Payoree" current_value=sc.payoree add_new_option=True suggestions=payoree_matches placeholder="Select Payoree" use_card_layout=True card_title="Payoree Assignment" card_icon="fas fa-user-tag" new_item_placeholder="Enter payoree name" %}
+          <div class="row g-3 mt-1">
+            {% include "ingest/_dropdown_assignment.html" with items=payorees field_name="payoree" label="Select Payoree" current_value=sc.payoree add_new_option=True suggestions=payoree_matches placeholder="Select Payoree"  new_item_placeholder="Enter payoree name" %}
           </div>
-          <div class="row g-3">
-            <label class="form-label">Bank Account</label>
+          <div class="row g-3 mt-1">
             {% include "ingest/_dropdown_assignment.html" with items=bank_accounts field_name="bank_account" label="Bank Account" current_value=sc.bank_account placeholder="Choose bank account..." %}
           </div>
-          <div class="row g-3">
-            <label class="form-label">Memo</label>
+          <div class="row g-3 mt-1">
+            <label class="form-label mb-0">Memo</label>
             {{ form.memo_text|add_class:"form-control" }}
           </div>
           <div class="mt-3 d-flex gap-2">

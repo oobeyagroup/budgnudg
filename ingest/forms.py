@@ -14,10 +14,10 @@ class UploadCSVForm(forms.Form):
     )
 
 
-class AssignProfileForm(forms.Form):
-    profile = forms.ModelChoiceField(
-        queryset=FinancialAccount.objects.all(), required=True
-    )
+# class AssignProfileForm(forms.Form):
+#     profile = forms.ModelChoiceField(
+#         queryset=FinancialAccount.objects.all(), required=True
+#     )
 
 
 class CommitForm(forms.Form):
