@@ -47,7 +47,7 @@ The application now exclusively uses the **ingest app** for all import functiona
 - `/ingest/profiles/` - Manage mapping profiles
 
 ### Architecture:
-- **Model-based**: Uses `ImportBatch`, `ImportRow`, `MappingProfile` models
+- **Model-based**: Uses `ImportBatch`, `ImportRow`, `FinancialAccount` models
 - **Database-backed**: Mapping profiles stored in database with validation
 - **Class-based views**: Clean CBV architecture
 - **Comprehensive**: 416 lines of robust CSV processing logic

@@ -3,14 +3,15 @@ import pytest
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 
-from ingest.models import ImportBatch, MappingProfile
+from ingest.models import ImportBatch, FinancialAccount
 from transactions.models import Transaction, Category, Payoree
 
 pytestmark = pytest.mark.django_db
 
+
 @pytest.fixture
 def profile_basic():
-    return MappingProfile.objects.create(
+    return FinancialAccount.objects.create(
         name="visa",
         column_map={
             "Posting Date": "date",
@@ -18,6 +19,7 @@ def profile_basic():
             "Amount": "amount",
         },
     )
+
 
 @pytest.fixture
 def csv_bytes_basic():
@@ -28,9 +30,11 @@ def csv_bytes_basic():
     )
     return text.encode("utf-8")
 
+
 def _upload(client, csv_bytes, filename="t.csv"):
     f = SimpleUploadedFile(filename, csv_bytes, content_type="text/csv")
     return client.post(reverse("ingest:batch_upload"), {"file": f}, follow=True)
+
 
 def test_upload_creates_batch_and_rows(client, csv_bytes_basic):
     resp = _upload(client, csv_bytes_basic)
@@ -40,11 +44,18 @@ def test_upload_creates_batch_and_rows(client, csv_bytes_basic):
     assert batch.status == "uploaded"
     assert batch.rows.count() == 2
 
-def test_apply_profile_populates_parsed_normals_and_preview(client, profile_basic, csv_bytes_basic):
+
+def test_apply_profile_populates_parsed_normals_and_preview(
+    client, profile_basic, csv_bytes_basic
+):
     _upload(client, csv_bytes_basic)
     batch = ImportBatch.objects.latest("id")
 
-    resp = client.post(reverse("ingest:batch_apply_profile", args=[batch.id]), {"profile_id": profile_basic.id}, follow=True)
+    resp = client.post(
+        reverse("ingest:batch_apply_profile", args=[batch.id]),
+        {"profile_id": profile_basic.id},
+        follow=True,
+    )
     assert resp.status_code == 200
 
     batch.refresh_from_db()
@@ -65,36 +76,55 @@ def test_apply_profile_populates_parsed_normals_and_preview(client, profile_basi
     assert "STARBUCKS" in html
     assert "TARGET" in html
 
-def test_commit_creates_transactions_and_marks_committed(client, profile_basic, csv_bytes_basic):
+
+def test_commit_creates_transactions_and_marks_committed(
+    client, profile_basic, csv_bytes_basic
+):
     Category.objects.get_or_create(name="Coffee", parent=None)
     Payoree.objects.get_or_create(name="STARBUCKS")
 
     _upload(client, csv_bytes_basic)
     batch = ImportBatch.objects.latest("id")
-    client.post(reverse("ingest:batch_apply_profile", args=[batch.id]), {"profile_id": profile_basic.id}, follow=True)
+    client.post(
+        reverse("ingest:batch_apply_profile", args=[batch.id]),
+        {"profile_id": profile_basic.id},
+        follow=True,
+    )
 
-    resp = client.post(reverse("ingest:batch_commit", args=[batch.id]), {"bank_account": "CHK-3607"}, follow=True)
+    resp = client.post(
+        reverse("ingest:batch_commit", args=[batch.id]),
+        {"bank_account": "CHK-3607"},
+        follow=True,
+    )
     assert resp.status_code == 200
 
     batch.refresh_from_db()
     assert batch.status == "committed"
 
     assert Transaction.objects.filter(bank_account="CHK-3607").count() == 2
+
 
 def test_full_happy_path_in_one_go(client, profile_basic, csv_bytes_basic):
     up = _upload(client, csv_bytes_basic)
     assert up.status_code == 200
     batch = ImportBatch.objects.latest("id")
 
-    client.post(reverse("ingest:batch_apply_profile", args=[batch.id]), {"profile_id": profile_basic.id}, follow=True)
+    client.post(
+        reverse("ingest:batch_apply_profile", args=[batch.id]),
+        {"profile_id": profile_basic.id},
+        follow=True,
+    )
 
     detail = client.get(reverse("ingest:batch_preview", args=[batch.id]))
     assert detail.status_code == 200
 
-    resp = client.post(reverse("ingest:batch_commit", args=[batch.id]), {"bank_account": "CHK-3607"}, follow=True)
+    resp = client.post(
+        reverse("ingest:batch_commit", args=[batch.id]),
+        {"bank_account": "CHK-3607"},
+        follow=True,
+    )
     assert resp.status_code == 200
 
     batch.refresh_from_db()
     assert batch.status == "committed"
     assert Transaction.objects.filter(bank_account="CHK-3607").count() == 2
-    

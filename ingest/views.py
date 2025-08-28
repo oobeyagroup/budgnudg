@@ -7,7 +7,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.db import transaction as dbtx
 from transactions.utils import trace
 from transactions.models import Transaction, Payoree, Category
-from ingest.models import ImportBatch, MappingProfile, ScannedCheck
+from ingest.models import ImportBatch, FinancialAccount, ScannedCheck
 from ingest.forms import (
     UploadCSVForm,
     AssignProfileForm,
@@ -54,9 +54,9 @@ class BatchPreviewView(DetailView):
 
         # First, try to find and assign a matching profile if none is assigned
         if batch and not batch.profile and batch.header:
-            from ingest.models import MappingProfile
+            from ingest.models import FinancialAccount
 
-            profiles = MappingProfile.objects.all()
+            profiles = FinancialAccount.objects.all()
 
             # Convert batch headers to a set for comparison, filtering out None and normalizing
             batch_headers = {
@@ -110,9 +110,9 @@ class BatchPreviewView(DetailView):
             if batch and batch.header:
                 context["csv_headers"] = [h for h in batch.header if h is not None]
             # Include first 5 mapping profiles to show what's available
-            from ingest.models import MappingProfile
+            from ingest.models import FinancialAccount
 
-            profiles = MappingProfile.objects.all()[:5]
+            profiles = FinancialAccount.objects.all()[:5]
             context["available_profiles"] = [
                 {
                     "name": p.name,
@@ -219,7 +219,7 @@ def apply_profile(request, pk):
     batch = get_object_or_404(ImportBatch, pk=pk)
     profile_id = request.POST.get("profile_id")
     logger.debug("Received profile_id=%s", profile_id)  # Debug log
-    profile = get_object_or_404(MappingProfile, pk=profile_id)
+    profile = get_object_or_404(FinancialAccount, pk=profile_id)
     updated, dup_count = apply_profile_to_batch(
         batch, profile, bank_account_hint=request.POST.get("bank_account")
     )
@@ -261,15 +261,15 @@ class BatchListView(ListView):
     paginate_by = 20
 
 
-class MappingProfileListView(ListView):
-    model = MappingProfile
+class FinancialAccountListView(ListView):
+    model = FinancialAccount
     template_name = "ingest/profile_list.html"
     context_object_name = "profiles"
     paginate_by = 20
 
 
-class MappingProfileDetailView(DetailView):
-    model = MappingProfile
+class FinancialAccountDetailView(DetailView):
+    model = FinancialAccount
     template_name = "ingest/profile_detail.html"
     context_object_name = "profile"
 
@@ -340,10 +340,9 @@ def check_review(request, pk: int):
     # get list of known bank accounts (distinct from transactions)
     bank_accounts = (
         Transaction.objects.exclude(bank_account__isnull=True)
-        .exclude(bank_account__exact="")
-        .values_list("bank_account", flat=True)
+        .values_list("bank_account__name", flat=True)
         .distinct()
-        .order_by("bank_account")
+        .order_by("bank_account__name")
     )
 
     # Handle bank selection submit (separate from the ModelForm submit)
@@ -351,7 +350,14 @@ def check_review(request, pk: int):
         picked = (request.POST.get("bank_account") or "").strip()
         if picked:
             # persist the choice on the ScannedCheck
-            ScannedCheck.objects.filter(pk=sc.pk).update(bank_account=picked)
+            try:
+                bank_account_obj = FinancialAccount.objects.get(name=picked)
+                ScannedCheck.objects.filter(pk=sc.pk).update(
+                    bank_account=bank_account_obj
+                )
+            except FinancialAccount.DoesNotExist:
+                messages.error(request, f"Bank account '{picked}' not found.")
+                return redirect(reverse("ingest:check_review", args=[sc.pk]))
             # reflect selection in querystring so template shows it selected
             return redirect(
                 f"{reverse('ingest:check_review', args=[sc.pk])}?bank={picked}"
@@ -426,8 +432,8 @@ def check_reconcile(request):
     return render(request, "transactions/checks_reconcile.html", context)
 
 
-@trace
 @require_POST
+@trace
 def match_check(request):
     check_id = request.POST.get("check_id")
     txn_id = request.POST.get("txn_id")
@@ -461,8 +467,8 @@ def match_check(request):
     return redirect("ingest:checks_reconcile")
 
 
-@trace
 @require_POST
+@trace
 def unlink_check(request, check_id: int):
     check = get_object_or_404(ScannedCheck, pk=check_id)
     check.linked_transaction = None
@@ -596,10 +602,9 @@ def review_scanned_check(request, pk):
     # get list of known bank accounts (distinct from transactions)
     bank_accounts = (
         Transaction.objects.exclude(bank_account__isnull=True)
-        .exclude(bank_account__exact="")
-        .values_list("bank_account", flat=True)
+        .values_list("bank_account__name", flat=True)
         .distinct()
-        .order_by("bank_account")
+        .order_by("bank_account__name")
     )
 
     candidates = Transaction.objects.none()
@@ -682,8 +687,8 @@ def _existing_bank_accounts() -> list[str]:
     from transactions.models import Transaction
 
     return list(
-        Transaction.objects.exclude(bank_account__exact="")
-        .values_list("bank_account", flat=True)
+        Transaction.objects.exclude(bank_account__isnull=True)
+        .values_list("bank_account__name", flat=True)
         .distinct()
     )
 
@@ -713,10 +718,9 @@ def match_check(request, pk: int):
     # get list of known bank accounts (distinct from transactions)
     bank_accounts = (
         Transaction.objects.exclude(bank_account__isnull=True)
-        .exclude(bank_account__exact="")
-        .values_list("bank_account", flat=True)
+        .values_list("bank_account__name", flat=True)
         .distinct()
-        .order_by("bank_account")
+        .order_by("bank_account__name")
     )
 
     # Handle transaction search
@@ -813,6 +817,11 @@ def match_check(request, pk: int):
     )
     perform_search = search_triggered and bank
 
+    # Always perform search if attach_save is requested (to get current candidates)
+    perform_attach = request.method == "POST" and "attach_save" in request.POST
+    if perform_attach:
+        perform_search = True
+
     if not perform_search:
         return render(
             request,
@@ -835,7 +844,7 @@ def match_check(request, pk: int):
             },
         )
 
-    # 2) Candidate list (scored) - only when search is triggered
+    # 2) Candidate list (scored) - only when search is triggered or attach is requested
     cands = find_candidates(
         bank=bank,
         check_no=sc.check_number or "",
@@ -846,24 +855,24 @@ def match_check(request, pk: int):
     why = top.why if top else []
 
     # 3) POST: attach to existing
-    if request.method == "POST" and "attach_save" in request.POST:
+    if perform_attach:
         form = AttachEditForm(request.POST)
-        print(f"DEBUG: Attach form data: {request.POST}")
-        print(f"DEBUG: Form is valid: {form.is_valid()}")
-        print(f"DEBUG: top_txn exists: {top_txn is not None}")
+        logger.debug(f"DEBUG: Attach form data: {request.POST}")
+        logger.debug(f"DEBUG: Form is valid: {form.is_valid()}")
+        logger.debug(f"DEBUG: top_txn exists: {top_txn is not None}")
         if form.is_valid():
-            print(f"DEBUG: Form cleaned data: {form.cleaned_data}")
+            logger.debug(f"DEBUG: Form cleaned data: {form.cleaned_data}")
         if form.is_valid() and top_txn:  # Ensure we have a selected transaction
-            print(f"DEBUG: Expected transaction ID: {top_txn.pk}")
-            print(f"DEBUG: Form transaction ID: {form.cleaned_data['transaction_id']}")
+            logger.debug(f"DEBUG: Expected transaction ID: {top_txn.pk}")
+            logger.debug(f"DEBUG: Form transaction ID: {form.cleaned_data['transaction_id']}")
             txn = get_object_or_404(Transaction, pk=form.cleaned_data["transaction_id"])
-            print(f"DEBUG: Found transaction: {txn.pk}")
+            logger.debug(f"DEBUG: Found transaction: {txn.pk}")
 
             # Check if transaction already has a linked scanned check
             try:
                 existing_scanned_check = txn.scanned_check
                 if existing_scanned_check and existing_scanned_check != sc:
-                    print(
+                    logger.debug(
                         f"DEBUG: Transaction {txn.pk} already linked to ScannedCheck {existing_scanned_check.pk}"
                     )
                     messages.error(
@@ -877,17 +886,17 @@ def match_check(request, pk: int):
 
             # Check if our ScannedCheck already has a linked transaction
             if sc.linked_transaction and sc.linked_transaction != txn:
-                print(
+                logger.debug(
                     f"DEBUG: ScannedCheck {sc.pk} already linked to Transaction {sc.linked_transaction.pk}"
                 )
                 # Clear the existing link first
-                print(f"DEBUG: Clearing existing link from ScannedCheck {sc.pk}")
+                logger.debug(f"DEBUG: Clearing existing link from ScannedCheck {sc.pk}")
                 sc.linked_transaction = None
                 sc.save()
 
             # Verify the transaction matches what we expect
             if txn.pk != top_txn.pk:
-                print(
+                logger.debug(
                     f"DEBUG: Transaction ID mismatch! Expected {top_txn.pk}, got {txn.pk}"
                 )
                 messages.error(request, "Transaction ID mismatch.")
@@ -918,7 +927,7 @@ def match_check(request, pk: int):
             if sc.bank_account and not txn.bank_account:
                 txn.bank_account = sc.bank_account
             txn.save()
-            print(f"DEBUG: Transaction saved")
+            logger.debug(f"DEBUG: Transaction saved")
 
             # Link + status
             sc.refresh_from_db()  # Refresh the instance to avoid stale data issues
@@ -926,11 +935,11 @@ def match_check(request, pk: int):
             sc.status = "confirmed"
             try:
                 sc.save()  # Try saving without update_fields
-                print(
+                logger.debug(
                     f"DEBUG: ScannedCheck saved successfully. linked_transaction = {sc.linked_transaction}"
                 )
             except Exception as e:
-                print(f"DEBUG: Error saving ScannedCheck: {e}")
+                logger.debug(f"DEBUG: Error saving ScannedCheck: {e}")
                 messages.error(request, f"Error saving ScannedCheck: {e}")
                 return redirect(reverse("ingest:match_check", args=[sc.pk]))
 
@@ -944,10 +953,11 @@ def match_check(request, pk: int):
                 .order_by("id")
                 .first()
             )
-            return redirect(
-                reverse("ingest:match_check", args=[nxt.pk])
-                if nxt
-                else reverse("ingest:scannedcheck_list")
+            return redirect( 
+            #     reverse("ingest:match_check", args=[nxt.pk])
+            #     if nxt
+            #     else reverse("ingest:scannedcheck_list")
+            reverse("ingest:scannedcheck_list")
             )
 
         else:

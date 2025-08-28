@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ingest', '0002_alter_importbatch_options_alter_importrow_options_and_more'),
+        ("ingest", "0002_alter_importbatch_options_alter_importrow_options_and_more"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='mappingprofile',
-            name='description',
-            field=models.TextField(blank=True, default=''),
+            model_name="MappingProfile",
+            name="description",
+            field=models.TextField(blank=True, default=""),
         ),
     ]

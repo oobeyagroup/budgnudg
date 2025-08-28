@@ -1,0 +1,43 @@
+<!-- Example usage of the unified dropdown partial -->
+
+<!-- Simple string-based dropdown (like the old financial account) -->
+{% include "ingest/_dropdown_assignment.html" with
+    items=bank_accounts
+    field_name="bank_account"
+    label="Bank Account"
+    current_value=selected_bank
+    placeholder="Choose bank account..."
+%}
+
+<!-- Model-based dropdown with suggestions -->
+{% include "ingest/_dropdown_assignment.html" with
+    items=categories
+    field_name="category"
+    label="Category"
+    current_value=transaction.category
+    suggestions=category_suggestions
+    placeholder="Select category..."
+%}
+
+<!-- Complex dropdown with "Add New" and card layout -->
+{% include "ingest/_dropdown_assignment.html" with
+    items=payorees
+    field_name="payoree"
+    label="Payoree"
+    current_value=transaction.payoree
+    add_new_option=True
+    suggestions=payoree_matches
+    use_card_layout=True
+    card_title="Payoree Assignment"
+    card_icon="fas fa-user-tag"
+    placeholder="Select or add payoree..."
+    new_item_placeholder="Enter payoree name"
+%}
+
+<!-- Minimal dropdown for simple selections -->
+{% include "ingest/_dropdown_assignment.html" with
+    items=status_options
+    field_name="status"
+    label="Status"
+    current_value=current_status
+%}

@@ -7,24 +7,55 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('ingest', '0003_mappingprofile_description'),
-        ('transactions', '0011_add_payoree_to_keyword_rules'),
+        ("ingest", "0003_mappingprofile_description"),
+        ("transactions", "0011_add_payoree_to_keyword_rules"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='ScannedCheck',
+            name="ScannedCheck",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('bank_account', models.CharField(blank=True, default='', max_length=50)),
-                ('check_number', models.IntegerField(db_index=True)),
-                ('date', models.DateField(blank=True, null=True)),
-                ('amount', models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True)),
-                ('payee_text', models.CharField(blank=True, default='', max_length=200)),
-                ('memo_text', models.CharField(blank=True, default='', max_length=200)),
-                ('image_file', models.ImageField(blank=True, null=True, upload_to='checks/')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('matched_transaction', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='scanned_check', to='transactions.transaction')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "bank_account",
+                    models.CharField(blank=True, default="", max_length=50),
+                ),
+                ("check_number", models.IntegerField(db_index=True)),
+                ("date", models.DateField(blank=True, null=True)),
+                (
+                    "amount",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=12, null=True
+                    ),
+                ),
+                (
+                    "payee_text",
+                    models.CharField(blank=True, default="", max_length=200),
+                ),
+                ("memo_text", models.CharField(blank=True, default="", max_length=200)),
+                (
+                    "image_file",
+                    models.ImageField(blank=True, null=True, upload_to="checks/"),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "matched_transaction",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="scanned_check",
+                        to="transactions.transaction",
+                    ),
+                ),
             ],
         ),
     ]

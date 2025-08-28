@@ -29,7 +29,7 @@ transactions/services/import_flow.py     # ❌ DELETED
 # AFTER: Single modern system
 ingest/views.py                          # ✅ WORKING - Clean CBV architecture
 ingest/services/mapping.py               # ✅ WORKING - 416 lines of robust mapping
-ingest/models.py                         # ✅ WORKING - ImportBatch, ImportRow, MappingProfile
+ingest/models.py                         # ✅ WORKING - ImportBatch, ImportRow, FinancialAccount
 ```
 
 **Previous Problem**: Two completely separate import systems existed:
@@ -48,7 +48,7 @@ ingest/models.py                         # ✅ WORKING - ImportBatch, ImportRow,
 - ✅ **UPDATED** all imports across 4 view files and 7 test patches
 - ✅ **VERIFIED** all 27 transaction tests passing, Django system check clean
 
-**Result**: Application now uses exclusively the modern **ingest app** for all CSV mapping with database-backed `MappingProfile` models (3 active profiles: history, chase, visa).
+**Result**: Application now uses exclusively the modern **ingest app** for all CSV mapping with database-backed `FinancialAccount` models (3 active profiles: history, chase, visa).
 
 **Evidence of Completion**:
 ```python
@@ -59,7 +59,7 @@ transactions/utils.py                    # ❌ CLEANED (legacy functions removed
 
 # AFTER: Single modern system
 ingest/services/mapping.py               # ✅ WORKING - Database-backed mapping
-ingest/models.py MappingProfile          # ✅ WORKING - 3 active profiles
+ingest/models.py FinancialAccount          # ✅ WORKING - 3 active profiles
 transactions/utils.py                    # ✅ CLEANED - Only active utilities remain
 ```
 
@@ -122,7 +122,7 @@ transactions/categorization.py - Advanced AI system with:
 ### 3. **Ingest System** - PROVEN ARCHITECTURE
 ```python
 ingest/ app - Modern, working import system:
-- ingest/models.py - ImportBatch, ImportRow, MappingProfile
+- ingest/models.py - ImportBatch, ImportRow, FinancialAccount
 - ingest/services/mapping.py - Robust CSV processing
 - ingest/views.py - Clean CBV architecture
 - 4 working integration tests

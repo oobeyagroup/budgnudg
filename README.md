@@ -134,7 +134,7 @@ how a CSV row (a plain Python `dict`) moves through your ingest pipeline and bec
  }
 ```
 
- - Mapped row (`dict`) – after applying a `MappingProfile.column_map`, e.g. 
+ - Mapped row (`dict`) – after applying a `FinancialAccount.column_map`, e.g. 
  
  ```
  {
@@ -163,9 +163,9 @@ how a CSV row (a plain Python `dict`) moves through your ingest pipeline and bec
   Outcome: DB now has 1 `ImportBatch` + N `ImportRow` records holding the `“raw”` dicts.
 
 #### Apply profile (mapping) → preview
-1.	User selects a `MappingProfile` (e.g., “visa”).
+1.	User selects a `FinancialAccount` (e.g., “visa”).
 2.	For each `ImportRow` in that batch:
-    - Call `map_row_with_profile(raw_row=dict, profile=MappingProfile)`
+    - Call `map_row_with_profile(raw_row=dict, profile=FinancialAccount)`
     - That produces the mapped dict out with:
     -- Canonical keys (date, description, amount, etc.)
     -- Parsed “norm” helpers (_date, _amount)

@@ -1,0 +1,147 @@
+<!-- Unified Dropdown Assignment Partial -->
+<!-- Supports both model objects (with id/name) and simple string values -->
+<!-- Parameters:
+     - items: list of items (model objects or strings)
+     - field_name: name attribute for the select field
+     - label: display label for the field
+     - current_value: currently selected value
+     - add_new_option: boolean to show "Add New" option (default: false)
+     - suggestions: optional list of suggested items
+     - placeholder: placeholder text (default: "Choose...")
+     - use_card_layout: boolean to wrap in card layout (default: false)
+     - card_title: title for card header (default: field label)
+     - card_icon: icon class for card header (default: "fas fa-list")
+     - new_item_placeholder: placeholder for new item input (default: "Enter name")
+-->
+<!-- FOR DEBUGGING
+<div class="alert alert-success" role="alert">
+      Variables: 
+    items: {{ items }}<br>
+    field_name: {{ field_name }}<br>
+    label: {{ label }}<br>
+    current_value: {{ current_value }}<br>
+    add_new_option: {% if add_new_option %}TRUE{% else %}FALSE{% endif %}<br>
+    suggestions: {{ suggestions }}<br>
+    placeholder: {{ placeholder }}<br>
+    use_card_layout: {% if use_card_layout %}TRUE{% else %}FALSE{% endif %}<br>
+    card_title: {{ card_title }}<br>
+    card_icon: {{ card_icon }}<br>
+    new_item_placeholder: {{ new_item_placeholder }}<br>
+</div> -->
+
+{% if use_card_layout %}
+<div class="card mb-4 shadow-sm">
+    <div class="card-header bg-light">
+        <h6 class="mb-0">
+            <i class="{{ card_icon|default:'fas fa-list' }} me-2 text-info"></i>{{ card_title|default:label }}
+        </h6>
+    </div>
+    <div class="card-body">
+{% endif %}
+
+        <!-- Main dropdown selection -->
+        <div class="mb-3" id="{{ field_name }}SelectionDiv">
+            <label for="{{ field_name }}" class="form-label">{{ label }}</label>
+            <select name="{{ field_name }}" id="{{ field_name }}" class="form-select">
+                <option value="" {% if not current_value %}selected{% endif %} disabled>{{ placeholder|default:"Choose..." }}</option>
+                {% if add_new_option %}
+                    <option value="__new__">+ Add New {{ label|lower }}</option>
+                    <option disabled>────────────────────</option>
+                {% endif %}
+                {% for item in items %}
+                    {% if item.id %}
+                        <!-- Model object with id/name attributes -->
+                        <option value="{{ item.id }}" {% if current_value and current_value.id == item.id %}selected{% endif %}>
+                            {{ item.name }}
+                        </option>
+                    {% else %}
+                        <!-- Simple string value -->
+                        <option value="{{ item }}" {% if current_value == item %}selected{% endif %}>
+                            {{ item }}
+                        </option>
+                    {% endif %}
+                {% endfor %}
+                {% if add_new_option %}
+                    <option disabled>────────────────────</option>
+                    <option value="__new__">+ Add New {{ label|lower }}</option>
+                {% endif %}
+            </select>
+        </div>
+
+        <!-- New Item Input (Hidden by default, shown when "Add New" is selected) -->
+        {% if add_new_option %}
+        <div id="new{{ field_name|title }}Input" class="mb-3" style="display: none;">
+            <label for="new_{{ field_name }}" class="form-label">New {{ label }} Name</label>
+            <input type="text" name="new_{{ field_name }}" id="new_{{ field_name }}" class="form-control"
+                   placeholder="{{ new_item_placeholder|default:'Enter name' }}">
+            <div class="form-text">This will create a new {{ label|lower }} in the system</div>
+        </div>
+        {% endif %}
+
+        <!-- Suggestions section (if provided) -->
+        {% if suggestions %}
+            <div class="alert alert-info">
+                <small class="fw-bold">Suggested {{ label|lower }}s from similar transactions:</small>
+                <div class="mt-2">
+                    {% for suggestion in suggestions %}
+                        {% if suggestion.id %}
+                            <button type="button" class="btn btn-outline-info btn-sm me-1 mb-1 apply-suggestion apply-{{ field_name }}-suggestion"
+                                    data-value="{{ suggestion.id }}" data-field="{{ field_name }}">
+                                {{ suggestion.name }}
+                            </button>
+                        {% else %}
+                            <button type="button" class="btn btn-outline-info btn-sm me-1 mb-1 apply-suggestion apply-{{ field_name }}-suggestion"
+                                    data-value="{{ suggestion }}" data-field="{{ field_name }}">
+                                {{ suggestion }}
+                            </button>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+{% if use_card_layout %}
+    </div>
+</div>
+{% endif %}
+
+<!-- JavaScript for dynamic functionality -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const fieldName = '{{ field_name }}';
+    const selectElement = document.getElementById(fieldName);
+    const newItemInput = document.getElementById('new' + fieldName.charAt(0).toUpperCase() + fieldName.slice(1) + 'Input');
+
+    if (selectElement && newItemInput) {
+        // Handle select change
+        selectElement.addEventListener('change', function() {
+            if (this.value === '__new__') {
+                newItemInput.style.display = 'block';
+                // Focus on the input field
+                const inputField = newItemInput.querySelector('input');
+                if (inputField) {
+                    setTimeout(() => inputField.focus(), 100);
+                }
+            } else {
+                newItemInput.style.display = 'none';
+            }
+        });
+    }
+
+    // Handle suggestion button clicks
+    {% if suggestions %}
+    document.querySelectorAll('.apply-' + fieldName + '-suggestion').forEach(button => {
+        button.addEventListener('click', function() {
+            const value = this.getAttribute('data-value');
+            const field = this.getAttribute('data-field');
+
+            if (selectElement && field === fieldName) {
+                selectElement.value = value;
+                // Trigger change event
+                selectElement.dispatchEvent(new Event('change'));
+            }
+        });
+    });
+    {% endif %}
+});
+</script>

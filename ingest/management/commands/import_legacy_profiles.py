@@ -1,9 +1,10 @@
 import json
 from django.core.management.base import BaseCommand
-from ingest.models import MappingProfile
+from ingest.models import FinancialAccount
+
 
 class Command(BaseCommand):
-    help = "Import MappingProfiles from a legacy csv_mappings.json"
+    help = "Import FinancialAccounts from a legacy csv_mappings.json"
 
     def add_arguments(self, parser):
         parser.add_argument("path", type=str, help="Path to csv_mappings.json")
@@ -24,7 +25,7 @@ class Command(BaseCommand):
                 column_map = payload or {}
                 options = {}
 
-            obj, is_created = MappingProfile.objects.update_or_create(
+            obj, is_created = FinancialAccount.objects.update_or_create(
                 name=name,
                 defaults={"column_map": column_map, "options": options},
             )

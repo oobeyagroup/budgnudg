@@ -69,14 +69,14 @@ transactions/services/mapping.py  # 186 lines of JSON-based mapping
 
 #### Evidence:
 - **Duplication**: `ingest/services/mapping.py` (416 lines) provides superior database-backed mapping
-- **Modern Alternative**: `ingest.models.MappingProfile` replaces JSON configuration files
+- **Modern Alternative**: `ingest.models.FinancialAccount` replaces JSON configuration files
 - **References**: Only used by legacy import system (which is also being removed)
 
 #### Utility Function Cleanup:
 ```python
 # In transactions/utils.py - remove:
 def load_mapping_profiles():  # Uses CSV_MAPPINGS_FILE
-    """JSON-based mapping profiles - replaced by ingest.models.MappingProfile"""
+    """JSON-based mapping profiles - replaced by ingest.models.FinancialAccount"""
 ```
 
 ### 4. **Duplicate Service Functions (MEDIUM PRIORITY)**

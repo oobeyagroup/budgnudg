@@ -19,7 +19,9 @@
       </div>
     </div>
     <div class="col-md-6 card p-3">
-      <form method="post" class="mb-3">
+
+      {% url 'ingest:check_upload' as fallback_cancel_url %}
+      <form method="post" class="p-3">
         {% csrf_token %}
         <div class="row g-2 align-items-end">
           <div class="col-auto">
@@ -36,11 +38,6 @@
             <button type="submit" name="pick_bank" class="btn btn-outline-primary">Use Account</button>
           </div>
         </div>
-      </form>
-
-      {% url 'ingest:check_upload' as fallback_cancel_url %}
-      <form method="post" class="p-3">
-        {% csrf_token %}
 
         <div class="row g-3">
           <div class="col-md-4">

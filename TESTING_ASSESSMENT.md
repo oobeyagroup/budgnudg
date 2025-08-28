@@ -76,7 +76,7 @@ The codebase analysis reveals significant architectural inconsistencies that war
 3. **Ingest System** (Priority: HIGH)
    - Modern, proven architecture in `ingest/` app
    - Already has 4 working tests, needs expansion
-   - ImportBatch, ImportRow, MappingProfile models
+   - ImportBatch, ImportRow, FinancialAccount models
    - **Target**: 15 additional integration tests
 
 4. **Helper Services** (Priority: MEDIUM)

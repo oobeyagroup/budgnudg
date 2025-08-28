@@ -10,7 +10,7 @@ This file captures the **final agreed-upon code and architecture decisions** fro
 ### Completed Test Suites ✅
 1. **Transaction Model Tests**: 25 tests covering creation, validation, categorization, error handling, display methods
 2. **AI Categorization Tests**: 42 tests covering merchant extraction, confidence scoring (52.5%-95%), keyword rules, learned patterns, safe lookups, integration scenarios
-3. **Ingest Model Tests**: 30 tests covering MappingProfile, ImportBatch, ImportRow with relationships, constraints, status transitions
+3. **Ingest Model Tests**: 30 tests covering FinancialAccount, ImportBatch, ImportRow with relationships, constraints, status transitions
 4. **Partial Coverage**: Various other model and view tests 
 
 ### In Progress 🔄
@@ -52,7 +52,7 @@ This file captures the **final agreed-upon code and architecture decisions** fro
 - Holds metadata for an uploaded CSV.
 - Related to `ImportRow` via `rows` reverse relation.
 - Tracks status (`uploaded`, `previewed`, `committing`, `committed`).
-- Linked to a `MappingProfile` after preview.
+- Linked to a `FinancialAccount` after preview.
 
 #### ImportRow
 - Stores:
@@ -90,14 +90,14 @@ def _json_safe(v):
 
 def apply_profile_to_batch(batch: ImportBatch, profile, bank_account_hint: str = "") -> Tuple[int, int]:
     """
-    Map all rows in a batch using the selected MappingProfile.
+    Map all rows in a batch using the selected FinancialAccount.
     Persists parsed dict + denormalized norm_* fields + errors + duplicate flag.
     Returns (updated_count, dup_count).
     """
     assert batch is not None, "batch is required"
     mapping = getattr(profile, "column_map", None)
     if not isinstance(mapping, dict):
-        raise TypeError(f"MappingProfile.column_map must be dict; got {type(mapping)}")
+        raise TypeError(f"FinancialAccount.column_map must be dict; got {type(mapping)}")
 
     updated = 0
     dup_count = 0

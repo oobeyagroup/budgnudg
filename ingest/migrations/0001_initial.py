@@ -15,44 +15,101 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='MappingProfile',
+            name="MappingProfile",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=100, unique=True)),
-                ('column_map', models.JSONField()),
-                ('options', models.JSONField(blank=True, default=dict)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=100, unique=True)),
+                ("column_map", models.JSONField()),
+                ("options", models.JSONField(blank=True, default=dict)),
             ],
         ),
         migrations.CreateModel(
-            name='ImportBatch',
+            name="ImportBatch",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('source_filename', models.CharField(max_length=255)),
-                ('header', models.JSONField(default=list)),
-                ('row_count', models.IntegerField(default=0)),
-                ('status', models.CharField(default='uploaded', max_length=20)),
-                ('notes', models.TextField(blank=True)),
-                ('created_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to=settings.AUTH_USER_MODEL)),
-                ('profile', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, to='ingest.mappingprofile')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("source_filename", models.CharField(max_length=255)),
+                ("header", models.JSONField(default=list)),
+                ("row_count", models.IntegerField(default=0)),
+                ("status", models.CharField(default="uploaded", max_length=20)),
+                ("notes", models.TextField(blank=True)),
+                (
+                    "created_by",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
+                (
+                    "profile",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        to="ingest.MappingProfile",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='ImportRow',
+            name="ImportRow",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('row_index', models.IntegerField()),
-                ('raw', models.JSONField()),
-                ('norm_date', models.DateField(blank=True, null=True)),
-                ('norm_amount', models.DecimalField(blank=True, decimal_places=2, max_digits=12, null=True)),
-                ('norm_description', models.TextField(blank=True)),
-                ('suggestions', models.JSONField(blank=True, default=dict)),
-                ('is_duplicate', models.BooleanField(default=False)),
-                ('errors', models.JSONField(blank=True, default=list)),
-                ('batch', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='rows', to='ingest.importbatch')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("row_index", models.IntegerField()),
+                ("raw", models.JSONField()),
+                ("norm_date", models.DateField(blank=True, null=True)),
+                (
+                    "norm_amount",
+                    models.DecimalField(
+                        blank=True, decimal_places=2, max_digits=12, null=True
+                    ),
+                ),
+                ("norm_description", models.TextField(blank=True)),
+                ("suggestions", models.JSONField(blank=True, default=dict)),
+                ("is_duplicate", models.BooleanField(default=False)),
+                ("errors", models.JSONField(blank=True, default=list)),
+                (
+                    "batch",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="rows",
+                        to="ingest.importbatch",
+                    ),
+                ),
             ],
             options={
-                'indexes': [models.Index(fields=['batch', 'row_index'], name='ingest_impo_batch_i_32e8e0_idx')],
+                "indexes": [
+                    models.Index(
+                        fields=["batch", "row_index"],
+                        name="ingest_impo_batch_i_32e8e0_idx",
+                    )
+                ],
             },
         ),
     ]

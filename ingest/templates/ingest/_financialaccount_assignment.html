@@ -1,0 +1,59 @@
+<!-- Unified Dropdown Assignment Partial -->
+<!-- Supports both model objects (with id/name) and simple string values -->
+<!-- Parameters:
+     - items: list of items (model objects or strings)
+     - field_name: name attribute for the select field
+     - label: display label for the field
+     - current_value: currently selected value
+     - add_new_option: boolean to show "Add New" option (default: false)
+     - suggestions: optional list of suggested items
+     - placeholder: placeholder text (default: "Choose...")
+-->
+
+<div class="row g-3">
+    <label class="form-label">{{ label|default:"Select Option" }}</label>
+    <div class="col-auto">
+        <select name="{{ field_name }}" class="form-select">
+            <option value="" {% if not current_value %}selected{% endif %} disabled>{{ placeholder|default:"Choose..." }}</option>
+            {% if add_new_option %}
+                <option value="__new__">+ Add New</option>
+                <option disabled>────────────────────</option>
+            {% endif %}
+            {% for item in items %}
+                {% if item.id %}
+                    <!-- Model object with id/name attributes -->
+                    <option value="{{ item.id }}" {% if current_value and current_value.id == item.id %}selected{% endif %}>
+                        {{ item.name }}
+                    </option>
+                {% else %}
+                    <!-- Simple string value -->
+                    <option value="{{ item }}" {% if current_value == item %}selected{% endif %}>
+                        {{ item }}
+                    </option>
+                {% endif %}
+            {% endfor %}
+        </select>
+    </div>
+</div>
+
+<!-- Suggestions section (if provided) -->
+{% if suggestions %}
+    <div class="alert alert-info mt-2">
+        <small class="fw-bold">Suggested from similar transactions:</small>
+        <div class="mt-2">
+            {% for suggestion in suggestions %}
+                {% if suggestion.id %}
+                    <button type="button" class="btn btn-outline-info btn-sm me-1 mb-1 apply-suggestion"
+                            data-value="{{ suggestion.id }}" data-field="{{ field_name }}">
+                        {{ suggestion.name }}
+                    </button>
+                {% else %}
+                    <button type="button" class="btn btn-outline-info btn-sm me-1 mb-1 apply-suggestion"
+                            data-value="{{ suggestion }}" data-field="{{ field_name }}">
+                        {{ suggestion }}
+                    </button>
+                {% endif %}
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}
