@@ -6,7 +6,7 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db import transaction as dbtx
 from transactions.utils import trace
-from transactions.models import Transaction, Payoree
+from transactions.models import Transaction, Payoree, Category
 from ingest.models import ImportBatch, MappingProfile, ScannedCheck
 from ingest.forms import (
     UploadCSVForm,
@@ -304,86 +304,6 @@ def check_upload(request):
     return render(request, "ingest/check_upload.html", {"form": form})
 
 
-@require_http_methods(["GET", "POST"])
-@trace
-def check_review_old(request, pk: int):
-    sc = get_object_or_404(ScannedCheck, pk=pk)
-    initial = {
-        "bank_account": sc.bank_account or "",
-        "check_number": sc.check_number or "",
-        "date": sc.date,
-        "amount": sc.amount,
-        "payoree": sc.payoree_id,
-        "memo_text": sc.memo_text or "",
-    }
-
-    form = CheckReviewForm(request.POST or None, initial=initial)
-
-    candidates = []
-    if request.method == "POST" and form.is_valid():
-        cleaned = form.cleaned_data
-        # discover candidates for this submission (use posted values)
-        candidates = candidate_transactions(
-            cleaned["bank_account"],
-            cleaned["date"],
-            cleaned["amount"],
-            cleaned.get("check_number"),
-        )
-
-        # If the user selected a candidate (via hidden/radio in template), attach immediately
-        if cleaned.get("match_txn_id"):
-            attach_or_create_transaction(sc, cleaned)
-            messages.success(request, "Image linked to existing transaction.")
-            return _redirect_to_next_unresolved()
-
-        # else we’ll show candidates and let them confirm create or select
-        # If user clicked “Create new now”, you can branch on a form button name
-        if "create_new" in request.POST:
-            attach_or_create_transaction(sc, cleaned)
-            messages.success(request, "New transaction created from check image.")
-            return _redirect_to_next_unresolved()
-    else:
-        # compute candidates off initial to pre-show
-        if (
-            initial["bank_account"]
-            and initial["date"]
-            and initial["amount"] is not None
-        ):
-            candidates = candidate_transactions(
-                initial["bank_account"],
-                initial["date"],
-                initial["amount"],
-                initial["check_number"],
-            )
-
-    # figure out prev/next among unresolved checks (or all checks if you prefer)
-    unresolved_ids = list(
-        ScannedCheck.objects.filter(transaction__isnull=True)
-        .order_by("created_at")
-        .values_list("id", flat=True)
-    )
-    try:
-        i = unresolved_ids.index(sc.id)
-    except ValueError:
-        i = -1
-
-    prev_id = unresolved_ids[i - 1] if i > 0 else None
-    next_id = unresolved_ids[i + 1] if i != -1 and i + 1 < len(unresolved_ids) else None
-
-    prev_url = reverse("ingest:check_review", args=[prev_id]) if prev_id else None
-    next_url = reverse("ingest:check_review", args=[next_id]) if next_id else None
-    cancel_url = reverse("ingest:scannedcheck_list")
-
-    context = {
-        "sc": sc,
-        "form": form,
-        "prev_url": reverse("ingest:check_review", args=[prev_id]) if prev_id else None,
-        "next_url": reverse("ingest:check_review", args=[next_id]) if next_id else None,
-        "cancel_url": reverse("ingest:scannedcheck_list"),  # or any route you prefer
-    }
-    return render(request, "ingest/check_review.html", context)
-
-
 @trace
 def _redirect_to_next_unresolved():
     nxt = (
@@ -540,6 +460,7 @@ def match_check(request):
     messages.success(request, f"Matched check {check.check_number} to txn {txn.pk}.")
     return redirect("ingest:checks_reconcile")
 
+
 @trace
 @require_POST
 def unlink_check(request, check_id: int):
@@ -548,6 +469,7 @@ def unlink_check(request, check_id: int):
     check.save(update_fields=["linked_transaction"])
     messages.info(request, f"Unlinked check {check.check_number}.")
     return redirect("ingest:scannedcheck_list")
+
 
 class ScannedCheckListView(ListView):
     model = ScannedCheck
@@ -770,22 +692,128 @@ def _existing_bank_accounts() -> list[str]:
 def match_check(request, pk: int):
     sc = get_object_or_404(ScannedCheck, pk=pk)
 
-    # 1) Bank selection gate
-    bank = request.GET.get("bank") or sc.bank_account or ""
+    # start of port from check_review
+
+    # If POST and user selected to add a new payoree, create it and update POST data
+    post_data = request.POST.copy() if request.method == "POST" else None
+    if request.method == "POST":
+        payoree_val = post_data.get("payoree")
+        new_payoree_name = post_data.get("new_payoree", "").strip()
+        if payoree_val == "__new__" and new_payoree_name:
+            # Create new payoree
+            from transactions.models import Payoree
+
+            payoree_obj, _ = Payoree.objects.get_or_create(name=new_payoree_name)
+            post_data["payoree"] = str(payoree_obj.id)
+    # Form bound to the instance for both GET and POST
+    form = CheckReviewForm(post_data or None, instance=sc)
+
+    # pick bank account (query param)
+    bank = request.GET.get("bank") or ""
+    # get list of known bank accounts (distinct from transactions)
+    bank_accounts = (
+        Transaction.objects.exclude(bank_account__isnull=True)
+        .exclude(bank_account__exact="")
+        .values_list("bank_account", flat=True)
+        .distinct()
+        .order_by("bank_account")
+    )
+
+    # Handle transaction search
+    search_triggered = False
+    if request.method == "POST" and "look_for_transactions" in request.POST:
+        search_triggered = True
+
+        # Save form data if valid
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Check details saved.")
+
+            # Handle bank selection from the form
+            bank_form = BankPickForm(request.POST, accounts=_existing_bank_accounts())
+            if bank_form.is_valid():
+                bank_value = bank_form.cleaned_data["bank_account"]
+                if bank_value:
+                    ScannedCheck.objects.filter(pk=sc.pk).update(
+                        bank_account=bank_value
+                    )
+                    sc.refresh_from_db()  # Refresh the instance to get the updated bank_account
+        else:
+            messages.error(request, "Please fix the errors below.")
+            search_triggered = False  # Don't perform search if form is invalid
+
+    # Build prev/next among unresolved (or all, if you prefer)
+    unresolved_ids = list(
+        ScannedCheck.objects.filter(linked_transaction__isnull=True)
+        .order_by("created_at")
+        .values_list("id", flat=True)
+    )
+    try:
+        i = unresolved_ids.index(sc.id)
+    except ValueError:
+        i = -1
+
+    prev_id = unresolved_ids[i - 1] if i > 0 else None
+    next_id = unresolved_ids[i + 1] if i != -1 and i + 1 < len(unresolved_ids) else None
+
+    prev_url = reverse("ingest:match_check", args=[prev_id]) if prev_id else None
+    next_url = reverse("ingest:match_check", args=[next_id]) if next_id else None
+    cancel_url = reverse("ingest:scannedcheck_list")  # make sure this URL name exists
+
+    if (
+        request.method == "POST"
+        and not search_triggered
+        and "attach_save" not in request.POST
+        and "create_new" not in request.POST
+    ):
+        if form.is_valid():
+            form.save()  # <-- persist changes to ScannedCheck
+
+            # Also handle bank selection for regular save
+            bank_form = BankPickForm(request.POST, accounts=_existing_bank_accounts())
+            if bank_form.is_valid():
+                bank_value = bank_form.cleaned_data["bank_account"]
+                if bank_value:
+                    ScannedCheck.objects.filter(pk=sc.pk).update(
+                        bank_account=bank_value
+                    )
+                    sc.refresh_from_db()  # Refresh the instance to get the updated bank_account
+
+            messages.success(request, "Check saved.")
+
+            # Navigate if user clicked a nav button
+            if "next" in request.POST and next_url:
+                return redirect(next_url)
+            if "prev" in request.POST and prev_url:
+                return redirect(prev_url)
+            if "cancel" in request.POST:
+                return redirect(cancel_url)
+
+            # Default after save: stay on the page
+            return redirect(reverse("ingest:match_check", args=[sc.pk]))
+        else:
+            messages.error(request, "Please fix the errors below.")
+
+    # For payoree assignment partial
+    payorees = form.fields["payoree"].queryset if "payoree" in form.fields else []
+    payoree_matches = []  # You can add logic for suggestions if desired
+
+    # end of port form check_review
+
+    # 1) Check if search should be performed
+    bank = sc.bank_account or ""
+    # Initialize bank form for rendering - don't use POST data if it's not a look_for_transactions request
+    bank_form_data = None
+    if request.method == "POST" and "look_for_transactions" in request.POST:
+        bank_form_data = request.POST
     bank_form = BankPickForm(
-        request.POST or None,
+        bank_form_data,
         accounts=_existing_bank_accounts(),
         initial={"bank_account": bank or ""},
     )
-    if request.method == "POST" and "pick_bank" in request.POST:
-        if bank_form.is_valid():
-            bank = bank_form.cleaned_data["bank_account"]
-            ScannedCheck.objects.filter(pk=sc.pk).update(bank_account=bank)
-            return redirect(
-                f"{reverse('ingest:match_check', args=[sc.pk])}?bank={bank}"
-            )
+    perform_search = search_triggered and bank
 
-    if not bank:
+    if not perform_search:
         return render(
             request,
             "ingest/match_check.html",
@@ -796,10 +824,18 @@ def match_check(request, pk: int):
                 "selected": None,
                 "desc_preview": "",
                 "why": [],
+                "form": form,
+                "prev_url": prev_url,
+                "next_url": next_url,
+                "cancel_url": cancel_url,
+                "bank": bank,
+                "bank_accounts": bank_accounts,
+                "payorees": payorees,
+                "payoree_matches": payoree_matches,
             },
         )
 
-    # 2) Candidate list (scored)
+    # 2) Candidate list (scored) - only when search is triggered
     cands = find_candidates(
         bank=bank,
         check_no=sc.check_number or "",
@@ -812,8 +848,50 @@ def match_check(request, pk: int):
     # 3) POST: attach to existing
     if request.method == "POST" and "attach_save" in request.POST:
         form = AttachEditForm(request.POST)
+        print(f"DEBUG: Attach form data: {request.POST}")
+        print(f"DEBUG: Form is valid: {form.is_valid()}")
+        print(f"DEBUG: top_txn exists: {top_txn is not None}")
         if form.is_valid():
+            print(f"DEBUG: Form cleaned data: {form.cleaned_data}")
+        if form.is_valid() and top_txn:  # Ensure we have a selected transaction
+            print(f"DEBUG: Expected transaction ID: {top_txn.pk}")
+            print(f"DEBUG: Form transaction ID: {form.cleaned_data['transaction_id']}")
             txn = get_object_or_404(Transaction, pk=form.cleaned_data["transaction_id"])
+            print(f"DEBUG: Found transaction: {txn.pk}")
+
+            # Check if transaction already has a linked scanned check
+            try:
+                existing_scanned_check = txn.scanned_check
+                if existing_scanned_check and existing_scanned_check != sc:
+                    print(
+                        f"DEBUG: Transaction {txn.pk} already linked to ScannedCheck {existing_scanned_check.pk}"
+                    )
+                    messages.error(
+                        request,
+                        f"Transaction {txn.pk} is already linked to another check.",
+                    )
+                    return redirect(reverse("ingest:match_check", args=[sc.pk]))
+            except:
+                # No existing scanned_check, which is fine
+                pass
+
+            # Check if our ScannedCheck already has a linked transaction
+            if sc.linked_transaction and sc.linked_transaction != txn:
+                print(
+                    f"DEBUG: ScannedCheck {sc.pk} already linked to Transaction {sc.linked_transaction.pk}"
+                )
+                # Clear the existing link first
+                print(f"DEBUG: Clearing existing link from ScannedCheck {sc.pk}")
+                sc.linked_transaction = None
+                sc.save()
+
+            # Verify the transaction matches what we expect
+            if txn.pk != top_txn.pk:
+                print(
+                    f"DEBUG: Transaction ID mismatch! Expected {top_txn.pk}, got {txn.pk}"
+                )
+                messages.error(request, "Transaction ID mismatch.")
+                return redirect(reverse("ingest:match_check", args=[sc.pk]))
             # Compose description using template
             new_desc = render_description(
                 csv_desc=txn.description or "",
@@ -840,11 +918,21 @@ def match_check(request, pk: int):
             if sc.bank_account and not txn.bank_account:
                 txn.bank_account = sc.bank_account
             txn.save()
+            print(f"DEBUG: Transaction saved")
 
             # Link + status
+            sc.refresh_from_db()  # Refresh the instance to avoid stale data issues
             sc.linked_transaction = txn
             sc.status = "confirmed"
-            sc.save(update_fields=["linked_transaction", "status"])
+            try:
+                sc.save()  # Try saving without update_fields
+                print(
+                    f"DEBUG: ScannedCheck saved successfully. linked_transaction = {sc.linked_transaction}"
+                )
+            except Exception as e:
+                print(f"DEBUG: Error saving ScannedCheck: {e}")
+                messages.error(request, f"Error saving ScannedCheck: {e}")
+                return redirect(reverse("ingest:match_check", args=[sc.pk]))
 
             messages.success(
                 request, f"Attached check #{sc.check_number or ''} to T-{txn.pk}."
@@ -862,7 +950,12 @@ def match_check(request, pk: int):
                 else reverse("ingest:scannedcheck_list")
             )
 
-        messages.error(request, "Please fix the errors below.")
+        else:
+            if not top_txn:
+                messages.error(request, "No transaction selected to attach to.")
+            else:
+                messages.error(request, f"Attach form errors: {form.errors}")
+            # Don't redirect, stay on page to show errors
 
     # 4) POST: create new transaction
     if request.method == "POST" and "create_new" in request.POST:
@@ -910,18 +1003,6 @@ def match_check(request, pk: int):
             memo=sc.memo_text or None,
         )
 
-    context = {
-        "sc": sc,
-        "bank_form": bank_form,
-        "candidates": cands,
-        "selected": cands[0].txn if cands else None,
-        "why": why,
-        "desc_preview": desc_preview,
-        "payoree_qs": Payoree.objects.order_by("name")[
-            :500
-        ],  # or whatever limit/filter you prefer
-    }
-
     return render(
         request,
         "ingest/match_check.html",
@@ -932,5 +1013,13 @@ def match_check(request, pk: int):
             "selected": top_txn,
             "desc_preview": desc_preview,
             "why": why,
+            "form": form,
+            "prev_url": prev_url,
+            "next_url": next_url,
+            "cancel_url": cancel_url,
+            "bank": bank,
+            "bank_accounts": bank_accounts,
+            "payorees": payorees,
+            "payoree_matches": payoree_matches,
         },
     )

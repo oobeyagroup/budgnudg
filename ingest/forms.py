@@ -86,12 +86,12 @@ def bank_account_choices() -> list[tuple[str, str]]:
     return [(b, b) for b in qs]
 
 class BankPickForm(forms.Form):
-    bank_account = forms.ChoiceField(choices=[], label="Bank account")
+    bank_account = forms.ChoiceField(choices=[], required=True, label="Bank account")
 
     @method_decorator(trace)
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, accounts: list[str], **kwargs):
         super().__init__(*args, **kwargs)
-        self.fields["bank_account"].choices = bank_account_choices()
+        self.fields["bank_account"].choices = [(a, a) for a in accounts]
 
 class AttachCheckForm(forms.Form):
     transaction_id = forms.IntegerField(widget=forms.HiddenInput())
@@ -111,13 +111,6 @@ class TransactionQuickEditForm(forms.ModelForm):
         }
 
 
-class BankPickForm(forms.Form):
-    bank_account = forms.ChoiceField(choices=[], required=True, label="Bank account")
-
-    @method_decorator(trace)
-    def __init__(self, *args, accounts: list[str], **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields["bank_account"].choices = [(a, a) for a in accounts]
 
 class AttachEditForm(forms.Form):
     transaction_id = forms.IntegerField(widget=forms.HiddenInput)

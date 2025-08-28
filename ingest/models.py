@@ -8,7 +8,7 @@ from django.core.validators import MinValueValidator
 from transactions.models import Transaction
 
 User = get_user_model()
-
+class FinancialAccount
 class MappingProfile(models.Model):
     name = models.CharField(max_length=100, unique=True)
     column_map = models.JSONField()
