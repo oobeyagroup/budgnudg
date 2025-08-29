@@ -162,8 +162,8 @@ class CategorizeTransactionView(TemplateView):
                     normalize_description(t.description)
                 ),
                 reverse=True
-            )[:10]
-            
+            )[:25]
+
             # Extract unique category/subcategory combinations from similar transactions
             category_combos = {}
             for t in similar_transactions:

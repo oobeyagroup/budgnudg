@@ -18,7 +18,7 @@ def apply_transaction_filters(queryset, request):
     # Filter by account
     account = request.GET.get("account")
     if account:
-        queryset = queryset.filter(bank_account=account)
+        queryset = queryset.filter(bank_account__name=account)
 
     # Filter for uncategorized transactions (missing payoree)
     if request.GET.get("uncategorized") == "1":

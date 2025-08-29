@@ -155,6 +155,32 @@ class CollapsibleTransactionListView(TemplateView):
         # Sort category types for consistent display
         category_type_order = ['income', 'expense', 'transfer', 'asset', 'liability', 'equity', 'uncategorized']
         
+        # Apply payoree-style sorting to categories and subcategories within each category type
+        # Custom sort: positive totals descending, negative totals ascending, positives before negatives
+        def budget_sort_key(item):
+            total = item[1]['total_amount']
+            # positives: (0, -total), negatives: (1, total)
+            return (0, -total) if total >= 0 else (1, total)
+        
+        for category_type in organized_data:
+            # Sort categories within this category type
+            sorted_categories = sorted(
+                organized_data[category_type]['categories'].items(),
+                key=budget_sort_key
+            )
+            
+            # Sort subcategories within each category
+            sorted_category_dict = {}
+            for category_name, category_data in sorted_categories:
+                sorted_subcategories = sorted(
+                    category_data['subcategories'].items(),
+                    key=budget_sort_key
+                )
+                category_data['subcategories'] = dict(sorted_subcategories)
+                sorted_category_dict[category_name] = category_data
+            
+            organized_data[category_type]['categories'] = sorted_category_dict
+        
         context.update({
             'organized_data': organized_data,
             'category_type_order': category_type_order,

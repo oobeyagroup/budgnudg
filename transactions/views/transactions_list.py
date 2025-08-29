@@ -22,6 +22,7 @@ class TransactionListView(ListView):
     @method_decorator(trace)
     def get_context_data(self, **kwargs):
         from django.conf import settings
+        from ingest.models import FinancialAccount
         ctx = super().get_context_data(**kwargs)
         # Surface current filters so the template can keep UI state
         ctx["current_filters"] = {
@@ -32,6 +33,8 @@ class TransactionListView(ListView):
             "q": self.request.GET.get("q", ""),
             "order": self.request.GET.get("order", "-date"),
         }
+        # Add available bank accounts for filtering
+        ctx["available_accounts"] = FinancialAccount.objects.all().order_by("name")
         # Explicitly add debug setting to context
         ctx["debug"] = settings.DEBUG
         return ctx

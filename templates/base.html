@@ -66,8 +66,6 @@
                 <li><a class="dropdown-item" href="{% url 'transactions:transactions_list' %}?no_category=1">No Category</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:transactions_list' %}?no_payoree=1">No Payoree</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:transactions_list' %}">All</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="{% url 'transactions:collapsible_transaction_list' %}"><i class="fas fa-chart-line me-1"></i>Budget Report</a></li>
               </ul>
             </li>
 
@@ -78,17 +76,6 @@
                 <a class="nav-link" href="{% url 'transactions:transactions_list' %}?no_payoree=1">No Payoree</a>
             </li>
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="importDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                Import
-              </a>
-              <ul class="dropdown-menu" aria-labelledby="importDropdown">
-                <li><a class="dropdown-item" href="{% url 'ingest:batch_upload' %}">Transactions</a></li>
-                <li><a class="dropdown-item" href="{% url 'ingest:check_upload' %}">Check Images</a></li>
-                <li><a class="dropdown-item" href="{% url 'transactions:import_categories' %}">Categories</a></li>
-                <li><a class="dropdown-item" href="{% url 'transactions:import_payoree' %}">Payoree</a></li>
-              </ul>
-            </li>
-                       <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                 Lists
               </a>
@@ -96,7 +83,18 @@
                 <li><a class="dropdown-item" href="{% url 'transactions:report_account_time_span' %}">Accounts</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:categories_list' %}">Categories</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:payorees_list' %}">Payor/ee</a></li>
-                <li><a class="dropdown-item" href="{% url 'ingest:scannedcheck_list' %}">Checks</a></li>
+                <li><a class="dropdown-item" href="{% url 'ingest:scannedcheck_list' %}">Check Images</a></li>
+              </ul>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="importDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                Import
+              </a>
+              <ul class="dropdown-menu" aria-labelledby="importDropdown">
+                <li><a class="dropdown-item" href="{% url 'ingest:batch_upload' %}">Transactions</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:import_categories' %}">Categories</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:import_payoree' %}">Payoree</a></li>
+                <li><a class="dropdown-item" href="{% url 'ingest:check_upload' %}">Check Images</a></li>
               </ul>
             </li>
            <li class="nav-item dropdown">
@@ -104,6 +102,9 @@
                 Reports
               </a>
               <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="{% url 'transactions:collapsible_transaction_list' %}"><i class="fas fa-chart-line me-1"></i>Budget Report</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:payoree_report' %}"><i class="fas fa-chart-line me-1"></i>Payor/ee Report</a></li>
+                <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item disabled" href="{% url 'transactions:report_account_time_span' %}">Account Time Span</a></li>
                 <li><a class="dropdown-item disabled" href="{% url 'transactions:report_income_statement' %}">Income Statement</a></li>
               </ul>

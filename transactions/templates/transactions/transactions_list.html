@@ -28,8 +28,25 @@
           </a>
         </div>
         <div class="col-auto">
+          <form method="get" class="d-inline">
+            <select name="account" class="form-select form-select-sm" onchange="this.form.submit()">
+              <option value="">All Bank Accounts</option>
+              {% for account in available_accounts %}
+                <option value="{{ account.name }}" {% if current_filters.account == account.name %}selected{% endif %}>
+                  {{ account.name }}
+                </option>
+              {% endfor %}
+            </select>
+          </form>
+        </div>
+        <div class="col-auto">
           <a href="{% url 'transactions:transactions_list' %}" class="btn btn-outline-dark btn-sm">
             <i class="fas fa-times me-1"></i>Clear Filters
+          </a>
+        </div>
+        <div class="col-auto">
+          <a href="?q=check" class="btn btn-outline-secondary btn-sm {% if current_filters.q == 'check' %}active{% endif %}">
+            <i class="fas fa-question-circle me-1"></i>Checks
           </a>
         </div>
       </div>

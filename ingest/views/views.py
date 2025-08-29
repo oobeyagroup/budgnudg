@@ -234,10 +234,13 @@ def commit(request, pk):
             messages.error(request, "Bank account is required.")
             return redirect("ingest:batch_preview", pk=batch.pk)
 
+        reverse_amounts = request.POST.get("reverse_amounts") == "on"
+        
         logger.debug(
-            "Committing batch %s with bank_account: %s", batch.pk, bank_account
+            "Committing batch %s with bank_account: %s, reverse_amounts: %s", 
+            batch.pk, bank_account, reverse_amounts
         )
-        imported, dups, skipped = commit_batch(batch, bank_account)
+        imported, dups, skipped = commit_batch(batch, bank_account, reverse_amounts=reverse_amounts)
         messages.success(
             request,
             f"Imported {len(imported)} transactions; skipped {len(skipped)} (duplicates: {len(dups)}).",

@@ -4,6 +4,8 @@ import pytest
 
 from transactions.services import helpers as H
 from transactions.models import Transaction
+from ingest.models import FinancialAccount
+
 
 @pytest.mark.unit
 def test_iter_csv_utf8sig_and_skip_blanks():
@@ -16,6 +18,7 @@ def test_iter_csv_utf8sig_and_skip_blanks():
     assert rows[0]["Amount"] == "-12.34"
     assert rows[1]["Description"] == "World"
     assert rows[1]["Amount"] == "56.78"
+
 
 @pytest.mark.unit
 def test_coerce_row_for_model_parses_date_amount_and_blanks():
@@ -32,21 +35,42 @@ def test_coerce_row_for_model_parses_date_amount_and_blanks():
     assert out["memo"] is None
     assert out["check_num"] is None
 
+
 @pytest.mark.unit
 def test_json_safe_rows_handles_date_and_decimal():
     rows = [{"date": dt.date(2025, 7, 11), "amount": Decimal("1.20"), "x": None}]
     safe = H.json_safe_rows(rows)
     assert safe == [{"date": "2025-07-11", "amount": "1.20", "x": None}]
 
+
 @pytest.mark.django_db
 def test_is_duplicate_true_when_matching_row_exists():
-    Transaction.objects.create(
-        date=dt.date(2025,7,11), description="abc", amount=Decimal("10.00"), bank_account="CHK"
+    # Create a FinancialAccount first
+    bank_account = FinancialAccount.objects.create(
+        name="CHK", description="Test checking account"
     )
-    data = dict(date=dt.date(2025,7,11), description="abc", amount=Decimal("10.00"), bank_account="CHK")
+
+    Transaction.objects.create(
+        date=dt.date(2025, 7, 11),
+        description="abc",
+        amount=Decimal("10.00"),
+        bank_account=bank_account,
+    )
+    data = dict(
+        date=dt.date(2025, 7, 11),
+        description="abc",
+        amount=Decimal("10.00"),
+        bank_account="CHK",
+    )
     assert H.is_duplicate(data) is True
+
 
 @pytest.mark.django_db
 def test_is_duplicate_false_when_no_match():
-    data = dict(date=dt.date(2025,7,11), description="abc", amount=Decimal("10.00"), bank_account="CHK")
+    data = dict(
+        date=dt.date(2025, 7, 11),
+        description="abc",
+        amount=Decimal("10.00"),
+        bank_account="CHK",
+    )
     assert H.is_duplicate(data) is False

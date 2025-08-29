@@ -320,7 +320,7 @@ def apply_profile_to_batch(
 
 @trace
 def commit_batch(
-    batch: ImportBatch, bank_account: str
+    batch: ImportBatch, bank_account: str, reverse_amounts: bool = False
 ) -> Tuple[List[int], List[int], List[int]]:
     """
     Persist non-duplicate rows as Transactions.
@@ -336,6 +336,57 @@ def commit_batch(
         if getattr(f, "concrete", False) and not f.auto_created and not f.many_to_many
     }
 
+    # Look up or create FinancialAccount instance by name BEFORE entering atomic block
+    logger.debug("DEBUG: Looking for FinancialAccount with name: '%s'", bank_account)
+    logger.debug(
+        "DEBUG: Available FinancialAccount names: %s",
+        list(FinancialAccount.objects.values_list("name", flat=True)),
+    )
+    logger.debug(
+        "DEBUG: Available FinancialAccount descriptions: %s",
+        list(FinancialAccount.objects.values_list("description", flat=True)),
+    )
+
+    bank_account_instance = None
+
+    # First try exact name match
+    try:
+        bank_account_instance = FinancialAccount.objects.get(name=bank_account)
+        logger.debug("DEBUG: Found FinancialAccount by name: %s", bank_account_instance)
+    except FinancialAccount.DoesNotExist:
+        # Try matching by description if name lookup fails
+        try:
+            bank_account_instance = FinancialAccount.objects.get(
+                description=bank_account
+            )
+            logger.debug(
+                "DEBUG: Found FinancialAccount by description: %s",
+                bank_account_instance,
+            )
+        except FinancialAccount.DoesNotExist:
+            logger.info(
+                "Creating new FinancialAccount '%s' for batch %s",
+                bank_account,
+                batch.pk,
+            )
+            try:
+                bank_account_instance = FinancialAccount.objects.create(
+                    name=bank_account,
+                    description=bank_account,
+                )
+                logger.debug(
+                    "DEBUG: Created new FinancialAccount: %s", bank_account_instance
+                )
+            except Exception as e:
+                logger.error(
+                    "Failed to create FinancialAccount '%s' for batch %s: %s",
+                    bank_account,
+                    batch.pk,
+                    e,
+                )
+                # Return empty results if we can't even create the bank account
+                return [], [], []
+
     with dbtx.atomic():
         # optional: set batch status
         if hasattr(batch, "status"):
@@ -350,12 +401,13 @@ def commit_batch(
 
             # Build transaction payload from normalized + parsed
             parsed = row.parsed or {}
+
             data = {
                 "date": row.norm_date,
-                "amount": row.norm_amount,
+                "amount": -row.norm_amount if reverse_amounts else row.norm_amount,
                 "description": row.norm_description
                 or (parsed.get("description") or ""),
-                "bank_account": bank_account,
+                "bank_account": bank_account_instance,
                 "source": getattr(batch, "filename", "") or f"batch:{batch.pk}",
             }
 

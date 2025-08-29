@@ -78,7 +78,7 @@ class ResolveTransactionView(View):
                 if similarity >= 70:  # 70% similarity threshold
                     similar_transactions.append(t)
             
-            # Sort by similarity (most similar first) and limit to top 10
+            # Sort by similarity (most similar first) and limit to top 25
             similar_transactions = sorted(
                 similar_transactions,
                 key=lambda t: fuzz.token_set_ratio(
@@ -86,7 +86,7 @@ class ResolveTransactionView(View):
                     normalize_description(t.description)
                 ),
                 reverse=True
-            )[:10]
+            )[:25]
             
             # Extract unique category/subcategory combinations from similar transactions
             category_combos = {}
