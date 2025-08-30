@@ -60,7 +60,7 @@
         
         <p class="mb-0">
           You can either select a profile manually from the dropdown above or 
-          <a href="#" class="alert-link">create a new profile (tbd)</a> matching these headers.
+          <a href="{% url 'ingest:create_mapping_profile' %}?{% for header in batch.header %}headers={{ header|urlencode }}{% if not forloop.last %}&{% endif %}{% endfor %}" class="alert-link">create a new profile (interactive)</a> matching these headers.
         </p>
       </div>
       {% endif %}

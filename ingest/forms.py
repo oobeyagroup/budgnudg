@@ -151,3 +151,73 @@ class CreateNewTransactionForm(forms.Form):
     payoree = forms.ModelChoiceField(queryset=Payoree.objects.all(), required=False)
     subcategory_id = forms.IntegerField(required=False)
     bank_account = forms.CharField(required=True, max_length=64)
+
+
+class CreateMappingProfileForm(forms.Form):
+    """Form for creating CSV mapping profiles interactively"""
+
+    # Basic profile information
+    profile_name = forms.CharField(
+        max_length=100,
+        required=True,
+        label="Profile Name",
+        help_text="Give this mapping profile a descriptive name (e.g., 'Chase Checking CSV')",
+        widget=forms.TextInput(attrs={"class": "form-control"})
+    )
+
+    description = forms.CharField(
+        max_length=255,
+        required=False,
+        label="Description",
+        help_text="Optional description of what this profile is for",
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2})
+    )
+
+    # Hidden field to store CSV headers
+    csv_headers = forms.CharField(
+        widget=forms.HiddenInput(),
+        required=True
+    )
+
+    def __init__(self, *args, **kwargs):
+        csv_headers = kwargs.pop('csv_headers', [])
+        super().__init__(*args, **kwargs)
+
+        # Transaction fields available for mapping
+        TRANSACTION_FIELDS = [
+            ('', '-- Skip this column --'),
+            ('date', 'Date'),
+            ('description', 'Description'),
+            ('amount', 'Amount'),
+            ('account_type', 'Account Type'),
+            ('check_num', 'Check Number'),
+            ('payoree', 'Payor/Payee'),
+            ('memo', 'Memo'),
+            ('category', 'Category'),
+            ('subcategory', 'Subcategory'),
+            ('sheet_account', 'Sheet Account'),
+        ]
+
+        # Create a dropdown for each CSV header
+        for header in csv_headers:
+            field_name = f"mapping_{header.replace(' ', '_').replace('-', '_')}"
+            self.fields[field_name] = forms.ChoiceField(
+                choices=TRANSACTION_FIELDS,
+                required=False,
+                label=f"Map '{header}' to:",
+                widget=forms.Select(attrs={"class": "form-select mapping-dropdown"})
+            )
+
+        # Store headers for template access
+        self.csv_headers = csv_headers
+
+    def get_mapping_dict(self):
+        """Extract the column mapping from form data"""
+        mapping = {}
+        for field_name, field in self.fields.items():
+            if field_name.startswith('mapping_') and field_name != 'csv_headers':
+                csv_column = field_name.replace('mapping_', '').replace('_', ' ').replace('  ', ' ')
+                transaction_field = self.cleaned_data.get(field_name)
+                if transaction_field:  # Only include non-empty mappings
+                    mapping[csv_column] = transaction_field
+        return mapping

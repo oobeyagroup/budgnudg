@@ -414,3 +414,46 @@ def _extract_check_num(desc: str | None) -> str:
     m = re.search(r"\b(?:CHECK|CHK)\s*(\d{3,6})\b", desc.upper())
     return m.group(1) if m else ""
 
+
+from django.views.generic import FormView
+from ingest.forms import CreateMappingProfileForm
+
+
+class CreateMappingProfileView(FormView):
+    template_name = "ingest/create_mapping_profile.html"
+    form_class = CreateMappingProfileForm
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        # Get CSV headers from query parameters or session
+        csv_headers = self.request.GET.getlist('headers', [])
+        if not csv_headers:
+            # Try to get from session (if coming from batch detail)
+            csv_headers = self.request.session.get('csv_headers', [])
+
+        kwargs['csv_headers'] = csv_headers
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['csv_headers'] = self.request.GET.getlist('headers', [])
+        return context
+
+    def form_valid(self, form):
+        # Create the mapping profile
+        mapping_dict = form.get_mapping_dict()
+
+        profile = FinancialAccount.objects.create(
+            name=form.cleaned_data['profile_name'],
+            description=form.cleaned_data.get('description', ''),
+            column_map=mapping_dict
+        )
+
+        messages.success(
+            self.request,
+            f"Mapping profile '{profile.name}' created successfully with {len(mapping_dict)} column mappings."
+        )
+
+        # Redirect to profile detail or profile list
+        return redirect('ingest:profile_detail', pk=profile.pk)
+
