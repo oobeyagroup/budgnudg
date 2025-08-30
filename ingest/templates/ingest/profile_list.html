@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center">
   <h2>Mapping Profiles</h2>
-  <a href="/admin/ingest/FinancialAccount/add/" class="btn btn-primary">Add New Profile</a>
+  <a href="/admin/ingest/financialaccount/add/" class="btn btn-primary">Add New Profile</a>
 </div>
 
 {% if profiles %}
@@ -26,7 +26,7 @@
         <td>{{ profile.column_map|length }} fields</td>
         <td>
           <a href="{% url 'ingest:profile_detail' profile.pk %}" class="btn btn-sm btn-outline-primary">View</a>
-          <a href="/admin/ingest/FinancialAccount/{{ profile.pk }}/change/" class="btn btn-sm btn-outline-secondary">Edit</a>
+          <a href="/admin/ingest/financialaccount/{{ profile.pk }}/change/" class="btn btn-sm btn-outline-secondary">Edit</a>
         </td>
       </tr>
       {% endfor %}
@@ -65,7 +65,7 @@
   <div class="alert alert-info mt-3">
     <h4>No Mapping Profiles Found</h4>
     <p>You haven't created any mapping profiles yet. Mapping profiles define how CSV columns map to transaction fields.</p>
-    <a href="/admin/ingest/FinancialAccount/add/" class="btn btn-primary">Create Your First Profile</a>
+    <a href="/admin/ingest/financialaccount/add/" class="btn btn-primary">Create Your First Profile</a>
   </div>
 {% endif %}
 {% endblock %}
