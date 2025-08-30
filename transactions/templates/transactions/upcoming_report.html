@@ -1,0 +1,46 @@
+{# Minimal upcoming report template #}
+{% extends "base.html" %}
+
+{% block content %}
+  <h1>Upcoming Forecast ({{ weeks }} weeks)</h1>
+
+  <table class="table table-sm">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Income</th>
+        <th>Expense</th>
+        <th>Net</th>
+        <th>Transactions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr>
+        <td>{{ row.date|date:"Y-m-d" }}</td>
+        <td>{{ row.income|floatformat:2 }}</td>
+        <td>{{ row.expense|floatformat:2 }}</td>
+        <td>{{ row.net|floatformat:2 }}</td>
+        <td>
+          {% if row.transactions %}
+            {% for t in row.transactions %}
+              <div>{{ t.payoree|default:t.description }} — {{ t.amount }}</div>
+            {% endfor %}
+          {% else %}
+            <em>None</em>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr>
+        <th>Totals</th>
+        <th>{{ totals.income|floatformat:2 }}</th>
+        <th>{{ totals.expense|floatformat:2 }}</th>
+        <th>{{ totals.net|floatformat:2 }}</th>
+        <th></th>
+      </tr>
+    </tfoot>
+  </table>
+{% endblock %}

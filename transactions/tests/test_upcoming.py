@@ -1,0 +1,36 @@
+import datetime as dt
+from django.test import TestCase
+from transactions.selectors import build_upcoming_forecast
+from transactions.models import Transaction, Category
+
+
+class UpcomingForecastTests(TestCase):
+    def test_build_upcoming_forecast_basic(self):
+        # create some historical weekly transactions
+        cat, _ = Category.objects.get_or_create(name="Test")
+        today = dt.date.today()
+        for w in range(1, 13):
+            d = today - dt.timedelta(weeks=w)
+            Transaction.objects.create(
+                date=d, amount=100 + w, description=f"Sample {w}", category=cat
+            )
+
+        result = build_upcoming_forecast(weeks=4)
+        assert "week_starts" in result
+        assert len(result["week_starts"]) == 4
+        assert len(result["projected_weekly_totals"]) == 4
+
+    def test_recurring_detection(self):
+        cat, _ = Category.objects.get_or_create(name="Bills")
+        today = dt.date.today()
+        # create a recurring weekly transaction with similar description
+        for i in range(6):
+            d = today - dt.timedelta(weeks=i + 1)
+            Transaction.objects.create(
+                date=d, amount=-50, description="ACME SUBSCRIPTION 123", category=cat
+            )
+
+        result = build_upcoming_forecast(weeks=4)
+        # at least one recurring prediction should be present
+        assert isinstance(result.get("recurring_predictions"), list)
+        assert len(result.get("recurring_predictions")) >= 1

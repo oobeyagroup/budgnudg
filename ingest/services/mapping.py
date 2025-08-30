@@ -19,14 +19,26 @@ from transactions.utils import trace
 
 logger = logging.getLogger(__name__)
 
+
 @trace
 def _parse_date(s: str):
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%d-%m-%Y", "%d/%m/%Y", "%d/%m/%y", "%Y/%m/%d", "%m-%d-%Y", "%m-%d-%y"):
+    for fmt in (
+        "%Y-%m-%d",
+        "%m/%d/%Y",
+        "%m/%d/%y",
+        "%d-%m-%Y",
+        "%d/%m/%Y",
+        "%d/%m/%y",
+        "%Y/%m/%d",
+        "%m-%d-%Y",
+        "%m-%d-%y",
+    ):
         try:
             return dt.datetime.strptime(s, fmt).date()
         except (ValueError, TypeError):
             continue
     raise ValueError(f"Unrecognized date: {s!r}")
+
 
 @trace
 def map_row_with_profile(raw_row: dict, profile: FinancialAccount):
