@@ -19,21 +19,23 @@ from transactions.utils import trace
 
 logger = logging.getLogger(__name__)
 
-
+@trace
 def _parse_date(s: str):
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y", "%d/%m/%Y"):
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%d-%m-%Y", "%d/%m/%Y", "%d/%m/%y", "%Y/%m/%d", "%m-%d-%Y", "%m-%d-%y"):
         try:
             return dt.datetime.strptime(s, fmt).date()
         except (ValueError, TypeError):
             continue
     raise ValueError(f"Unrecognized date: {s!r}")
 
-
+@trace
 def map_row_with_profile(raw_row: dict, profile: FinancialAccount):
     mapping = profile.column_map
     out, errors = {}, []
     for csv_col, model_field in mapping.items():
-        raw = raw_row.get(csv_col) or ""
+        # Normalize the CSV column name by stripping BOM and whitespace
+        normalized_csv_col = csv_col.strip().replace("\ufeff", "")
+        raw = raw_row.get(normalized_csv_col) or ""
         if not isinstance(raw, str):
             raw = str(raw)
         raw = raw.strip()
@@ -110,7 +112,7 @@ def preview_batch(batch: ImportBatch):
     batch.save(update_fields=["status"])
 
 
-# @trace
+@trace
 def _json_safe(v):
     """Make values safe for JSONField storage."""
     if isinstance(v, (dt.date, dt.datetime)):

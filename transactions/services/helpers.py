@@ -77,7 +77,7 @@ def parse_date(value: str | dt.date | None) -> dt.date | None:
         return value
     value = value.strip()
     # common formats
-    fmts = ("%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y", "%d/%m/%Y")
+    fmts = ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y", "%d-%m-%Y", "%d/%m/%Y", "%d/%m/%y", "%Y/%m/%d", "%m-%d-%Y", "%m-%d-%y")
     for fmt in fmts:
         try:
             return dt.datetime.strptime(value, fmt).date()

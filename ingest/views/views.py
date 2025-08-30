@@ -47,6 +47,7 @@ class BatchPreviewView(DetailView):
             from ingest.models import FinancialAccount
 
             profiles = FinancialAccount.objects.all()
+            logger.debug("Found profiles: %s", profiles)
 
             # Convert batch headers to a set for comparison, filtering out None and normalizing
             batch_headers = {
@@ -56,9 +57,11 @@ class BatchPreviewView(DetailView):
 
             # Look for a profile whose column_map keys match our headers exactly
             for profile in profiles:
-                # Normalize profile headers too
+                # Normalize profile headers too - strip BOM and whitespace
                 profile_headers = {
-                    k.strip() for k in profile.column_map.keys() if k and k.strip()
+                    k.strip().replace("\ufeff", "")
+                    for k in profile.column_map.keys()
+                    if k and k.strip()
                 }
                 logger.debug(
                     "Comparing with profile '%s' headers: %s",
@@ -515,14 +518,16 @@ class UploadCSVForProfileView(FormView):
         try:
             import csv
             import io
+            from transactions.utils import read_uploaded_file
 
-            # Read the file content
-            file_content = csv_file.read().decode("utf-8")
+            # Read the file content (handles BOM automatically with utf-8-sig)
+            file_content = read_uploaded_file(csv_file)
             csv_reader = csv.reader(io.StringIO(file_content))
 
             # Get the first row as headers
             headers = next(csv_reader)
-            headers = [h.strip() for h in headers if h.strip()]  # Clean up headers
+            # Clean up headers: strip whitespace and remove BOM characters
+            headers = [h.strip().replace("\ufeff", "") for h in headers if h.strip()]
 
             if not headers:
                 messages.error(
@@ -534,7 +539,10 @@ class UploadCSVForProfileView(FormView):
             # Try to get the first data row as sample data
             try:
                 sample_row = next(csv_reader)
-                sample_data = [cell.strip() for cell in sample_row]
+                # Clean up sample data: strip whitespace and remove BOM characters
+                sample_data = [
+                    cell.strip().replace("\ufeff", "") for cell in sample_row
+                ]
             except StopIteration:
                 sample_data = [""] * len(headers)  # No data rows
 

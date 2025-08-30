@@ -1233,7 +1233,9 @@ class ImportLearningDataView(View):
 
             # Read and parse JSON
             try:
-                file_content = backup_file.read().decode("utf-8")
+                from transactions.utils import read_uploaded_file
+
+                file_content = read_uploaded_file(backup_file)
                 learning_data = json.loads(file_content)
             except (UnicodeDecodeError, json.JSONDecodeError) as e:
                 return JsonResponse(
