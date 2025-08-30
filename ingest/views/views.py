@@ -8,11 +8,7 @@ from django.db import transaction as dbtx
 from transactions.utils import trace
 from transactions.models import Transaction, Payoree, Category
 from ingest.models import ImportBatch, FinancialAccount, ScannedCheck
-from ingest.forms import (
-    UploadCSVForm,
-    CheckUploadForm,
-    TransactionQuickEditForm
-)
+from ingest.forms import UploadCSVForm, CheckUploadForm, TransactionQuickEditForm
 from ingest.services.staging import create_batch_from_csv
 from ingest.services.mapping import preview_batch, commit_batch, apply_profile_to_batch
 from ..services.check_ingest import (
@@ -235,12 +231,16 @@ def commit(request, pk):
             return redirect("ingest:batch_preview", pk=batch.pk)
 
         reverse_amounts = request.POST.get("reverse_amounts") == "on"
-        
+
         logger.debug(
-            "Committing batch %s with bank_account: %s, reverse_amounts: %s", 
-            batch.pk, bank_account, reverse_amounts
+            "Committing batch %s with bank_account: %s, reverse_amounts: %s",
+            batch.pk,
+            bank_account,
+            reverse_amounts,
         )
-        imported, dups, skipped = commit_batch(batch, bank_account, reverse_amounts=reverse_amounts)
+        imported, dups, skipped = commit_batch(
+            batch, bank_account, reverse_amounts=reverse_amounts
+        )
         messages.success(
             request,
             f"Imported {len(imported)} transactions; skipped {len(skipped)} (duplicates: {len(dups)}).",
@@ -312,6 +312,7 @@ def _redirect_to_next_unresolved():
         return redirect("ingest:match_check", pk=nxt.pk)
     return redirect("transactions:transactions_list")
 
+
 @trace
 def check_reconcile(request):
     account = request.GET.get("account") or ""
@@ -323,6 +324,7 @@ def check_reconcile(request):
         "checks": checks.order_by("-date", "-id"),
     }
     return render(request, "transactions/checks_reconcile.html", context)
+
 
 @require_POST
 @trace
@@ -425,35 +427,126 @@ class CreateMappingProfileView(FormView):
 
     def get_form_kwargs(self):
         kwargs = super().get_form_kwargs()
-        # Get CSV headers from query parameters or session
-        csv_headers = self.request.GET.getlist('headers', [])
+        # Get CSV headers from query parameters, POST data, or session
+        csv_headers = self.request.GET.getlist("headers", [])
         if not csv_headers:
-            # Try to get from session (if coming from batch detail)
-            csv_headers = self.request.session.get('csv_headers', [])
+            # Try to get from POST data (when form is submitted)
+            csv_headers_str = self.request.POST.get("csv_headers", "")
+            if csv_headers_str:
+                csv_headers = [
+                    h.strip() for h in csv_headers_str.split(",") if h.strip()
+                ]
+            else:
+                # Try to get from session (if coming from CSV upload)
+                csv_headers = self.request.session.get("csv_headers", [])
 
-        kwargs['csv_headers'] = csv_headers
+        kwargs["csv_headers"] = csv_headers
         return kwargs
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context['csv_headers'] = self.request.GET.getlist('headers', [])
+        # Get CSV headers from query parameters, POST data, or session
+        csv_headers = self.request.GET.getlist("headers", [])
+        if not csv_headers:
+            # Try to get from POST data (when form is submitted)
+            csv_headers_str = self.request.POST.get("csv_headers", "")
+            if csv_headers_str:
+                csv_headers = [
+                    h.strip() for h in csv_headers_str.split(",") if h.strip()
+                ]
+            else:
+                # Try to get from session (if coming from CSV upload)
+                csv_headers = self.request.session.get("csv_headers", [])
+        context["csv_headers"] = csv_headers
+
+        # Get sample data from query parameters or session
+        csv_sample_data = self.request.GET.getlist("sample", [])
+        if not csv_sample_data:
+            csv_sample_data = self.request.session.get("csv_sample_data", [])
+        context["csv_sample_data"] = csv_sample_data
+
+        # Get header-field pairs from the form for easy template access
+        form = context.get("form")
+        if form:
+            context["header_field_pairs"] = form.get_header_field_pairs()
+
         return context
 
     def form_valid(self, form):
         # Create the mapping profile
         mapping_dict = form.get_mapping_dict()
 
-        profile = FinancialAccount.objects.create(
-            name=form.cleaned_data['profile_name'],
-            description=form.cleaned_data.get('description', ''),
-            column_map=mapping_dict
-        )
+        try:
+            profile = FinancialAccount.objects.create(
+                name=form.cleaned_data["profile_name"],
+                description=form.cleaned_data.get("description", ""),
+                column_map=mapping_dict,
+            )
+        except Exception as e:
+            # Handle database errors (e.g., unique constraint violations)
+            messages.error(self.request, f"Error creating profile: {str(e)}")
+            return self.form_invalid(form)
 
         messages.success(
             self.request,
-            f"Mapping profile '{profile.name}' created successfully with {len(mapping_dict)} column mappings."
+            f"Mapping profile '{profile.name}' created successfully with {len(mapping_dict)} column mappings.",
         )
 
         # Redirect to profile detail or profile list
-        return redirect('ingest:profile_detail', pk=profile.pk)
+        return redirect("ingest:profile_detail", pk=profile.pk)
 
+
+class UploadCSVForProfileView(FormView):
+    template_name = "ingest/upload_csv_for_profile.html"
+    form_class = UploadCSVForm
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context["title"] = "Upload CSV for Profile Creation"
+        context["description"] = (
+            "Upload a CSV file to detect column headers and create a new mapping profile."
+        )
+        return context
+
+    def form_valid(self, form):
+        csv_file = form.cleaned_data["file"]
+
+        # Read the CSV file to detect headers
+        try:
+            import csv
+            import io
+
+            # Read the file content
+            file_content = csv_file.read().decode("utf-8")
+            csv_reader = csv.reader(io.StringIO(file_content))
+
+            # Get the first row as headers
+            headers = next(csv_reader)
+            headers = [h.strip() for h in headers if h.strip()]  # Clean up headers
+
+            if not headers:
+                messages.error(
+                    self.request,
+                    "No headers found in CSV file. Please ensure the first row contains column names.",
+                )
+                return self.form_invalid(form)
+
+            # Try to get the first data row as sample data
+            try:
+                sample_row = next(csv_reader)
+                sample_data = [cell.strip() for cell in sample_row]
+            except StopIteration:
+                sample_data = [""] * len(headers)  # No data rows
+
+        except Exception as e:
+            messages.error(self.request, f"Error reading CSV file: {str(e)}")
+            return self.form_invalid(form)
+
+        # Store headers and sample data in session for the mapping form
+        self.request.session["csv_headers"] = headers
+        self.request.session["csv_sample_data"] = sample_data
+
+        # Redirect to the interactive mapping form with headers
+        headers_param = "&".join([f"headers={h}" for h in headers])
+        mapping_url = f"{reverse('ingest:create_mapping_profile')}?{headers_param}"
+        return redirect(mapping_url)

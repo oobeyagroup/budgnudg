@@ -7,11 +7,11 @@ def apply_transaction_filters(queryset, request):
     """
     Apply transaction list filters based on request GET parameters.
     This logic is shared between TransactionListView and CategorizeTransactionView.
-    
+
     Args:
         queryset: Base Transaction queryset to filter
         request: HTTP request object containing GET parameters
-    
+
     Returns:
         Filtered Transaction queryset
     """
@@ -51,12 +51,14 @@ def get_filtered_transaction_queryset(request):
     """
     Get a filtered Transaction queryset based on request parameters.
     This is the main entry point for getting filtered transactions.
-    
+
     Args:
         request: HTTP request object containing GET parameters
-    
+
     Returns:
         Filtered Transaction queryset with related objects pre-fetched
     """
-    base_queryset = Transaction.objects.select_related("category", "subcategory", "payoree").all()
+    base_queryset = Transaction.objects.select_related(
+        "category", "subcategory", "payoree"
+    ).all()
     return apply_transaction_filters(base_queryset, request)

@@ -1,6 +1,6 @@
 from django.urls import path
 from ingest.views import views as v
-from .views.views import  check_upload, ScannedCheckListView
+from .views.views import check_upload, ScannedCheckListView
 from ingest.views import match_check as mc
 from .views.match_check import match_check
 
@@ -18,7 +18,16 @@ urlpatterns = [
         v.FinancialAccountDetailView.as_view(),
         name="profile_detail",
     ),
-    path("profiles/create/", v.CreateMappingProfileView.as_view(), name="create_mapping_profile"),
+    path(
+        "profiles/create/",
+        v.CreateMappingProfileView.as_view(),
+        name="create_mapping_profile",
+    ),
+    path(
+        "profiles/upload/",
+        v.UploadCSVForProfileView.as_view(),
+        name="upload_csv_for_profile",
+    ),
     path("checks/reconcile/", v.check_reconcile, name="checks_reconcile"),
     path("checks/match/<int:pk>/", mc.match_check, name="match_check"),
     path("checks/unlink/<int:check_id>/", v.unlink_check, name="checks_unlink"),  # POST

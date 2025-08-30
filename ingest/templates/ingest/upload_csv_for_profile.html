@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Upload CSV for Profile Creation{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title mb-0">
+                        <i class="fas fa-upload me-2"></i>
+                        Upload CSV for Profile Creation
+                    </h2>
+                </div>
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-info-circle me-2"></i>How it works:</h5>
+                        <ol class="mb-0">
+                            <li>Upload a CSV file from your bank or financial institution</li>
+                            <li>The system will detect the column headers in your CSV</li>
+                            <li>You'll be taken to an interactive form to map each column to the appropriate transaction field</li>
+                            <li>Save your mapping profile for future use</li>
+                        </ol>
+                    </div>
+
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="mb-3">
+                            <label for="{{ form.file.id_for_label }}" class="form-label">
+                                <i class="fas fa-file-csv me-2"></i>
+                                CSV File
+                                <span class="text-danger">*</span>
+                            </label>
+                            <input type="file" class="form-control" id="{{ form.file.id_for_label }}" name="file" accept=".csv" required>
+                            {% if form.file.errors %}
+                                <div class="text-danger small mt-1">{{ form.file.errors }}</div>
+                            {% endif %}
+                            <div class="form-text">
+                                Select a CSV file exported from your bank. The first row should contain column headers.
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'ingest:profile_list' %}" class="btn btn-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>
+                                        Back to Profiles
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-upload me-2"></i>
+                                        Upload & Continue
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-question-circle me-2"></i>
+                        Need Help?
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Your CSV file should have:</p>
+                    <ul class="mb-0">
+                        <li>A header row with column names (first row)</li>
+                        <li>Data rows with your transaction information</li>
+                        <li>Common column names: Date, Description, Amount, Category, etc.</li>
+                    </ul>
+
+                    <p class="mt-2 mb-0">
+                        <strong>Example CSV format:</strong>
+                    </p>
+                    <pre class="bg-light p-2 rounded small"><code>Date,Description,Amount,Category
+2025-01-15,Grocery Store,-45.67,Groceries
+2025-01-16,Salary Deposit,2500.00,Income</code></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Add some basic file validation
+document.addEventListener('DOMContentLoaded', function() {
+    const fileInput = document.querySelector('input[type="file"]');
+
+    fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            // Check file extension
+            const fileName = file.name.toLowerCase();
+            if (!fileName.endsWith('.csv')) {
+                alert('Please select a CSV file.');
+                e.target.value = '';
+                return;
+            }
+
+            // Check file size (limit to 10MB)
+            if (file.size > 10 * 1024 * 1024) {
+                alert('File size must be less than 10MB.');
+                e.target.value = '';
+                return;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

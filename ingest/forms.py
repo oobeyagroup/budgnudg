@@ -162,7 +162,7 @@ class CreateMappingProfileForm(forms.Form):
         required=True,
         label="Profile Name",
         help_text="Give this mapping profile a descriptive name (e.g., 'Chase Checking CSV')",
-        widget=forms.TextInput(attrs={"class": "form-control"})
+        widget=forms.TextInput(attrs={"class": "form-control"}),
     )
 
     description = forms.CharField(
@@ -170,32 +170,32 @@ class CreateMappingProfileForm(forms.Form):
         required=False,
         label="Description",
         help_text="Optional description of what this profile is for",
-        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2})
+        widget=forms.Textarea(attrs={"class": "form-control", "rows": 2}),
     )
 
     # Hidden field to store CSV headers
-    csv_headers = forms.CharField(
-        widget=forms.HiddenInput(),
-        required=True
-    )
+    csv_headers = forms.CharField(widget=forms.HiddenInput(), required=True)
 
     def __init__(self, *args, **kwargs):
-        csv_headers = kwargs.pop('csv_headers', [])
+        csv_headers = kwargs.pop("csv_headers", [])
         super().__init__(*args, **kwargs)
+
+        # Set the initial value for the csv_headers hidden field
+        self.fields["csv_headers"].initial = ",".join(csv_headers)
 
         # Transaction fields available for mapping
         TRANSACTION_FIELDS = [
-            ('', '-- Skip this column --'),
-            ('date', 'Date'),
-            ('description', 'Description'),
-            ('amount', 'Amount'),
-            ('account_type', 'Account Type'),
-            ('check_num', 'Check Number'),
-            ('payoree', 'Payor/Payee'),
-            ('memo', 'Memo'),
-            ('category', 'Category'),
-            ('subcategory', 'Subcategory'),
-            ('sheet_account', 'Sheet Account'),
+            ("", "-- Skip this column --"),
+            ("date", "Date"),
+            ("description", "Description"),
+            ("amount", "Amount"),
+            ("account_type", "Account Type"),
+            ("check_num", "Check Number"),
+            ("payoree", "Payor/Payee"),
+            ("memo", "Memo"),
+            ("category", "Category"),
+            ("subcategory", "Subcategory"),
+            ("sheet_account", "Sheet Account"),
         ]
 
         # Create a dropdown for each CSV header
@@ -205,18 +205,46 @@ class CreateMappingProfileForm(forms.Form):
                 choices=TRANSACTION_FIELDS,
                 required=False,
                 label=f"Map '{header}' to:",
-                widget=forms.Select(attrs={"class": "form-select mapping-dropdown"})
+                widget=forms.Select(attrs={"class": "form-select mapping-dropdown"}),
             )
 
         # Store headers for template access
         self.csv_headers = csv_headers
 
+        # Create mapping of headers to field names for template use
+        self.header_to_field_mapping = {}
+        for header in csv_headers:
+            field_name = f"mapping_{header.replace(' ', '_').replace('-', '_')}"
+            self.header_to_field_mapping[header] = field_name
+
+    def get_header_field_pairs(self):
+        """Return list of (header, field_name, rendered_field) tuples for template iteration"""
+        pairs = []
+        for header in self.csv_headers:
+            field_name = self.header_to_field_mapping[header]
+            field = self.fields[field_name]
+            # Create a bound field to get proper attributes
+            bound_field = self[field_name]
+            # Render the field as HTML
+            rendered_field = str(bound_field)
+            pairs.append(
+                (
+                    header,
+                    field_name,
+                    rendered_field,
+                    bound_field.id_for_label,
+                    bound_field.errors,
+                )
+            )
+        return pairs
+
     def get_mapping_dict(self):
         """Extract the column mapping from form data"""
         mapping = {}
         for field_name, field in self.fields.items():
-            if field_name.startswith('mapping_') and field_name != 'csv_headers':
-                csv_column = field_name.replace('mapping_', '').replace('_', ' ').replace('  ', ' ')
+            if field_name.startswith("mapping_") and field_name != "csv_headers":
+                # Reconstruct the original CSV column name
+                csv_column = field_name.replace("mapping_", "").replace("_", " ")
                 transaction_field = self.cleaned_data.get(field_name)
                 if transaction_field:  # Only include non-empty mappings
                     mapping[csv_column] = transaction_field

@@ -8,6 +8,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class TransactionListView(ListView):
     template_name = "transactions/transactions_list.html"
     context_object_name = "transactions"
@@ -23,6 +24,7 @@ class TransactionListView(ListView):
     def get_context_data(self, **kwargs):
         from django.conf import settings
         from ingest.models import FinancialAccount
+
         ctx = super().get_context_data(**kwargs)
         # Surface current filters so the template can keep UI state
         ctx["current_filters"] = {

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load ingest_extras %}
 
 {% block title %}Create Mapping Profile - Interactive CSV Mapping{% endblock %}
 
@@ -40,6 +41,18 @@
                         <form method="post" id="mapping-form">
                             {% csrf_token %}
 
+                            <!-- Display non-field errors -->
+                            {% if form.non_field_errors %}
+                                <div class="alert alert-danger">
+                                    <h5><i class="fas fa-exclamation-triangle me-2"></i>Form Errors</h5>
+                                    <ul class="mb-0">
+                                        {% for error in form.non_field_errors %}
+                                            <li>{{ error }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+
                             <!-- Profile Information -->
                             <div class="row mb-4">
                                 <div class="col-md-6">
@@ -76,33 +89,68 @@
                             </h4>
                             <p class="text-muted">Select which transaction field each CSV column should map to. Leave as "Skip" for columns you don't want to import.</p>
 
-                            <div class="row">
-                                {% for header in csv_headers %}
-                                    <div class="col-md-6 col-lg-4 mb-3">
-                                        <div class="card h-100">
-                                            <div class="card-body">
-                                                <h6 class="card-title">
-                                                    <i class="fas fa-file-alt me-2 text-primary"></i>
-                                                    "{{ header }}"
-                                                </h6>
-                                                <div class="mb-2">
-                                                    {% for field_name, field in form.fields.items %}
-                                                        {% if field_name == 'mapping_'|add:header|slugify %}
-                                                            <label for="{{ field.id_for_label }}" class="form-label small">
-                                                                Map to field:
-                                                            </label>
-                                                            {{ field }}
-                                                            {% if field.errors %}
-                                                                <div class="text-danger small mt-1">{{ field.errors }}</div>
-                                                            {% endif %}
+                            {% if not csv_headers %}
+                                <div class="alert alert-warning">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <strong>No CSV headers found!</strong>
+                                    <p class="mb-2">You need to upload a CSV file first to create column mappings.</p>
+                                    <a href="{% url 'ingest:upload_csv_for_profile' %}" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-upload me-2"></i>
+                                        Upload CSV File
+                                    </a>
+                                </div>
+                            {% else %}
+                            <!-- Field Mapping Table -->
+                            <div class="mt-4">
+                                <h4>Field Mapping</h4>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <tbody>
+                                            <tr>
+                                                <th class="text-center bg-light">CSV Column</th>
+                                                {% for header in csv_headers %}
+                                                    <td class="text-center"><code>{{ header }}</code></td>
+                                                {% endfor %}
+                                            </tr>
+                                            <tr>
+                                                <th class="text-center bg-light">Sample Data</th>
+                                                {% for header in csv_headers %}
+                                                    {% if csv_sample_data and forloop.counter0 < csv_sample_data|length %}
+                                                        <td class="text-center">{{ csv_sample_data|get_list_item:forloop.counter0|truncatechars:15 }}</td>
+                                                    {% else %}
+                                                        <td class="text-center text-muted">-</td>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </tr>
+                                            <tr>
+                                                <th class="text-center bg-light"></th>
+                                                {% for header in csv_headers %}
+                                                    <td class="text-center">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-down" viewBox="0 0 16 16">
+                                                            <path fill-rule="evenodd" d="M8 1a.5.5 0 0 1 .5.5v11.793l3.146-3.147a.5.5 0 0 1 .708.708l-4 4a.5.5 0 0 1-.708 0l-4-4a.5.5 0 0 1 .708-.708L7.5 13.293V1.5A.5.5 0 0 1 8 1"/>
+                                                        </svg>
+                                                    </td>
+                                                {% endfor %}
+                                            </tr>
+                                            <tr>
+                                                <th class="text-center text-primary bg-primary bg-opacity-10">Transaction Field</th>
+                                                {% for header, field_name, rendered_field, field_id, field_errors in header_field_pairs %}
+                                                    <td class="text-center">
+                                                        <div class="mb-1">
+                                                            {{ rendered_field|safe }}
+                                                        </div>
+                                                        {% if field_errors %}
+                                                            <div class="text-danger small">{{ field_errors }}</div>
                                                         {% endif %}
-                                                    {% endfor %}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                {% endfor %}
+                                                    </td>
+                                                {% endfor %}
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <p class="text-muted mt-2">Select which transaction field each CSV column should map to. Leave as "Skip" for columns you don't want to import.</p>
                             </div>
+                            {% endif %}
 
                             <!-- Hidden field for CSV headers -->
                             {{ form.csv_headers }}
