@@ -9,17 +9,19 @@ def convert_bank_account_data(apps, schema_editor):
     Transaction = apps.get_model("transactions", "Transaction")
     FinancialAccount = apps.get_model("ingest", "FinancialAccount")
 
-    # Get the FinancialAccount records
-    chase_account = FinancialAccount.objects.get(name="Chase Checking 3607")
-    marriott_account = FinancialAccount.objects.get(name="Marriott Visa 7427")
+    # Get the FinancialAccount records if they exist; tests/create_test_db may not populate them.
+    chase_account = FinancialAccount.objects.filter(name="Chase Checking 3607").first()
+    marriott_account = FinancialAccount.objects.filter(name="Marriott Visa 7427").first()
 
-    # Update Transaction records
-    Transaction.objects.filter(bank_account="Chase Checking 3607").update(
-        bank_account=chase_account.id
-    )
-    Transaction.objects.filter(bank_account="Marriott Visa 7427").update(
-        bank_account=marriott_account.id
-    )
+    # Update Transaction records only when matching FinancialAccount records exist
+    if chase_account:
+        Transaction.objects.filter(bank_account="Chase Checking 3607").update(
+            bank_account=chase_account.id
+        )
+    if marriott_account:
+        Transaction.objects.filter(bank_account="Marriott Visa 7427").update(
+            bank_account=marriott_account.id
+        )
 
 
 class Migration(migrations.Migration):

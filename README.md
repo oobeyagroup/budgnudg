@@ -88,6 +88,25 @@ Budgnudg is a Django-based financial transaction management system designed to i
 pytest --tb=short -v
 ```
 
+## Running end-to-end (E2E) tests locally
+
+Quick checklist:
+- Ensure you have a Python virtualenv with the project dependencies installed (Django, pytest, pytest-playwright, etc.).
+- Playwright browsers must be installed in that environment: run `playwright install`.
+- The helper script uses `ENABLE_TEST_API=1` so test-only HTTP endpoints are available; keep test APIs guarded in settings.
+
+Run the local automation script (it prefers `~/venv/budgnudg_env` then `.venv`):
+
+```bash
+chmod +x scripts/run_e2e_local.sh   # only once
+./scripts/run_e2e_local.sh          # starts server, runs the E2E test, then stops the server
+```
+
+Notes:
+- If the server fails to start, confirm the activated venv contains Django and the project requirements (`pip install -r requirements.txt`).
+- If Playwright tests fail, ensure browsers are installed (`playwright install`) and that `scripts/run_e2e_local.sh` activated the intended venv.
+- The E2E tests are written to use the test-only HTTP endpoints (they require `ENABLE_TEST_API=1` or DEBUG) and to run against the server URL the script sets.
+
 
 ## CSV Import Workflow
 

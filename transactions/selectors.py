@@ -192,8 +192,83 @@ def build_upcoming_forecast(
     daily_expense = {d: avg_daily_expense for d in upcoming_days}
     daily_transactions = {d: [] for d in upcoming_days}
 
-    # Put recurring predicted transactions into the daily buckets and adjust subtotals
+    # Allow for user-designated recurring series (if a RecurringSeries model exists).
+    # We'll treat detected recurrences as "suggestions" and avoid injecting any
+    # occurrences that match a designated series. This keeps the automatic
+    # detector as a recommendation layer while letting user-managed recurrences
+    # drive the canonical schedule.
+    designated_recurring = []
+    try:
+        # RecurringSeries is optional; only import if present in models
+        from transactions.models import RecurringSeries
+
+        # Build a list of designated series with normalized keys, payoree name,
+        # amount cents and tolerance so we can match by amount within tolerance.
+        designated_series = []
+        for s in RecurringSeries.objects.filter(active=True):
+            key = None
+            for attr in ("merchant_key", "pattern", "description"):
+                if hasattr(s, attr):
+                    key = getattr(s, attr)
+                    break
+            norm_key = normalize_desc(str(key)) if key else None
+            pay_name = None
+            if hasattr(s, "payoree") and getattr(s, "payoree"):
+                try:
+                    pay_name = s.payoree.name
+                except Exception:
+                    pass
+            designated_series.append(
+                {
+                    "key": norm_key,
+                    "pay": pay_name,
+                    "amount_cents": getattr(s, "amount_cents", None),
+                    "tolerance": getattr(s, "amount_tolerance_cents", 0),
+                }
+            )
+    except Exception:
+        designated_series = []
+
+    # split detected predictions into designated (user-managed) and suggested
+    suggested_predictions = []
+    remaining_designated = []
+    def _amount_cents_from_amount(a):
+        try:
+            return int(round(abs(float(a)) * 100))
+        except Exception:
+            return None
+
     for p in recurring_predictions:
+        pd = normalize_desc(p.get("description", "") or "")
+        pay = p.get("payoree")
+        amount_cents_p = _amount_cents_from_amount(p.get("amount", 0))
+
+        matched = False
+        for s in designated_series:
+            key_match = pd and s.get("key") and pd == s.get("key")
+            pay_match = pay and s.get("pay") and pay == s.get("pay")
+            if not (key_match or pay_match):
+                continue
+
+            # If we have amount information, apply tolerance matching.
+            s_amount = s.get("amount_cents")
+            s_tol = s.get("tolerance") or 0
+            if s_amount is None or amount_cents_p is None:
+                # fallback to merchant/payee match only
+                matched = True
+                break
+
+            if abs(amount_cents_p - s_amount) <= s_tol:
+                matched = True
+                break
+
+        if matched:
+            remaining_designated.append(p)
+        else:
+            suggested_predictions.append(p)
+
+    # Put only suggested predicted transactions into the daily buckets and adjust subtotals
+    for p in suggested_predictions:
         nd = p.get("next_date")
         if nd and nd in daily_transactions:
             # transaction dict: date, amount, description, payoree
@@ -226,5 +301,8 @@ def build_upcoming_forecast(
         "daily_net": [daily_net[d] for d in upcoming_days],
         "daily_transactions": daily_transactions,
         "totals": {"income": total_income, "expense": total_expense, "net": total_net},
-        "recurring_predictions": recurring_predictions,
+        # suggestions from the automatic detector (what the UI should offer to the user)
+        "recurring_predictions": suggested_predictions,
+        # any series that look like they're already designated by the user
+        "designated_recurring": remaining_designated,
     }

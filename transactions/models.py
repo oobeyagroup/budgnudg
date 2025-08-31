@@ -403,3 +403,46 @@ class ExcludedSimilarTransaction(models.Model):
 
     def __str__(self):
         return f"Exclude T{self.excluded_transaction.id} from T{self.source_transaction.id} similar list"
+
+
+class RecurringSeries(models.Model):
+    INTERVAL_CHOICES = [
+        ("weekly", "Weekly"),
+        ("biweekly", "Biweekly"),
+        ("monthly", "Monthly"),
+        ("quarterly", "Quarterly"),
+        ("yearly", "Yearly"),
+    ]
+
+    payoree = models.ForeignKey("Payoree", null=True, blank=True, on_delete=models.SET_NULL)
+    merchant_key = models.CharField(max_length=200, db_index=True)
+    amount_cents = models.IntegerField()
+    amount_tolerance_cents = models.IntegerField(default=100)
+
+    interval = models.CharField(max_length=20, choices=INTERVAL_CHOICES)
+    confidence = models.FloatField(default=0.0)
+    first_seen = models.DateField(null=True, blank=True)
+    last_seen = models.DateField(null=True, blank=True)
+    next_due = models.DateField(null=True, blank=True)
+
+    active = models.BooleanField(default=True)
+    notes = models.TextField(blank=True, default="")
+
+    # optional seed transaction for quick traceability
+    seed_transaction = models.ForeignKey(
+        Transaction, null=True, blank=True, on_delete=models.SET_NULL, related_name="seeded_series"
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["merchant_key", "amount_cents"]),
+            models.Index(fields=["next_due"]),
+            models.Index(fields=["active"]),
+        ]
+
+    def __str__(self):
+        try:
+            dollars = f"${self.amount_cents/100:.2f}"
+        except Exception:
+            dollars = str(self.amount_cents)
+        return f"{self.merchant_key} • {self.interval} • {dollars}"
