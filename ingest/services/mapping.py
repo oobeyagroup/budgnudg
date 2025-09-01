@@ -384,9 +384,12 @@ def commit_batch(
                 batch.pk,
             )
             try:
+                # Ensure column_map is provided (non-null) when creating a new profile
+                # so migrations/tests operating on a fresh DB don't violate NOT NULL.
                 bank_account_instance = FinancialAccount.objects.create(
                     name=bank_account,
                     description=bank_account,
+                    column_map={},
                 )
                 logger.debug(
                     "DEBUG: Created new FinancialAccount: %s", bank_account_instance

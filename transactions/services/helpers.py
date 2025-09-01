@@ -164,9 +164,20 @@ def is_duplicate(data: dict[str, Any]) -> bool:
         "description": data.get("description"),
     }
 
+    # Normalize bank_account: accept either a name string or a FinancialAccount instance
+    bank_account_name = None
+    if bank_account is not None:
+        # If it's a string-like, use it; if it's a model instance, use its name attribute
+        if hasattr(bank_account, "strip"):
+            bank_account_name = bank_account.strip()
+        elif hasattr(bank_account, "name"):
+            bank_account_name = getattr(bank_account, "name")
+        else:
+            bank_account_name = str(bank_account)
+
     # Only filter by bank_account if it's provided and not empty
-    if bank_account and bank_account.strip():
-        filter_kwargs["bank_account__name"] = bank_account
+    if bank_account_name and str(bank_account_name).strip():
+        filter_kwargs["bank_account__name"] = bank_account_name
         logger.debug("Checking exact duplicate with bank_account: %s", filter_kwargs)
     else:
         logger.debug(
@@ -213,8 +224,18 @@ def is_fuzzy_duplicate(data: dict[str, Any]) -> bool:
         "amount": amount_val,
     }
 
-    if bank_account_val and bank_account_val.strip():
-        filter_kwargs["bank_account__name"] = bank_account_val
+    # Normalize bank_account_val which may be a FinancialAccount instance
+    bank_account_name_val = None
+    if bank_account_val is not None:
+        if hasattr(bank_account_val, "strip"):
+            bank_account_name_val = bank_account_val.strip()
+        elif hasattr(bank_account_val, "name"):
+            bank_account_name_val = getattr(bank_account_val, "name")
+        else:
+            bank_account_name_val = str(bank_account_val)
+
+    if bank_account_name_val and str(bank_account_name_val).strip():
+        filter_kwargs["bank_account__name"] = bank_account_name_val
 
     # Find transactions with same date, amount, and potentially bank account
     similar_transactions = Transaction.objects.filter(**filter_kwargs).values_list(

@@ -264,7 +264,7 @@ class CategoryTrainingAnalyzeView(View):
         pattern = re.sub(r"\$[\d,]+\.?\d*", "AMOUNT", pattern)  # Replace amounts
         pattern = re.sub(r"\s+", " ", pattern).strip()  # Normalize whitespace
 
-        # Extract merchant/key part (first few meaningful words)
+        # Extract key part (first few meaningful words)
         words = pattern.split()[:3]  # Take first 3 words as pattern
         return " ".join(words)
 
@@ -295,20 +295,11 @@ class CategoryTrainingSessionView(View):
         # Enhanced pattern analysis
         description = current_pattern["representative_description"]
 
-        # Extract merchant for training insight
-        from transactions.categorization import extract_merchant_from_description
-
-        extracted_merchant = extract_merchant_from_description(description)
-        current_pattern["extracted_merchant"] = extracted_merchant
-
         # Identify potential keywords for rule creation
         potential_keywords = self.identify_potential_keywords(description)
         current_pattern["potential_keywords"] = potential_keywords
 
         # Check existing learned patterns to show user what already exists
-        current_pattern["existing_merchant_patterns"] = (
-            self.get_existing_patterns(extracted_merchant) if extracted_merchant else {}
-        )
         current_pattern["existing_description_patterns"] = self.get_existing_patterns(
             description
         )
@@ -325,9 +316,6 @@ class CategoryTrainingSessionView(View):
         # Prepare enhanced training interface data
         potential_keywords = current_pattern.get("potential_keywords", [])
         existing_patterns = {
-            "merchant": current_pattern.get("existing_merchant_patterns", {}).get(
-                "merchant", []
-            ),
             "description": current_pattern.get("existing_description_patterns", {}).get(
                 "description", []
             ),
@@ -443,7 +431,6 @@ class CategoryTrainingSessionView(View):
         keyword_rule_text = request.POST.get("keyword_rule_text", "").strip()
         keyword_rule_priority = int(request.POST.get("keyword_rule_priority", 100))
         create_keyword_rule = request.POST.get("create_keyword_rule") in ("on", "1")
-        train_merchant_pattern = request.POST.get("train_merchant_pattern") == "on"
         train_description_pattern = (
             request.POST.get("train_description_pattern") == "on"
         )
@@ -553,12 +540,6 @@ class CategoryTrainingSessionView(View):
             # Get payoree object
             if payoree_id == "__new__" and new_payoree_name:
                 selected_payoree = Payoree.objects.get(name=new_payoree_name)
-            elif payoree_id == "__suggested__" and current_pattern.get(
-                "extracted_merchant"
-            ):
-                selected_payoree, _ = Payoree.objects.get_or_create(
-                    name=current_pattern["extracted_merchant"]
-                )
             elif payoree_id:
                 try:
                     selected_payoree = Payoree.objects.get(id=payoree_id)
@@ -596,42 +577,7 @@ class CategoryTrainingSessionView(View):
                 except Exception as e:
                     messages.error(request, f"❌ Error creating keyword rule: {e}")
 
-            # Method 2: Train Merchant Pattern
-            if (
-                train_merchant_pattern
-                and current_pattern.get("extracted_merchant")
-                and selected_subcategory
-            ):
-                try:
-                    merchant_key = current_pattern["extracted_merchant"]
-                    learned, created = LearnedSubcat.objects.get_or_create(
-                        key=merchant_key,
-                        subcategory=selected_subcategory,
-                        defaults={"count": 1},
-                    )
-                    if not created:
-                        learned.count += 1
-                        learned.save()
-
-                    # Also train payoree if provided
-                    if selected_payoree:
-                        learned_payoree, created = LearnedPayoree.objects.get_or_create(
-                            key=merchant_key,
-                            payoree=selected_payoree,
-                            defaults={"count": 1},
-                        )
-                        if not created:
-                            learned_payoree.count += 1
-                            learned_payoree.save()
-
-                    messages.success(
-                        request,
-                        f'🏪 Trained merchant pattern: "{merchant_key}" → {selected_subcategory.name}',
-                    )
-                except Exception as e:
-                    messages.error(request, f"❌ Error training merchant pattern: {e}")
-
-            # Method 3: Train Description Pattern
+            # Method 2: Train Description Pattern
             if train_description_pattern and selected_subcategory:
                 try:
                     description_key = current_pattern["pattern_key"]
@@ -795,8 +741,6 @@ class LearnFromCurrentView(View):
     @method_decorator(trace)
     def post(self, request, transaction_id):
         """Learn from the current categorization of a transaction."""
-        from ..categorization import extract_merchant_from_description
-
         try:
             transaction = get_object_or_404(Transaction, id=transaction_id)
 
@@ -813,21 +757,27 @@ class LearnFromCurrentView(View):
                     }
                 )
 
-            # Create multiple pattern keys for better learning
-            merchant_key = extract_merchant_from_description(transaction.description)
+            # Create learning keys based on payoree and description
+            payoree_key = (
+                transaction.payoree.name.upper().strip()
+                if transaction.payoree
+                else None
+            )
             original_key = transaction.description.upper().strip()
             pattern_key = self.create_pattern_key(transaction.description)
 
             # Use a list of keys to try, starting with most specific
-            learning_keys = [original_key, merchant_key, pattern_key]
+            learning_keys = [
+                key for key in [payoree_key, original_key, pattern_key] if key
+            ]
             # Remove duplicates while preserving order
             learning_keys = list(dict.fromkeys(learning_keys))
 
             learned_count = 0
 
-            # Learn subcategory if available - use the merchant key primarily
+            # Learn subcategory if available - use payoree key primarily
             if transaction.subcategory:
-                primary_key = merchant_key if merchant_key else original_key
+                primary_key = payoree_key if payoree_key else original_key
                 learned, created = LearnedSubcat.objects.get_or_create(
                     key=primary_key,
                     subcategory=transaction.subcategory,
@@ -843,7 +793,7 @@ class LearnFromCurrentView(View):
 
             # Learn payoree if available
             if transaction.payoree:
-                primary_key = merchant_key if merchant_key else original_key
+                primary_key = payoree_key if payoree_key else original_key
                 learned, created = LearnedPayoree.objects.get_or_create(
                     key=primary_key, payoree=transaction.payoree, defaults={"count": 1}
                 )
@@ -884,18 +834,7 @@ class LearnFromCurrentView(View):
         """Create a pattern key for grouping similar transactions."""
         import re
 
-        # Use the same logic as extract_merchant_from_description for consistency
-        from ..categorization import extract_merchant_from_description
-
-        # Try to extract the core merchant name first
-        merchant = extract_merchant_from_description(description)
-
-        # For learning, we want to use shorter, more generic keys that will match future transactions
-        # If the merchant extraction returned something meaningful and not too long
-        if merchant and len(merchant.split()) <= 4:
-            return merchant
-
-        # Fallback: create a normalized pattern from the description
+        # Create a normalized pattern from the description for learning
         pattern = description.upper()
 
         # Remove common transaction noise

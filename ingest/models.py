@@ -49,7 +49,8 @@ class ImportBatch(models.Model):
         ]
 
     def __str__(self):
-        return f"Batch {self.pk} - {self.source_filename or 'unnamed'}"
+        # Use an em dash for nicer formatting (tests expect this in some places)
+        return f"Batch {self.pk} — {self.source_filename or 'unnamed'}"
 
 
 class ImportRow(models.Model):

@@ -6,50 +6,58 @@ from django.db.models import Sum
 
 logger = logging.getLogger(__name__)
 
+
 # Safe lookup utilities for hybrid error handling
 @trace
 def safe_category_lookup(category_name, error_context="UNKNOWN"):
     """
     Safely look up Category, return (obj, error_code) tuple.
     Returns (Category_obj, None) on success or (None, error_code) on failure.
-    
+
     When multiple categories exist with the same name, prefer:
-    1. Top-level categories (parent=None) 
+    1. Top-level categories (parent=None)
     2. First category found if all are at same level
     """
     if not category_name or not category_name.strip():
         return None, f"{error_context}_NO_SUBCATEGORY_SUGGESTION"
-        
+
     try:
         category_name = category_name.strip()
-        
+
         # Try exact match first
         categories = Category.objects.filter(name=category_name)
-        
+
         if not categories.exists():
-            logger.warning(f"Category lookup failed: '{category_name}' -> {error_context}")
+            logger.warning(
+                f"Category lookup failed: '{category_name}' -> {error_context}"
+            )
             return None, f"{error_context}_SUBCATEGORY_LOOKUP_FAILED"
-            
+
         elif categories.count() == 1:
             return categories.first(), None
-            
+
         else:
             # Multiple categories found - prefer top-level category
             top_level = categories.filter(parent=None).first()
             if top_level:
-                logger.debug(f"Multiple categories for '{category_name}', using top-level: {top_level.id}")
+                logger.debug(
+                    f"Multiple categories for '{category_name}', using top-level: {top_level.id}"
+                )
                 return top_level, None
             else:
                 # No top-level match, use first category
-                selected = categories.first() 
-                logger.debug(f"Multiple categories for '{category_name}', using first: {selected.id}")
+                selected = categories.first()
+                logger.debug(
+                    f"Multiple categories for '{category_name}', using first: {selected.id}"
+                )
                 return selected, None
-                
+
     except Exception as e:
         logger.error(f"Database error during category lookup: {e}")
         return None, "DATABASE_ERROR"
 
-@trace  
+
+@trace
 def safe_payoree_lookup(payoree_name, error_context="UNKNOWN"):
     """
     Safely look up Payoree, return (obj, error_code) tuple.
@@ -57,7 +65,7 @@ def safe_payoree_lookup(payoree_name, error_context="UNKNOWN"):
     """
     if not payoree_name or not payoree_name.strip():
         return None, f"{error_context}_NO_PAYOREE_SUGGESTION"
-        
+
     try:
         # Try exact match first
         payoree_obj = Payoree.objects.get(name=payoree_name.strip())
@@ -76,145 +84,139 @@ def safe_payoree_lookup(payoree_name, error_context="UNKNOWN"):
         logger.error(f"Database error during payoree lookup: {e}")
         return None, "DATABASE_ERROR"
 
+
 MERCHANT_NAME_MAPPINGS = {
     # Gas Stations
-    r'BP\#?\d*': 'gas',
-    r'SHELL': 'gas',
-    r'CITGO': 'gas',
-    r'MOBIL': 'gas',
-    r'EXXON': 'gas',
-    r'CHEVRON': 'gas',
-    r'MARATHON': 'gas',
-    r'SPEEDWAY': 'gas',
-    r'VALERO': 'gas',
-    
+    r"BP\#?\d*": "gas",
+    r"SHELL": "gas",
+    r"CITGO": "gas",
+    r"MOBIL": "gas",
+    r"EXXON": "gas",
+    r"CHEVRON": "gas",
+    r"MARATHON": "gas",
+    r"SPEEDWAY": "gas",
+    r"VALERO": "gas",
     # Transportation & Tolls
-    r'TOLLWAY': 'tolls',
-    r'TOLL': 'tolls',
-    r'IPASS': 'tolls',
-    r'EZ.*PASS': 'tolls',
-    r'AUTO.*REPLENISH': 'tolls',
-    
+    r"TOLLWAY": "tolls",
+    r"TOLL": "tolls",
+    r"IPASS": "tolls",
+    r"EZ.*PASS": "tolls",
+    r"AUTO.*REPLENISH": "tolls",
     # Medical & Healthcare
-    r'NORTHWESTERN.*MEDICAL': 'medical',
-    r'NORTHWESTERN.*MY.*CHART': 'medical',
-    r'NORTHWESTERN': 'medical',
-    r'MEDICAL': 'medical',
-    r'HOSPITAL': 'medical',
-    r'CLINIC': 'medical',
-    r'DR\s': 'medical',
-    r'DENTAL': 'medical',
-    r'PHARMACY': 'medical',
-    r'CVS': 'pharmacy',
-    r'WALGREENS': 'pharmacy',
-    
+    r"NORTHWESTERN.*MEDICAL": "medical",
+    r"NORTHWESTERN.*MY.*CHART": "medical",
+    r"NORTHWESTERN": "medical",
+    r"MEDICAL": "medical",
+    r"HOSPITAL": "medical",
+    r"CLINIC": "medical",
+    r"DR\s": "medical",
+    r"DENTAL": "medical",
+    r"PHARMACY": "medical",
+    r"CVS": "pharmacy",
+    r"WALGREENS": "pharmacy",
     # Retail & Shopping
-    r'STARBUCKS': 'starbucks',
-    r'TARGET': 'target',
-    r'AMAZON': 'amazon',
-    r'MCDONALD\'S': 'fast food',
-    r'WALMART': 'walmart',
-    r'BEST BUY': 'electronics',
-    r'BINNYS BEVERAGE': 'alcohol',
-    r'HOME DEPOT': 'home improvement',
-    r'LOWE\'S': 'home improvement',
-    
+    r"STARBUCKS": "starbucks",
+    r"TARGET": "target",
+    r"AMAZON": "amazon",
+    r"MCDONALD\'S": "fast food",
+    r"WALMART": "walmart",
+    r"BEST BUY": "electronics",
+    r"BINNYS BEVERAGE": "alcohol",
+    r"HOME DEPOT": "home improvement",
+    r"LOWE\'S": "home improvement",
     # Recreation & Entertainment
-    r'GOLF': 'golf',
-    r'MARINA': 'marina',
-    r'LAKE': 'recreation',
-    
+    r"GOLF": "golf",
+    r"MARINA": "marina",
+    r"LAKE": "recreation",
     # Financial & Banking
-    r'PAYPAL': 'paypal',
-    r'APPLE PAY': 'apple pay',
-    r'MASTERCARD': 'mastercard',
-    r'AMEX': 'american express',
-    r'DIRECT DEP': 'Paycheck',
-    r'ZELLE': 'gift',
-    r'VENMO': 'venmo',
-    r'BANK TRANSFER': 'transfer',
-    r'ATM WITHDRAWAL': 'Cash & ATM',
-    r'CHECK DEPOSIT': 'check deposit',
-    r'CREDIT CRD AUTOPAY': 'transfer',
-    r'CHECK PAYMENT': 'check payment',
-    r'Payment': 'Bills & Utilities',
-    r'Deposit': 'Income',
-    r'Expense': 'Miscellaneous',
-    r'MORTGAGE': 'Mortgage',
-    r'INSURANCE': 'Insurance',
-    r'TAX': 'Taxes',
-    r'DONATION': 'Charity',
-    r'TUITION': 'Education',
-    r'CHILDCARE': 'Child Care',
-    r'SUBSCRIPTION': 'Subscriptions',
-    r'HOME IMPROVEMENT': 'Home Improvement',
-    r'PET': 'Pet Care',
-    r'GYM': 'Fitness',
-    r'TRANSPORT': 'Public Transportation',
-    r'PARKING': 'Parking',
-    r'TOLL': 'Tolls',
-    r'CASH': 'Cash',
-    r'REFUND': 'Refunds',
-    r'INTEREST': 'Interest',
-    r'FEE': 'Fees',
-    r'BUSINESS': 'Business',
-    r'LEGAL': 'Legal',
-    r'MEDICAL': 'Medical',
-    r'DENTAL': 'Dental',
-    r'VISION': 'Vision',
-    r'PHARMACY': 'Pharmacy',
-    r'ELECTRONICS': 'Electronics',
-    r'FURNITURE': 'Furniture',
-    r'CLOTHING': 'Clothing',
-    r'GIFT': 'Gifts',
-    r'HOBBY': 'Hobbies',
-    r'VACATION': 'Vacation',
-    r'GAME': 'Gaming',
-    r'ALCOHOL': 'Alcohol',
-    r'TOBACCO': 'Tobacco',
-    r'LOTTERY': 'Lottery',
-    r'VERIZON': 'Bills & Utilities',
-    r'COMED': 'Bills & Utilities',
-    r'NICOR': 'Bills & Utilities',
-    r'NORTHWESTERN MU': 'Insurance',
-    r'VENMO': 'Transfers',
-    r'ZELLE': 'Transfers',
-    r'CHASE': 'Banking',
-    r'MORTGAGE': 'Mortgage',
-    r'AUTOPAY': 'Bills & Utilities',
-    r'DIRECT DEP': 'Income',
-    r'PAYROLL': 'Work Income',
-    r'SALARY': 'Work Income',
+    r"PAYPAL": "paypal",
+    r"APPLE PAY": "apple pay",
+    r"MASTERCARD": "mastercard",
+    r"AMEX": "american express",
+    r"DIRECT DEP": "Paycheck",
+    r"ZELLE": "gift",
+    r"VENMO": "venmo",
+    r"BANK TRANSFER": "transfer",
+    r"ATM WITHDRAWAL": "Cash & ATM",
+    r"CHECK DEPOSIT": "check deposit",
+    r"CREDIT CRD AUTOPAY": "transfer",
+    r"CHECK PAYMENT": "check payment",
+    r"Payment": "Bills & Utilities",
+    r"Deposit": "Income",
+    r"Expense": "Miscellaneous",
+    r"MORTGAGE": "Mortgage",
+    r"INSURANCE": "Insurance",
+    r"TAX": "Taxes",
+    r"DONATION": "Charity",
+    r"TUITION": "Education",
+    r"CHILDCARE": "Child Care",
+    r"SUBSCRIPTION": "Subscriptions",
+    r"HOME IMPROVEMENT": "Home Improvement",
+    r"PET": "Pet Care",
+    r"GYM": "Fitness",
+    r"TRANSPORT": "Public Transportation",
+    r"PARKING": "Parking",
+    r"TOLL": "Tolls",
+    r"CASH": "Cash",
+    r"REFUND": "Refunds",
+    r"INTEREST": "Interest",
+    r"FEE": "Fees",
+    r"BUSINESS": "Business",
+    r"LEGAL": "Legal",
+    r"MEDICAL": "Medical",
+    r"DENTAL": "Dental",
+    r"VISION": "Vision",
+    r"PHARMACY": "Pharmacy",
+    r"ELECTRONICS": "Electronics",
+    r"FURNITURE": "Furniture",
+    r"CLOTHING": "Clothing",
+    r"GIFT": "Gifts",
+    r"HOBBY": "Hobbies",
+    r"VACATION": "Vacation",
+    r"GAME": "Gaming",
+    r"ALCOHOL": "Alcohol",
+    r"TOBACCO": "Tobacco",
+    r"LOTTERY": "Lottery",
+    r"VERIZON": "Bills & Utilities",
+    r"COMED": "Bills & Utilities",
+    r"NICOR": "Bills & Utilities",
+    r"NORTHWESTERN MU": "Insurance",
+    r"VENMO": "Transfers",
+    r"ZELLE": "Transfers",
+    r"CHASE": "Banking",
+    r"MORTGAGE": "Mortgage",
+    r"AUTOPAY": "Bills & Utilities",
+    r"DIRECT DEP": "Income",
+    r"PAYROLL": "Work Income",
+    r"SALARY": "Work Income",
     # Utilities & Services
-    r'NICOR.*GAS': 'gas utility',
-    r'NICOR': 'gas utility',
-    r'COMMONWEALTH.*EDISON': 'electric utility',
-    r'COMED': 'electric utility',
-    
+    r"NICOR.*GAS": "gas utility",
+    r"NICOR": "gas utility",
+    r"COMMONWEALTH.*EDISON": "electric utility",
+    r"COMED": "electric utility",
     # Banking & ATM
-    r'ATM.*WITHDRAWAL': 'atm',
-    r'ATM': 'atm',
-    r'WITHDRAWAL': 'withdrawal',
-    r'DIRECT.*DEP': 'direct dep',
-    r'PAYCHECK': 'paycheck',
-    
-    # Mortgage & Loans  
-    r'MORTGAGE.*PAYMENT': 'mortgage',
-    r'MORTGAGE.*LN': 'mortgage',
-    r'MORTGAGE': 'mortgage',
-    
-    r'INVESTMENT': 'Investments',
-    r'ROTH': 'Investments',
-    r'IRA': 'Investments',
-    r'401K': 'Investments',
-    r'ETF': 'Investments',
-    r'STOCK': 'Investments',
-    r'MUTUAL FUND': 'Investments',
-    r'BROKERAGE': 'Investments',
-    r'RETIREMENT': 'Investments',
-    r'NOBEL HOUSE': 'Restaurants GE',
+    r"ATM.*WITHDRAWAL": "atm",
+    r"ATM": "atm",
+    r"WITHDRAWAL": "withdrawal",
+    r"DIRECT.*DEP": "direct dep",
+    r"PAYCHECK": "paycheck",
+    # Mortgage & Loans
+    r"MORTGAGE.*PAYMENT": "mortgage",
+    r"MORTGAGE.*LN": "mortgage",
+    r"MORTGAGE": "mortgage",
+    r"INVESTMENT": "Investments",
+    r"ROTH": "Investments",
+    r"IRA": "Investments",
+    r"401K": "Investments",
+    r"ETF": "Investments",
+    r"STOCK": "Investments",
+    r"MUTUAL FUND": "Investments",
+    r"BROKERAGE": "Investments",
+    r"RETIREMENT": "Investments",
+    r"NOBEL HOUSE": "Restaurants GE",
     # Add more patterns as needed
 }
+
 
 @trace
 def extract_merchant_from_description(description: str) -> str:
@@ -222,17 +224,17 @@ def extract_merchant_from_description(description: str) -> str:
         return ""
 
     patterns_to_remove = [
-        r'PPD\s*ID:\s*\d+',
-        r'WEB\s*ID:\s*\d+',
-        r'\b(?:ACH|CC|DEBIT|CREDIT|PAYMENT|PYMT|PMT|AUTOPAY|AUTO\s*PAY)\b',
-        r'\b(?:ONLINE\s*PAYMENT|ELECTRONIC\s*PAYMENT)\b',
-        r'\b(?:BILL\s*PAY|BILLPAY|BP\s*PAYMENT|BILL\s*PAYMENT)\b',  # Removed standalone BP
-        r'\b(?:ID\s*\d+|#\s*\d+)\b',
-        r'\b(?:REF\s*\d+|REF#\s*\d+)\b',
-        r'\b(?:TRANS\s*\d+|TRANS#\s*\d+)\b',
-        r'\b(?:ACCT\s*\*\d+)\b',
-        r'\b(?:X\*?\d+)\b',
-        r'\b(?:\d{3,4})\b',
+        r"PPD\s*ID:\s*\d+",
+        r"WEB\s*ID:\s*\d+",
+        r"\b(?:ACH|CC|DEBIT|CREDIT|PAYMENT|PYMT|PMT|AUTOPAY|AUTO\s*PAY)\b",
+        r"\b(?:ONLINE\s*PAYMENT|ELECTRONIC\s*PAYMENT)\b",
+        r"\b(?:BILL\s*PAY|BILLPAY|BP\s*PAYMENT|BILL\s*PAYMENT)\b",  # Removed standalone BP
+        r"\b(?:ID\s*\d+|#\s*\d+)\b",
+        r"\b(?:REF\s*\d+|REF#\s*\d+)\b",
+        r"\b(?:TRANS\s*\d+|TRANS#\s*\d+)\b",
+        r"\b(?:ACCT\s*\*\d+)\b",
+        r"\b(?:X\*?\d+)\b",
+        r"\b(?:\d{3,4})\b",
     ]
 
     cleaned = description.upper()
@@ -242,25 +244,25 @@ def extract_merchant_from_description(description: str) -> str:
 
     # Remove unwanted patterns
     for pattern in patterns_to_remove:
-        cleaned = re.sub(pattern, '', cleaned, flags=re.IGNORECASE)
+        cleaned = re.sub(pattern, "", cleaned, flags=re.IGNORECASE)
 
-    cleaned = re.sub(r'[^\w\s]', ' ', cleaned)
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    cleaned = re.sub(r"[^\w\s]", " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
 
     # Store the original cleaned version for learned pattern lookup
     original_cleaned = cleaned
-    
+
     # Only apply merchant mappings to very generic terms, not specific merchant names
     # Prioritize specific merchant names over generic category mappings
     generic_mappings = {
-        r'^WITHDRAWAL$': 'Cash Withdrawal',
-        r'^DEPOSIT$': 'Deposit',
-        r'^ATM$': 'ATM',
-        r'^FEE$': 'Bank Fee',
-        r'^INTEREST$': 'Interest',
-        r'^DIVIDEND$': 'Dividend',
+        r"^WITHDRAWAL$": "Cash Withdrawal",
+        r"^DEPOSIT$": "Deposit",
+        r"^ATM$": "ATM",
+        r"^FEE$": "Bank Fee",
+        r"^INTEREST$": "Interest",
+        r"^DIVIDEND$": "Dividend",
     }
-    
+
     # Apply only generic mappings first
     for pattern, replacement in generic_mappings.items():
         if re.search(pattern, cleaned, re.IGNORECASE):
@@ -268,16 +270,18 @@ def extract_merchant_from_description(description: str) -> str:
 
     # Check if this is a specific merchant name that shouldn't be genericized
     # Look for patterns that suggest a specific business name
-    if re.search(r'\b(CO|CORP|INC|LLC|LTD|COMPANY|COUNTY|CITY|BANK|CREDIT\s+UNION)\b', cleaned):
+    if re.search(
+        r"\b(CO|CORP|INC|LLC|LTD|COMPANY|COUNTY|CITY|BANK|CREDIT\s+UNION)\b", cleaned
+    ):
         # This looks like a specific business/entity name, but limit to first meaningful part
         # For tax entities, keep just the core identifier
-        if 'TAX' in cleaned:
+        if "TAX" in cleaned:
             # For tax payments, extract the key identifying part before redundant info
             # "DUPAGE CO TAX DUPAGE CO 1439768" -> "DUPAGE CO TAX"
-            tax_match = re.search(r'^([A-Z\s]+?TAX)', cleaned)
+            tax_match = re.search(r"^([A-Z\s]+?TAX)", cleaned)
             if tax_match:
                 return tax_match.group(1).strip()
-        
+
         # For other business entities, keep first few meaningful words
         words = cleaned.split()
         meaningful_words = []
@@ -286,20 +290,21 @@ def extract_merchant_from_description(description: str) -> str:
                 meaningful_words.append(word)
             if len(meaningful_words) >= 4:  # Limit to 4 meaningful words
                 break
-        return ' '.join(meaningful_words) if meaningful_words else original_cleaned
-    
+        return " ".join(meaningful_words) if meaningful_words else original_cleaned
+
     # For other cases, check the broader merchant mappings (excluding TAX which is too generic)
     broader_mappings = {}
     for pattern, replacement in MERCHANT_NAME_MAPPINGS.items():
         # Skip overly generic patterns that might incorrectly categorize specific business names
-        if pattern not in [r'TAX', r'BANK', r'CREDIT']:
+        if pattern not in [r"TAX", r"BANK", r"CREDIT"]:
             broader_mappings[pattern] = replacement
-    
+
     for pattern, replacement in broader_mappings.items():
         if re.search(pattern, cleaned, re.IGNORECASE):
             return replacement
 
     return original_cleaned
+
 
 @trace
 def check_keyword_rules(description: str) -> tuple[str, str, str, str | None] | None:
@@ -308,9 +313,9 @@ def check_keyword_rules(description: str) -> tuple[str, str, str, str | None] | 
     Returns (category, subcategory, reasoning, payoree) or None if no match.
     """
     from .models import KeywordRule
-    
+
     try:
-        active_rules = KeywordRule.objects.filter(is_active=True).order_by('-priority')
+        active_rules = KeywordRule.objects.filter(is_active=True).order_by("-priority")
         for rule in active_rules:
             if rule.keyword.upper() in description.upper():
                 category_name = rule.category.name
@@ -320,293 +325,611 @@ def check_keyword_rules(description: str) -> tuple[str, str, str, str | None] | 
                 return (category_name, subcategory_name, reasoning, payoree_name)
     except Exception as e:
         logger.warning(f"Error checking keyword rules: {e}")
-    
+
     return None
 
+
 @trace
-def categorize_transaction_with_reasoning(description: str, amount: float = 0.0) -> tuple[str, str, str]:
+def categorize_transaction_with_reasoning(
+    description: str, amount: float = 0.0
+) -> tuple[str, str, str]:
     """
     Categorize transaction and provide reasoning for the AI's decision.
     Returns (category, subcategory, reasoning).
     """
     if not description:
         return ("Miscellaneous", "", "No description provided")
-    
-    logger.debug(f"Categorizing transaction with description: {description} and amount: {amount}")
-    
+
+    logger.debug(
+        f"Categorizing transaction with description: {description} and amount: {amount}"
+    )
+
     # PRIORITY 1: Check keyword rules first (highest priority)
     keyword_result = check_keyword_rules(description)
     if keyword_result:
         # Extract only category, subcategory, reasoning (ignore payoree for this function)
         return keyword_result[:3]
-    
+
     merchant = extract_merchant_from_description(description)
     logger.debug(f"Extracted merchant: {merchant} from description: {description}")
-    
+
     # PRIORITY 2: Check learned patterns for this specific merchant
     learned_subcat, learned_count = _top_learned_subcat(merchant)
     if learned_subcat and learned_count > 0:
         # Find the category for this subcategory
         try:
-            subcategory_obj = Category.objects.filter(name=learned_subcat, parent__isnull=False).first()
+            subcategory_obj = Category.objects.filter(
+                name=learned_subcat, parent__isnull=False
+            ).first()
             if subcategory_obj and subcategory_obj.parent:
                 reasoning = f"Based on {learned_count} previous user confirmations for merchant '{merchant}'"
                 return (subcategory_obj.parent.name, learned_subcat, reasoning)
         except Exception as e:
             logger.warning(f"Error looking up learned subcategory: {e}")
-    
+
     # PRIORITY 3: Also check learned patterns for the original description (fallback)
     if merchant != description.upper().strip():
-        original_learned_subcat, original_learned_count = _top_learned_subcat(description.upper().strip())
+        original_learned_subcat, original_learned_count = _top_learned_subcat(
+            description.upper().strip()
+        )
         if original_learned_subcat and original_learned_count > 0:
             try:
-                subcategory_obj = Category.objects.filter(name=original_learned_subcat, parent__isnull=False).first()
+                subcategory_obj = Category.objects.filter(
+                    name=original_learned_subcat, parent__isnull=False
+                ).first()
                 if subcategory_obj and subcategory_obj.parent:
                     reasoning = f"Based on {original_learned_count} previous user confirmations for '{description[:30]}...'"
-                    return (subcategory_obj.parent.name, original_learned_subcat, reasoning)
+                    return (
+                        subcategory_obj.parent.name,
+                        original_learned_subcat,
+                        reasoning,
+                    )
             except Exception as e:
-                logger.warning(f"Error looking up learned subcategory for original description: {e}")
-    
+                logger.warning(
+                    f"Error looking up learned subcategory for original description: {e}"
+                )
+
     # PRIORITY 4: Default AI categorization using merchant mappings
     # Updated merchant-to-category mappings based on our new clean category structure
     merchant_category_map = {
         # Transportation
-        'gas': ('Transportation', 'Gas', 'Merchant identified as gas station'),
-        'bp': ('Transportation', 'Gas', 'BP identified as major gas station brand'),
-        'shell': ('Transportation', 'Gas', 'Shell identified as major gas station brand'),
-        'exxon': ('Transportation', 'Gas', 'ExxonMobil identified as major gas station brand'),
-        'mobil': ('Transportation', 'Gas', 'Mobil identified as major gas station brand'),
-        'speedway': ('Transportation', 'Gas', 'Speedway identified as gas station chain'),
-        'chevron': ('Transportation', 'Gas', 'Chevron identified as major gas station brand'),
-        'citgo': ('Transportation', 'Gas', 'Citgo identified as gas station brand'),
-        'texaco': ('Transportation', 'Gas', 'Texaco identified as gas station brand'),
-        'sunoco': ('Transportation', 'Gas', 'Sunoco identified as gas station brand'),
-        'tolls': ('Transportation', 'Tolls', 'Merchant identified as toll system'),
-        'tollway': ('Transportation', 'Tolls', 'Tollway identified in transaction description'),
-        'toll': ('Transportation', 'Tolls', 'Toll payment identified in description'),
-        'ipass': ('Transportation', 'Tolls', 'I-PASS identified as electronic toll system'),
-        'parking': ('Transportation', 'Parking', 'Parking payment identified in description'),
-        'uber': ('Transportation', 'Public Transit', 'Uber identified as ride-sharing service'),
-        'lyft': ('Transportation', 'Public Transit', 'Lyft identified as ride-sharing service'),
-        'taxi': ('Transportation', 'Public Transit', 'Taxi service identified'),
-        
+        "gas": ("Transportation", "Gas", "Merchant identified as gas station"),
+        "bp": ("Transportation", "Gas", "BP identified as major gas station brand"),
+        "shell": (
+            "Transportation",
+            "Gas",
+            "Shell identified as major gas station brand",
+        ),
+        "exxon": (
+            "Transportation",
+            "Gas",
+            "ExxonMobil identified as major gas station brand",
+        ),
+        "mobil": (
+            "Transportation",
+            "Gas",
+            "Mobil identified as major gas station brand",
+        ),
+        "speedway": (
+            "Transportation",
+            "Gas",
+            "Speedway identified as gas station chain",
+        ),
+        "chevron": (
+            "Transportation",
+            "Gas",
+            "Chevron identified as major gas station brand",
+        ),
+        "citgo": ("Transportation", "Gas", "Citgo identified as gas station brand"),
+        "texaco": ("Transportation", "Gas", "Texaco identified as gas station brand"),
+        "sunoco": ("Transportation", "Gas", "Sunoco identified as gas station brand"),
+        "tolls": ("Transportation", "Tolls", "Merchant identified as toll system"),
+        "tollway": (
+            "Transportation",
+            "Tolls",
+            "Tollway identified in transaction description",
+        ),
+        "toll": ("Transportation", "Tolls", "Toll payment identified in description"),
+        "ipass": (
+            "Transportation",
+            "Tolls",
+            "I-PASS identified as electronic toll system",
+        ),
+        "parking": (
+            "Transportation",
+            "Parking",
+            "Parking payment identified in description",
+        ),
+        "uber": (
+            "Transportation",
+            "Public Transit",
+            "Uber identified as ride-sharing service",
+        ),
+        "lyft": (
+            "Transportation",
+            "Public Transit",
+            "Lyft identified as ride-sharing service",
+        ),
+        "taxi": ("Transportation", "Public Transit", "Taxi service identified"),
         # Food & Dining
-        'starbucks': ('Food & Dining', 'Coffee/Tea', 'Starbucks identified as major coffee chain'),
-        'dunkin': ('Food & Dining', 'Coffee/Tea', 'Dunkin identified as coffee/donut chain'),
-        'coffee': ('Food & Dining', 'Coffee/Tea', 'Coffee-related merchant identified'),
-        'mcdonald': ('Food & Dining', 'Fast Food', 'McDonald\'s identified as major fast food chain'),
-        'burger king': ('Food & Dining', 'Fast Food', 'Burger King identified as fast food chain'),
-        'taco bell': ('Food & Dining', 'Fast Food', 'Taco Bell identified as fast food chain'),
-        'subway': ('Food & Dining', 'Fast Food', 'Subway identified as sandwich chain'),
-        'kfc': ('Food & Dining', 'Fast Food', 'KFC identified as fast food chicken chain'),
-        'wendy': ('Food & Dining', 'Fast Food', 'Wendy\'s identified as fast food chain'),
-        'chipotle': ('Food & Dining', 'Fast Food', 'Chipotle identified as fast-casual restaurant chain'),
-        'panera': ('Food & Dining', 'Fast Food', 'Panera identified as fast-casual bakery-cafe'),
-        'restaurant': ('Food & Dining', 'Restaurants', 'Generic restaurant identifier found'),
-        'diner': ('Food & Dining', 'Restaurants', 'Diner identified in description'),
-        'bistro': ('Food & Dining', 'Restaurants', 'Bistro identified in description'),
-        'bar': ('Food & Dining', 'Restaurants', 'Bar/restaurant identified'),
-        'grill': ('Food & Dining', 'Restaurants', 'Grill/restaurant identified'),
-        'pizza': ('Food & Dining', 'Restaurants', 'Pizza restaurant identified'),
-        'domino': ('Food & Dining', 'Restaurants', 'Domino\'s pizza identified'),
-        'papa john': ('Food & Dining', 'Restaurants', 'Papa John\'s pizza identified'),
-        'grocery': ('Food & Dining', 'Groceries', 'Grocery store identifier found'),
-        'kroger': ('Food & Dining', 'Groceries', 'Kroger identified as major grocery chain'),
-        'safeway': ('Food & Dining', 'Groceries', 'Safeway identified as grocery chain'),
-        'whole foods': ('Food & Dining', 'Groceries', 'Whole Foods identified as organic grocery chain'),
-        'trader joe': ('Food & Dining', 'Groceries', 'Trader Joe\'s identified as specialty grocery chain'),
-        'costco': ('Food & Dining', 'Groceries', 'Costco identified as warehouse grocery store'),
-        'walmart': ('Food & Dining', 'Groceries', 'Walmart identified as retail/grocery store'),
-        'target': ('Food & Dining', 'Groceries', 'Target identified as retail store with groceries'),
-        'alcohol': ('Food & Dining', 'Alcohol', 'Alcohol-related purchase identified'),
-        'liquor': ('Food & Dining', 'Alcohol', 'Liquor store identified'),
-        'wine': ('Food & Dining', 'Alcohol', 'Wine purchase identified'),
-        'beer': ('Food & Dining', 'Alcohol', 'Beer purchase identified'),
-        'binnys': ('Food & Dining', 'Alcohol', 'Binny\'s identified as liquor store chain'),
-        
+        "starbucks": (
+            "Food & Dining",
+            "Coffee/Tea",
+            "Starbucks identified as major coffee chain",
+        ),
+        "dunkin": (
+            "Food & Dining",
+            "Coffee/Tea",
+            "Dunkin identified as coffee/donut chain",
+        ),
+        "coffee": ("Food & Dining", "Coffee/Tea", "Coffee-related merchant identified"),
+        "mcdonald": (
+            "Food & Dining",
+            "Fast Food",
+            "McDonald's identified as major fast food chain",
+        ),
+        "burger king": (
+            "Food & Dining",
+            "Fast Food",
+            "Burger King identified as fast food chain",
+        ),
+        "taco bell": (
+            "Food & Dining",
+            "Fast Food",
+            "Taco Bell identified as fast food chain",
+        ),
+        "subway": ("Food & Dining", "Fast Food", "Subway identified as sandwich chain"),
+        "kfc": (
+            "Food & Dining",
+            "Fast Food",
+            "KFC identified as fast food chicken chain",
+        ),
+        "wendy": (
+            "Food & Dining",
+            "Fast Food",
+            "Wendy's identified as fast food chain",
+        ),
+        "chipotle": (
+            "Food & Dining",
+            "Fast Food",
+            "Chipotle identified as fast-casual restaurant chain",
+        ),
+        "panera": (
+            "Food & Dining",
+            "Fast Food",
+            "Panera identified as fast-casual bakery-cafe",
+        ),
+        "restaurant": (
+            "Food & Dining",
+            "Restaurants",
+            "Generic restaurant identifier found",
+        ),
+        "diner": ("Food & Dining", "Restaurants", "Diner identified in description"),
+        "bistro": ("Food & Dining", "Restaurants", "Bistro identified in description"),
+        "bar": ("Food & Dining", "Restaurants", "Bar/restaurant identified"),
+        "grill": ("Food & Dining", "Restaurants", "Grill/restaurant identified"),
+        "pizza": ("Food & Dining", "Restaurants", "Pizza restaurant identified"),
+        "domino": ("Food & Dining", "Restaurants", "Domino's pizza identified"),
+        "papa john": ("Food & Dining", "Restaurants", "Papa John's pizza identified"),
+        "grocery": ("Food & Dining", "Groceries", "Grocery store identifier found"),
+        "kroger": (
+            "Food & Dining",
+            "Groceries",
+            "Kroger identified as major grocery chain",
+        ),
+        "safeway": (
+            "Food & Dining",
+            "Groceries",
+            "Safeway identified as grocery chain",
+        ),
+        "whole foods": (
+            "Food & Dining",
+            "Groceries",
+            "Whole Foods identified as organic grocery chain",
+        ),
+        "trader joe": (
+            "Food & Dining",
+            "Groceries",
+            "Trader Joe's identified as specialty grocery chain",
+        ),
+        "costco": (
+            "Food & Dining",
+            "Groceries",
+            "Costco identified as warehouse grocery store",
+        ),
+        "walmart": (
+            "Food & Dining",
+            "Groceries",
+            "Walmart identified as retail/grocery store",
+        ),
+        "target": (
+            "Food & Dining",
+            "Groceries",
+            "Target identified as retail store with groceries",
+        ),
+        "alcohol": ("Food & Dining", "Alcohol", "Alcohol-related purchase identified"),
+        "liquor": ("Food & Dining", "Alcohol", "Liquor store identified"),
+        "wine": ("Food & Dining", "Alcohol", "Wine purchase identified"),
+        "beer": ("Food & Dining", "Alcohol", "Beer purchase identified"),
+        "binnys": (
+            "Food & Dining",
+            "Alcohol",
+            "Binny's identified as liquor store chain",
+        ),
         # Health & Medical
-        'medical': ('Health & Medical', 'Doctor Visits', 'Medical service identifier found'),
-        'hospital': ('Health & Medical', 'Doctor Visits', 'Hospital identified in description'),
-        'clinic': ('Health & Medical', 'Doctor Visits', 'Medical clinic identified'),
-        'northwestern': ('Health & Medical', 'Doctor Visits', 'Northwestern Medicine identified as major healthcare provider'),
-        'mayo clinic': ('Health & Medical', 'Doctor Visits', 'Mayo Clinic identified as major medical institution'),
-        'doctor': ('Health & Medical', 'Doctor Visits', 'Doctor/physician service identified'),
-        'physician': ('Health & Medical', 'Doctor Visits', 'Physician service identified'),
-        'pharmacy': ('Health & Medical', 'Pharmacy', 'Pharmacy identifier found'),
-        'cvs': ('Health & Medical', 'Pharmacy', 'CVS identified as major pharmacy chain'),
-        'walgreens': ('Health & Medical', 'Pharmacy', 'Walgreens identified as major pharmacy chain'),
-        'rite aid': ('Health & Medical', 'Pharmacy', 'Rite Aid identified as pharmacy chain'),
-        'dental': ('Health & Medical', 'Dental', 'Dental service identifier found'),
-        'dentist': ('Health & Medical', 'Dental', 'Dentist service identified'),
-        'orthodont': ('Health & Medical', 'Dental', 'Orthodontic service identified'),
-        'vision': ('Health & Medical', 'Vision', 'Vision care service identified'),
-        'optometrist': ('Health & Medical', 'Vision', 'Optometrist service identified'),
-        'eye care': ('Health & Medical', 'Vision', 'Eye care service identified'),
-        'glasses': ('Health & Medical', 'Vision', 'Eyeglass purchase identified'),
-        'contacts': ('Health & Medical', 'Vision', 'Contact lens purchase identified'),
-        
+        "medical": (
+            "Health & Medical",
+            "Doctor Visits",
+            "Medical service identifier found",
+        ),
+        "hospital": (
+            "Health & Medical",
+            "Doctor Visits",
+            "Hospital identified in description",
+        ),
+        "clinic": ("Health & Medical", "Doctor Visits", "Medical clinic identified"),
+        "northwestern": (
+            "Health & Medical",
+            "Doctor Visits",
+            "Northwestern Medicine identified as major healthcare provider",
+        ),
+        "mayo clinic": (
+            "Health & Medical",
+            "Doctor Visits",
+            "Mayo Clinic identified as major medical institution",
+        ),
+        "doctor": (
+            "Health & Medical",
+            "Doctor Visits",
+            "Doctor/physician service identified",
+        ),
+        "physician": (
+            "Health & Medical",
+            "Doctor Visits",
+            "Physician service identified",
+        ),
+        "pharmacy": ("Health & Medical", "Pharmacy", "Pharmacy identifier found"),
+        "cvs": (
+            "Health & Medical",
+            "Pharmacy",
+            "CVS identified as major pharmacy chain",
+        ),
+        "walgreens": (
+            "Health & Medical",
+            "Pharmacy",
+            "Walgreens identified as major pharmacy chain",
+        ),
+        "rite aid": (
+            "Health & Medical",
+            "Pharmacy",
+            "Rite Aid identified as pharmacy chain",
+        ),
+        "dental": ("Health & Medical", "Dental", "Dental service identifier found"),
+        "dentist": ("Health & Medical", "Dental", "Dentist service identified"),
+        "orthodont": ("Health & Medical", "Dental", "Orthodontic service identified"),
+        "vision": ("Health & Medical", "Vision", "Vision care service identified"),
+        "optometrist": ("Health & Medical", "Vision", "Optometrist service identified"),
+        "eye care": ("Health & Medical", "Vision", "Eye care service identified"),
+        "glasses": ("Health & Medical", "Vision", "Eyeglass purchase identified"),
+        "contacts": ("Health & Medical", "Vision", "Contact lens purchase identified"),
         # Shopping
-        'amazon': ('Shopping', 'Online Shopping', 'Amazon identified as major online retailer'),
-        'ebay': ('Shopping', 'Online Shopping', 'eBay identified as online marketplace'),
-        'etsy': ('Shopping', 'Online Shopping', 'Etsy identified as online marketplace for handmade items'),
-        'online': ('Shopping', 'Online Shopping', 'Online shopping identifier found'),
-        'best buy': ('Shopping', 'Electronics', 'Best Buy identified as electronics retailer'),
-        'apple store': ('Shopping', 'Electronics', 'Apple Store identified as technology retailer'),
-        'microsoft': ('Shopping', 'Electronics', 'Microsoft identified as technology company'),
-        'electronics': ('Shopping', 'Electronics', 'Electronics purchase identifier found'),
-        'computer': ('Shopping', 'Electronics', 'Computer-related purchase identified'),
-        'phone': ('Shopping', 'Electronics', 'Phone-related purchase identified'),
-        'macy': ('Shopping', 'Clothing', 'Macy\'s identified as department store'),
-        'nordstrom': ('Shopping', 'Clothing', 'Nordstrom identified as upscale department store'),
-        'gap': ('Shopping', 'Clothing', 'Gap identified as clothing retailer'),
-        'nike': ('Shopping', 'Clothing', 'Nike identified as athletic wear brand'),
-        'clothing': ('Shopping', 'Clothing', 'Clothing purchase identifier found'),
-        'apparel': ('Shopping', 'Clothing', 'Apparel purchase identifier found'),
-        'home depot': ('Shopping', 'Home Goods', 'Home Depot identified as home improvement retailer'),
-        'lowe': ('Shopping', 'Home Goods', 'Lowe\'s identified as home improvement retailer'),
-        'bed bath': ('Shopping', 'Home Goods', 'Bed Bath & Beyond identified as home goods retailer'),
-        'ikea': ('Shopping', 'Home Goods', 'IKEA identified as furniture retailer'),
-        'furniture': ('Shopping', 'Home Goods', 'Furniture purchase identified'),
-        'gift': ('Shopping', 'Gifts', 'Gift purchase identifier found'),
-        'present': ('Shopping', 'Gifts', 'Present purchase identifier found'),
-        
+        "amazon": (
+            "Shopping",
+            "Online Shopping",
+            "Amazon identified as major online retailer",
+        ),
+        "ebay": (
+            "Shopping",
+            "Online Shopping",
+            "eBay identified as online marketplace",
+        ),
+        "etsy": (
+            "Shopping",
+            "Online Shopping",
+            "Etsy identified as online marketplace for handmade items",
+        ),
+        "online": ("Shopping", "Online Shopping", "Online shopping identifier found"),
+        "best buy": (
+            "Shopping",
+            "Electronics",
+            "Best Buy identified as electronics retailer",
+        ),
+        "apple store": (
+            "Shopping",
+            "Electronics",
+            "Apple Store identified as technology retailer",
+        ),
+        "microsoft": (
+            "Shopping",
+            "Electronics",
+            "Microsoft identified as technology company",
+        ),
+        "electronics": (
+            "Shopping",
+            "Electronics",
+            "Electronics purchase identifier found",
+        ),
+        "computer": ("Shopping", "Electronics", "Computer-related purchase identified"),
+        "phone": ("Shopping", "Electronics", "Phone-related purchase identified"),
+        "macy": ("Shopping", "Clothing", "Macy's identified as department store"),
+        "nordstrom": (
+            "Shopping",
+            "Clothing",
+            "Nordstrom identified as upscale department store",
+        ),
+        "gap": ("Shopping", "Clothing", "Gap identified as clothing retailer"),
+        "nike": ("Shopping", "Clothing", "Nike identified as athletic wear brand"),
+        "clothing": ("Shopping", "Clothing", "Clothing purchase identifier found"),
+        "apparel": ("Shopping", "Clothing", "Apparel purchase identifier found"),
+        "home depot": (
+            "Shopping",
+            "Home Goods",
+            "Home Depot identified as home improvement retailer",
+        ),
+        "lowe": (
+            "Shopping",
+            "Home Goods",
+            "Lowe's identified as home improvement retailer",
+        ),
+        "bed bath": (
+            "Shopping",
+            "Home Goods",
+            "Bed Bath & Beyond identified as home goods retailer",
+        ),
+        "ikea": ("Shopping", "Home Goods", "IKEA identified as furniture retailer"),
+        "furniture": ("Shopping", "Home Goods", "Furniture purchase identified"),
+        "gift": ("Shopping", "Gifts", "Gift purchase identifier found"),
+        "present": ("Shopping", "Gifts", "Present purchase identifier found"),
         # Entertainment
-        'netflix': ('Entertainment', 'Subscriptions', 'Netflix identified as streaming service'),
-        'hulu': ('Entertainment', 'Subscriptions', 'Hulu identified as streaming service'),
-        'disney': ('Entertainment', 'Subscriptions', 'Disney+ identified as streaming service'),
-        'spotify': ('Entertainment', 'Subscriptions', 'Spotify identified as music streaming service'),
-        'apple music': ('Entertainment', 'Subscriptions', 'Apple Music identified as music streaming service'),
-        'youtube': ('Entertainment', 'Subscriptions', 'YouTube Premium identified as video service'),
-        'subscription': ('Entertainment', 'Subscriptions', 'Subscription service identifier found'),
-        'movie': ('Entertainment', 'Movies', 'Movie-related purchase identified'),
-        'theater': ('Entertainment', 'Movies', 'Movie theater identified'),
-        'cinema': ('Entertainment', 'Movies', 'Cinema identified'),
-        'amc': ('Entertainment', 'Movies', 'AMC identified as movie theater chain'),
-        'regal': ('Entertainment', 'Movies', 'Regal identified as movie theater chain'),
-        'concert': ('Entertainment', 'Concerts/Events', 'Concert event identified'),
-        'ticketmaster': ('Entertainment', 'Concerts/Events', 'Ticketmaster identified as event ticketing service'),
-        'stubhub': ('Entertainment', 'Concerts/Events', 'StubHub identified as ticket resale platform'),
-        'sports': ('Entertainment', 'Sports', 'Sports-related activity identified'),
-        'gym': ('Entertainment', 'Sports', 'Gym membership or visit identified'),
-        'fitness': ('Entertainment', 'Sports', 'Fitness-related activity identified'),
-        'golf': ('Entertainment', 'Sports', 'Golf-related activity identified'),
-        'tennis': ('Entertainment', 'Sports', 'Tennis-related activity identified'),
-        'book': ('Entertainment', 'Books/Media', 'Book purchase identified'),
-        'barnes': ('Entertainment', 'Books/Media', 'Barnes & Noble identified as bookstore'),
-        'library': ('Entertainment', 'Books/Media', 'Library-related service identified'),
-        'hobby': ('Entertainment', 'Hobbies', 'Hobby-related purchase identified'),
-        
+        "netflix": (
+            "Entertainment",
+            "Subscriptions",
+            "Netflix identified as streaming service",
+        ),
+        "hulu": (
+            "Entertainment",
+            "Subscriptions",
+            "Hulu identified as streaming service",
+        ),
+        "disney": (
+            "Entertainment",
+            "Subscriptions",
+            "Disney+ identified as streaming service",
+        ),
+        "spotify": (
+            "Entertainment",
+            "Subscriptions",
+            "Spotify identified as music streaming service",
+        ),
+        "apple music": (
+            "Entertainment",
+            "Subscriptions",
+            "Apple Music identified as music streaming service",
+        ),
+        "youtube": (
+            "Entertainment",
+            "Subscriptions",
+            "YouTube Premium identified as video service",
+        ),
+        "subscription": (
+            "Entertainment",
+            "Subscriptions",
+            "Subscription service identifier found",
+        ),
+        "movie": ("Entertainment", "Movies", "Movie-related purchase identified"),
+        "theater": ("Entertainment", "Movies", "Movie theater identified"),
+        "cinema": ("Entertainment", "Movies", "Cinema identified"),
+        "amc": ("Entertainment", "Movies", "AMC identified as movie theater chain"),
+        "regal": ("Entertainment", "Movies", "Regal identified as movie theater chain"),
+        "concert": ("Entertainment", "Concerts/Events", "Concert event identified"),
+        "ticketmaster": (
+            "Entertainment",
+            "Concerts/Events",
+            "Ticketmaster identified as event ticketing service",
+        ),
+        "stubhub": (
+            "Entertainment",
+            "Concerts/Events",
+            "StubHub identified as ticket resale platform",
+        ),
+        "sports": ("Entertainment", "Sports", "Sports-related activity identified"),
+        "gym": ("Entertainment", "Sports", "Gym membership or visit identified"),
+        "fitness": ("Entertainment", "Sports", "Fitness-related activity identified"),
+        "golf": ("Entertainment", "Sports", "Golf-related activity identified"),
+        "tennis": ("Entertainment", "Sports", "Tennis-related activity identified"),
+        "book": ("Entertainment", "Books/Media", "Book purchase identified"),
+        "barnes": (
+            "Entertainment",
+            "Books/Media",
+            "Barnes & Noble identified as bookstore",
+        ),
+        "library": (
+            "Entertainment",
+            "Books/Media",
+            "Library-related service identified",
+        ),
+        "hobby": ("Entertainment", "Hobbies", "Hobby-related purchase identified"),
         # Financial
-        'atm': ('Cash & ATM', '', 'ATM transaction identified'),
-        'withdrawal': ('Cash & ATM', '', 'Cash withdrawal identified'),
-        'cash': ('Cash & ATM', '', 'Cash transaction identified'),
-        'bank fee': ('Financial', 'Bank Fees', 'Bank fee identified'),
-        'overdraft': ('Financial', 'Bank Fees', 'Overdraft fee identified'),
-        'service charge': ('Financial', 'Bank Fees', 'Service charge identified'),
-        'credit card': ('Financial', 'Credit Card Payment', 'Credit card payment identified'),
-        'payment': ('Financial', 'Credit Card Payment', 'Payment transaction identified'),
-        'investment': ('Financial', 'Investment', 'Investment transaction identified'),
-        'vanguard': ('Financial', 'Investment', 'Vanguard identified as investment company'),
-        'fidelity': ('Financial', 'Investment', 'Fidelity identified as investment company'),
-        'schwab': ('Financial', 'Investment', 'Charles Schwab identified as investment company'),
-        'loan': ('Financial', 'Loans', 'Loan payment identified'),
-        'mortgage': ('Housing', 'Mortgage/Rent', 'Mortgage payment identified'),
-        'tax': ('Financial', 'Taxes', 'Tax payment identified'),
-        'irs': ('Financial', 'Taxes', 'IRS payment identified'),
-        
+        "atm": ("Cash & ATM", "", "ATM transaction identified"),
+        "withdrawal": ("Cash & ATM", "", "Cash withdrawal identified"),
+        "cash": ("Cash & ATM", "", "Cash transaction identified"),
+        "bank fee": ("Financial", "Bank Fees", "Bank fee identified"),
+        "overdraft": ("Financial", "Bank Fees", "Overdraft fee identified"),
+        "service charge": ("Financial", "Bank Fees", "Service charge identified"),
+        "credit card": (
+            "Financial",
+            "Credit Card Payment",
+            "Credit card payment identified",
+        ),
+        "payment": (
+            "Financial",
+            "Credit Card Payment",
+            "Payment transaction identified",
+        ),
+        "investment": ("Financial", "Investment", "Investment transaction identified"),
+        "vanguard": (
+            "Financial",
+            "Investment",
+            "Vanguard identified as investment company",
+        ),
+        "fidelity": (
+            "Financial",
+            "Investment",
+            "Fidelity identified as investment company",
+        ),
+        "schwab": (
+            "Financial",
+            "Investment",
+            "Charles Schwab identified as investment company",
+        ),
+        "loan": ("Financial", "Loans", "Loan payment identified"),
+        "mortgage": ("Housing", "Mortgage/Rent", "Mortgage payment identified"),
+        "tax": ("Financial", "Taxes", "Tax payment identified"),
+        "irs": ("Financial", "Taxes", "IRS payment identified"),
         # Housing
-        'rent': ('Housing', 'Mortgage/Rent', 'Rent payment identified'),
-        'electric': ('Housing', 'Utilities', 'Electric utility payment identified'),
-        'electricity': ('Housing', 'Utilities', 'Electricity payment identified'),
-        'gas utility': ('Housing', 'Utilities', 'Gas utility payment identified'),
-        'water': ('Housing', 'Utilities', 'Water utility payment identified'),
-        'sewer': ('Housing', 'Utilities', 'Sewer utility payment identified'),
-        'internet': ('Housing', 'Utilities', 'Internet service payment identified'),
-        'cable': ('Housing', 'Utilities', 'Cable service payment identified'),
-        'phone service': ('Housing', 'Utilities', 'Phone service payment identified'),
-        'comcast': ('Housing', 'Utilities', 'Comcast identified as cable/internet provider'),
-        'at&t': ('Housing', 'Utilities', 'AT&T identified as telecommunications provider'),
-        'verizon': ('Housing', 'Utilities', 'Verizon identified as telecommunications provider'),
-        'property tax': ('Housing', 'Property Tax', 'Property tax payment identified'),
-        'home insurance': ('Housing', 'Home Insurance', 'Home insurance payment identified'),
-        'homeowners': ('Housing', 'Home Insurance', 'Homeowners insurance identified'),
-        'hoa': ('Housing', 'HOA Fees', 'HOA fee payment identified'),
-        'maintenance': ('Housing', 'Home Maintenance', 'Home maintenance service identified'),
-        'repair': ('Housing', 'Home Maintenance', 'Home repair service identified'),
-        'plumber': ('Housing', 'Home Maintenance', 'Plumbing service identified'),
-        'electrician': ('Housing', 'Home Maintenance', 'Electrical service identified'),
-        'hvac': ('Housing', 'Home Maintenance', 'HVAC service identified'),
-        
+        "rent": ("Housing", "Mortgage/Rent", "Rent payment identified"),
+        "electric": ("Housing", "Utilities", "Electric utility payment identified"),
+        "electricity": ("Housing", "Utilities", "Electricity payment identified"),
+        "gas utility": ("Housing", "Utilities", "Gas utility payment identified"),
+        "water": ("Housing", "Utilities", "Water utility payment identified"),
+        "sewer": ("Housing", "Utilities", "Sewer utility payment identified"),
+        "internet": ("Housing", "Utilities", "Internet service payment identified"),
+        "cable": ("Housing", "Utilities", "Cable service payment identified"),
+        "phone service": ("Housing", "Utilities", "Phone service payment identified"),
+        "comcast": (
+            "Housing",
+            "Utilities",
+            "Comcast identified as cable/internet provider",
+        ),
+        "at&t": (
+            "Housing",
+            "Utilities",
+            "AT&T identified as telecommunications provider",
+        ),
+        "verizon": (
+            "Housing",
+            "Utilities",
+            "Verizon identified as telecommunications provider",
+        ),
+        "property tax": ("Housing", "Property Tax", "Property tax payment identified"),
+        "home insurance": (
+            "Housing",
+            "Home Insurance",
+            "Home insurance payment identified",
+        ),
+        "homeowners": ("Housing", "Home Insurance", "Homeowners insurance identified"),
+        "hoa": ("Housing", "HOA Fees", "HOA fee payment identified"),
+        "maintenance": (
+            "Housing",
+            "Home Maintenance",
+            "Home maintenance service identified",
+        ),
+        "repair": ("Housing", "Home Maintenance", "Home repair service identified"),
+        "plumber": ("Housing", "Home Maintenance", "Plumbing service identified"),
+        "electrician": ("Housing", "Home Maintenance", "Electrical service identified"),
+        "hvac": ("Housing", "Home Maintenance", "HVAC service identified"),
         # Income
-        'direct dep': ('Income', 'Salary', 'Direct deposit payment identified'),
-        'paycheck': ('Income', 'Salary', 'Paycheck deposit identified'),
-        'salary': ('Income', 'Salary', 'Salary payment identified'),
-        'bonus': ('Income', 'Bonus', 'Bonus payment identified'),
-        'dividend': ('Income', 'Investment Income', 'Dividend payment identified'),
-        'interest': ('Income', 'Investment Income', 'Interest payment identified'),
-        
+        "direct dep": ("Income", "Salary", "Direct deposit payment identified"),
+        "paycheck": ("Income", "Salary", "Paycheck deposit identified"),
+        "salary": ("Income", "Salary", "Salary payment identified"),
+        "bonus": ("Income", "Bonus", "Bonus payment identified"),
+        "dividend": ("Income", "Investment Income", "Dividend payment identified"),
+        "interest": ("Income", "Investment Income", "Interest payment identified"),
         # Personal
-        'education': ('Personal', 'Education', 'Education-related expense identified'),
-        'school': ('Personal', 'Education', 'School payment identified'),
-        'tuition': ('Personal', 'Education', 'Tuition payment identified'),
-        'college': ('Personal', 'Education', 'College payment identified'),
-        'university': ('Personal', 'Education', 'University payment identified'),
-        'charity': ('Personal', 'Charity', 'Charitable donation identified'),
-        'donation': ('Personal', 'Charity', 'Donation payment identified'),
-        'church': ('Personal', 'Charity', 'Church donation identified'),
-        'pet': ('Personal', 'Pet Care', 'Pet-related expense identified'),
-        'veterinarian': ('Personal', 'Pet Care', 'Veterinary service identified'),
-        'vet': ('Personal', 'Pet Care', 'Veterinary service identified'),
-        'animal': ('Personal', 'Pet Care', 'Animal-related expense identified'),
-        
+        "education": ("Personal", "Education", "Education-related expense identified"),
+        "school": ("Personal", "Education", "School payment identified"),
+        "tuition": ("Personal", "Education", "Tuition payment identified"),
+        "college": ("Personal", "Education", "College payment identified"),
+        "university": ("Personal", "Education", "University payment identified"),
+        "charity": ("Personal", "Charity", "Charitable donation identified"),
+        "donation": ("Personal", "Charity", "Donation payment identified"),
+        "church": ("Personal", "Charity", "Church donation identified"),
+        "pet": ("Personal", "Pet Care", "Pet-related expense identified"),
+        "veterinarian": ("Personal", "Pet Care", "Veterinary service identified"),
+        "vet": ("Personal", "Pet Care", "Veterinary service identified"),
+        "animal": ("Personal", "Pet Care", "Animal-related expense identified"),
         # Business (if applicable)
-        'office': ('Business', 'Office Supplies', 'Office supplies purchase identified'),
-        'supplies': ('Business', 'Office Supplies', 'Office supplies purchase identified'),
-        'business travel': ('Business', 'Business Travel', 'Business travel expense identified'),
-        'hotel': ('Business', 'Business Travel', 'Hotel expense identified'),
-        'flight': ('Business', 'Business Travel', 'Flight expense identified'),
-        'conference': ('Business', 'Business Travel', 'Conference expense identified'),
+        "office": (
+            "Business",
+            "Office Supplies",
+            "Office supplies purchase identified",
+        ),
+        "supplies": (
+            "Business",
+            "Office Supplies",
+            "Office supplies purchase identified",
+        ),
+        "business travel": (
+            "Business",
+            "Business Travel",
+            "Business travel expense identified",
+        ),
+        "hotel": ("Business", "Business Travel", "Hotel expense identified"),
+        "flight": ("Business", "Business Travel", "Flight expense identified"),
+        "conference": ("Business", "Business Travel", "Conference expense identified"),
     }
-    
+
     # Check merchant mappings first
     merchant_lower = merchant.lower()
-    for merchant_key, (category, subcategory, reason) in merchant_category_map.items():
-        if merchant_key in merchant_lower:
+    for merchant_name, (category, subcategory, reason) in merchant_category_map.items():
+        if merchant_name in merchant_lower:
             return (category, subcategory, reason)
-    
+
     # Legacy term-based matching for specific patterns
     description_upper = description.upper()
-    
+
     # Utility bill patterns
-    if any(term in description_upper for term in ['ELECTRIC', 'ELECTRICITY', 'POWER']):
-        return ('Housing', 'Utilities', 'Electric utility keywords found in description')
-    if any(term in description_upper for term in ['GAS UTIL', 'NATURAL GAS', 'NICOR']):
-        return ('Housing', 'Utilities', 'Gas utility keywords found in description')
-    if 'WATER' in description_upper and 'BILL' in description_upper:
-        return ('Housing', 'Utilities', 'Water bill keywords found in description')
-    if any(term in description_upper for term in ['INTERNET', 'CABLE', 'COMCAST', 'XFINITY']):
-        return ('Housing', 'Utilities', 'Internet/cable service keywords found in description')
-    
+    if any(term in description_upper for term in ["ELECTRIC", "ELECTRICITY", "POWER"]):
+        return (
+            "Housing",
+            "Utilities",
+            "Electric utility keywords found in description",
+        )
+    if any(term in description_upper for term in ["GAS UTIL", "NATURAL GAS", "NICOR"]):
+        return ("Housing", "Utilities", "Gas utility keywords found in description")
+    if "WATER" in description_upper and "BILL" in description_upper:
+        return ("Housing", "Utilities", "Water bill keywords found in description")
+    if any(
+        term in description_upper
+        for term in ["INTERNET", "CABLE", "COMCAST", "XFINITY"]
+    ):
+        return (
+            "Housing",
+            "Utilities",
+            "Internet/cable service keywords found in description",
+        )
+
     # Transportation patterns
-    if any(term in description_upper for term in ['GAS STATION', 'FUEL', 'GASOLINE']):
-        return ('Transportation', 'Gas', 'Gas/fuel keywords found in description')
-    
+    if any(term in description_upper for term in ["GAS STATION", "FUEL", "GASOLINE"]):
+        return ("Transportation", "Gas", "Gas/fuel keywords found in description")
+
     # Financial patterns
-    if 'ATM' in description_upper:
-        return ('Cash & ATM', '', 'ATM transaction keyword found in description')
-    
+    if "ATM" in description_upper:
+        return ("Cash & ATM", "", "ATM transaction keyword found in description")
+
     # Income detection (positive amounts)
-    if amount > 0 and any(term in description_upper for term in ['DEPOSIT', 'PAYROLL', 'SALARY', 'PAYCHECK']):
-        return ('Income', 'Salary', f'Positive amount (${amount}) with salary/payroll keywords suggests income')
-    
+    if amount > 0 and any(
+        term in description_upper
+        for term in ["DEPOSIT", "PAYROLL", "SALARY", "PAYCHECK"]
+    ):
+        return (
+            "Income",
+            "Salary",
+            f"Positive amount (${amount}) with salary/payroll keywords suggests income",
+        )
+
     # Default fallback
-    return ('Miscellaneous', '', 'No matching patterns found - using default category')
+    return ("Miscellaneous", "", "No matching patterns found - using default category")
+
 
 @trace
 def categorize_transaction(description: str, amount: float = 0.0) -> tuple[str, str]:
     """Original function that returns just category and subcategory."""
-    category, subcategory, _ = categorize_transaction_with_reasoning(description, amount)
+    category, subcategory, _ = categorize_transaction_with_reasoning(
+        description, amount
+    )
     return (category, subcategory)
+
 
 @trace
 def suggest_subcategory_old(description: str, amount: float = 0.0) -> str:
@@ -616,27 +939,32 @@ def suggest_subcategory_old(description: str, amount: float = 0.0) -> str:
 
 CONFIDENCE_MIN = 0.65  # tweak
 
+
 @trace
 def _top_learned_subcat(key):
-    qs = (LearnedSubcat.objects
-          .filter(key=key)
-          .values('subcategory__name')
-          .annotate(total=Sum('count'))
-          .order_by('-total'))
+    qs = (
+        LearnedSubcat.objects.filter(key=key)
+        .values("subcategory__name")
+        .annotate(total=Sum("count"))
+        .order_by("-total")
+    )
     if qs:
-        return qs[0]['subcategory__name'], qs[0]['total']
+        return qs[0]["subcategory__name"], qs[0]["total"]
     return None, 0
+
 
 @trace
 def _top_learned_payoree(key):
-    qs = (LearnedPayoree.objects
-          .filter(key=key)
-          .values('payoree__name')
-          .annotate(total=Sum('count'))
-          .order_by('-total'))
+    qs = (
+        LearnedPayoree.objects.filter(key=key)
+        .values("payoree__name")
+        .annotate(total=Sum("count"))
+        .order_by("-total")
+    )
     if qs:
-        return qs[0]['payoree__name'], qs[0]['total']
+        return qs[0]["payoree__name"], qs[0]["total"]
     return None, 0
+
 
 @trace
 def suggest_subcategory(description: str, amount: float = 0.0) -> str | None:
@@ -649,74 +977,96 @@ def suggest_subcategory(description: str, amount: float = 0.0) -> str | None:
     _, sub = categorize_transaction(description, amount)
     return sub or None
 
+
 @trace
-def calculate_suggestion_confidence(description: str, suggested_category: str = None, suggested_subcategory: str = None) -> dict:
+def calculate_suggestion_confidence(
+    description: str, suggested_category: str = None, suggested_subcategory: str = None
+) -> dict:
     """
     Calculate confidence scores for AI suggestions based on learned data.
     Returns a dict with confidence percentages and supporting data.
     """
     import logging
+
     logger = logging.getLogger(__name__)
-    
+
     key = extract_merchant_from_description(description)
     confidence_data = {
-        'overall_confidence': 0.0,
-        'subcategory_confidence': 0.0,
-        'category_confidence': 0.0,
-        'learning_count': 0,
-        'total_possible': 100,  # Maximum confidence possible
-        'source': 'rule-based'  # or 'learned'
+        "overall_confidence": 0.0,
+        "subcategory_confidence": 0.0,
+        "category_confidence": 0.0,
+        "learning_count": 0,
+        "total_possible": 100,  # Maximum confidence possible
+        "source": "rule-based",  # or 'learned'
     }
-    
+
     logger.debug(f"Calculating confidence for: {description[:50]}... (key: {key})")
-    
+
     if not key:
         # No merchant key extracted, use lower confidence for rule-based categorization
-        confidence_data['overall_confidence'] = 45.0
-        confidence_data['source'] = 'rule-based'
-        logger.debug(f"No merchant key - returning rule-based confidence: {confidence_data['overall_confidence']}%")
+        confidence_data["overall_confidence"] = 45.0
+        confidence_data["source"] = "rule-based"
+        logger.debug(
+            f"No merchant key - returning rule-based confidence: {confidence_data['overall_confidence']}%"
+        )
         return confidence_data
-    
+
     # Get learned subcategory data
     subcategory_name, subcat_count = _top_learned_subcat(key)
-    logger.debug(f"Learned data for key '{key}': subcategory='{subcategory_name}', count={subcat_count}")
+    logger.debug(
+        f"Learned data for key '{key}': subcategory='{subcategory_name}', count={subcat_count}"
+    )
     logger.debug(f"Suggested subcategory: '{suggested_subcategory}'")
-    
-    if subcategory_name and suggested_subcategory and subcategory_name == suggested_subcategory:
+
+    if (
+        subcategory_name
+        and suggested_subcategory
+        and subcategory_name == suggested_subcategory
+    ):
         # We have learned data that matches our suggestion
-        confidence_data['learning_count'] = subcat_count
-        confidence_data['source'] = 'learned'
-        
+        confidence_data["learning_count"] = subcat_count
+        confidence_data["source"] = "learned"
+
         # Calculate confidence based on learning count
         # More confirmations = higher confidence
         if subcat_count >= 10:
-            confidence_data['subcategory_confidence'] = 95.0
+            confidence_data["subcategory_confidence"] = 95.0
         elif subcat_count >= 5:
-            confidence_data['subcategory_confidence'] = 85.0
+            confidence_data["subcategory_confidence"] = 85.0
         elif subcat_count >= 3:
-            confidence_data['subcategory_confidence'] = 75.0
+            confidence_data["subcategory_confidence"] = 75.0
         elif subcat_count >= 2:
-            confidence_data['subcategory_confidence'] = 65.0
+            confidence_data["subcategory_confidence"] = 65.0
         else:
-            confidence_data['subcategory_confidence'] = 55.0
-            
+            confidence_data["subcategory_confidence"] = 55.0
+
         # Category confidence is slightly lower than subcategory
-        confidence_data['category_confidence'] = max(50.0, confidence_data['subcategory_confidence'] - 10.0)
-        
+        confidence_data["category_confidence"] = max(
+            50.0, confidence_data["subcategory_confidence"] - 10.0
+        )
+
         # Overall confidence is average of category and subcategory
-        confidence_data['overall_confidence'] = (confidence_data['category_confidence'] + confidence_data['subcategory_confidence']) / 2
-        
-        logger.debug(f"Learned match found - confidence: {confidence_data['overall_confidence']}% (based on {subcat_count} confirmations)")
-        
+        confidence_data["overall_confidence"] = (
+            confidence_data["category_confidence"]
+            + confidence_data["subcategory_confidence"]
+        ) / 2
+
+        logger.debug(
+            f"Learned match found - confidence: {confidence_data['overall_confidence']}% (based on {subcat_count} confirmations)"
+        )
+
     else:
         # No learned data matches, use moderate confidence for rule-based
-        confidence_data['overall_confidence'] = 55.0
-        confidence_data['subcategory_confidence'] = 55.0
-        confidence_data['category_confidence'] = 50.0
-        confidence_data['source'] = 'rule-based'
-        logger.debug(f"No learned match - returning rule-based confidence: {confidence_data['overall_confidence']}%")
-    
+        confidence_data["overall_confidence"] = 55.0
+        confidence_data["subcategory_confidence"] = 55.0
+        confidence_data["category_confidence"] = 50.0
+        confidence_data["source"] = "rule-based"
+        logger.debug(
+            f"No learned match - returning rule-based confidence: {confidence_data['overall_confidence']}%"
+        )
+
     return confidence_data
+
 
 @trace
 def suggest_payoree(description: str) -> str | None:
@@ -725,43 +1075,63 @@ def suggest_payoree(description: str) -> str | None:
     First checks keyword rules, then learned patterns, then falls back to fuzzy matching existing payorees.
     """
     from transactions.models import Payoree
-    from rapidfuzz import fuzz
-    
+
+    # Try to use rapidfuzz for fuzzy matching, but fall back to difflib if unavailable
+    try:
+        from rapidfuzz import fuzz
+
+        def _score(a, b):
+            return fuzz.token_set_ratio(a, b)
+
+    except Exception:
+        import difflib
+
+        def _score(a, b):
+            # difflib ratio -> 0..1, convert to 0..100 approximate percentage
+            return int(difflib.SequenceMatcher(None, a, b).ratio() * 100)
+
     # PRIORITY 1: Check keyword rules first (highest priority)
     keyword_result = check_keyword_rules(description)
     if keyword_result and keyword_result[3]:  # keyword_result[3] is the payoree
         return keyword_result[3]
-    
+
     # PRIORITY 2: Check learned patterns
     key = extract_merchant_from_description(description)
     if key:
         name, cnt = _top_learned_payoree(key)
         if name:
             return name
-    
+
     # PRIORITY 3: Check for exact payoree name matches in description
     try:
         all_payorees = Payoree.objects.all()
-        description_upper = description.upper()
-        
+        description_upper = (description or "").upper()
+        logger.debug(
+            f"Suggest_payoree: checking {all_payorees.count()} payorees; desc='{description_upper[:80]}'"
+        )
+
         # Check for exact name matches
         for payoree in all_payorees:
+            logger.debug(f"Suggest_payoree: testing payoree='{payoree.name}'")
             if payoree.name.upper() in description_upper:
+                logger.debug(f"Suggest_payoree: exact match found: {payoree.name}")
                 return payoree.name
-        
+
         # PRIORITY 4: Fuzzy matching as fallback
         best_match = None
         best_score = 0
-        
+
         for payoree in all_payorees:
-            # Use token_set_ratio for partial matching
-            score = fuzz.token_set_ratio(payoree.name.upper(), description_upper)
+            # Use token_set_ratio / fallback _score for partial matching
+            score = _score(payoree.name.upper(), description_upper)
             if score > best_score and score >= 70:  # 70% similarity threshold
                 best_score = score
                 best_match = payoree.name
-        
+        logger.debug(
+            f"Suggest_payoree: best fuzzy match={best_match} score={best_score}"
+        )
         return best_match
-        
+
     except Exception as e:
         logger.warning(f"Error in payoree suggestion for '{description}': {e}")
         return None

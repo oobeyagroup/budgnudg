@@ -175,7 +175,7 @@ class TestBatchPreviewView(TestCase):
             },
         )
 
-        with patch("ingest.views.apply_profile_to_batch") as mock_apply:
+        with patch("ingest.views.views.apply_profile_to_batch") as mock_apply:
             mock_apply.return_value = (2, 0)  # 2 updated, 0 duplicates
 
             response = self.client.get(self.preview_url)
@@ -200,7 +200,7 @@ class TestBatchPreviewView(TestCase):
             },
         )
 
-        with patch("ingest.views.apply_profile_to_batch") as mock_apply:
+        with patch("ingest.views.views.apply_profile_to_batch") as mock_apply:
             mock_apply.return_value = (2, 1)  # 2 updated, 1 duplicate
 
             response = self.client.get(self.preview_url)
@@ -284,7 +284,7 @@ class TestApplyProfileView(TestCase):
 
     def test_apply_profile_assigns_profile_and_processes_batch(self):
         """POST should assign profile and process batch"""
-        with patch("ingest.views.apply_profile_to_batch") as mock_apply:
+        with patch("ingest.views.views.apply_profile_to_batch") as mock_apply:
             mock_apply.return_value = (1, 0)  # 1 updated, 0 duplicates
 
             response = self.client.post(self.apply_url, {"profile_id": self.profile.pk})
@@ -304,7 +304,7 @@ class TestApplyProfileView(TestCase):
 
     def test_apply_profile_with_bank_account_hint(self):
         """POST with bank_account should pass hint to service"""
-        with patch("ingest.views.apply_profile_to_batch") as mock_apply:
+        with patch("ingest.views.views.apply_profile_to_batch") as mock_apply:
             mock_apply.return_value = (1, 0)
 
             response = self.client.post(
@@ -363,7 +363,7 @@ class TestCommitView(TestCase):
 
     def test_commit_view_post_with_bank_account_commits_batch(self):
         """POST with bank_account should commit batch"""
-        with patch("ingest.views.commit_batch") as mock_commit:
+        with patch("ingest.views.views.commit_batch") as mock_commit:
             mock_commit.return_value = (
                 [1],
                 [2],
@@ -379,7 +379,9 @@ class TestCommitView(TestCase):
             assert response.url == reverse("transactions:transactions_list")
 
             # Should call commit_batch
-            mock_commit.assert_called_once_with(self.batch, "Chase Checking")
+            mock_commit.assert_called_once_with(
+                self.batch, "Chase Checking", reverse_amounts=False
+            )
 
             messages = list(get_messages(response.wsgi_request))
             assert any("Imported 1 transactions" in str(m) for m in messages)
@@ -504,7 +506,7 @@ class TestViewIntegration(TestCase):
         preview_url = reverse("ingest:batch_preview", kwargs={"pk": batch.pk})
 
         # Step 3: View preview (should auto-match profile)
-        with patch("ingest.views.apply_profile_to_batch") as mock_apply:
+        with patch("ingest.views.views.apply_profile_to_batch") as mock_apply:
             mock_apply.return_value = (1, 0)
 
             response = self.client.get(preview_url)
@@ -515,7 +517,7 @@ class TestViewIntegration(TestCase):
         # Step 4: Commit batch
         commit_url = reverse("ingest:batch_commit", kwargs={"pk": batch.pk})
 
-        with patch("ingest.views.commit_batch") as mock_commit:
+        with patch("ingest.views.views.commit_batch") as mock_commit:
             mock_commit.return_value = ([1], [], [])
 
             response = self.client.post(commit_url, {"bank_account": "Test Account"})

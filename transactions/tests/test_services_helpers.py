@@ -46,8 +46,9 @@ def test_json_safe_rows_handles_date_and_decimal():
 @pytest.mark.django_db
 def test_is_duplicate_true_when_matching_row_exists():
     # Create a FinancialAccount first
-    bank_account = FinancialAccount.objects.create(
-        name="CHK", description="Test checking account"
+    bank_account, _ = FinancialAccount.objects.get_or_create(
+        name="CHK",
+        defaults={"description": "Test checking account", "column_map": {}},
     )
 
     Transaction.objects.create(
@@ -60,7 +61,7 @@ def test_is_duplicate_true_when_matching_row_exists():
         date=dt.date(2025, 7, 11),
         description="abc",
         amount=Decimal("10.00"),
-        bank_account="CHK",
+        bank_account=bank_account,
     )
     assert H.is_duplicate(data) is True
 
@@ -71,6 +72,8 @@ def test_is_duplicate_false_when_no_match():
         date=dt.date(2025, 7, 11),
         description="abc",
         amount=Decimal("10.00"),
-        bank_account="CHK",
+        bank_account=FinancialAccount.objects.create(
+            name="CHK", description="Test checking account", column_map={}
+        ),
     )
     assert H.is_duplicate(data) is False

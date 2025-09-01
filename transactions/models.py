@@ -403,3 +403,75 @@ class ExcludedSimilarTransaction(models.Model):
 
     def __str__(self):
         return f"Exclude T{self.excluded_transaction.id} from T{self.source_transaction.id} similar list"
+
+
+# -----------------------------------------------------
+class RecurringSeries(models.Model):
+    """Model representing a recurring transaction series."""
+
+    payoree = models.ForeignKey(
+        Payoree,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        help_text="The payoree for this recurring series",
+    )
+    amount_cents = models.IntegerField(help_text="Amount in cents")
+    amount_tolerance_cents = models.IntegerField(
+        default=100, help_text="Tolerance for amount matching in cents"
+    )
+    interval = models.CharField(
+        max_length=20,
+        choices=[
+            ("weekly", "Weekly"),
+            ("biweekly", "Biweekly"),
+            ("monthly", "Monthly"),
+            ("quarterly", "Quarterly"),
+            ("yearly", "Yearly"),
+        ],
+        help_text="Recurrence interval",
+    )
+    confidence = models.FloatField(
+        default=0.0, help_text="Confidence score for this pattern"
+    )
+    first_seen = models.DateField(
+        null=True, blank=True, help_text="Date this pattern was first observed"
+    )
+    last_seen = models.DateField(
+        null=True, blank=True, help_text="Date this pattern was last observed"
+    )
+    next_due = models.DateField(
+        null=True, blank=True, help_text="Next expected occurrence"
+    )
+    active = models.BooleanField(
+        default=True, help_text="Whether this series is still active"
+    )
+    notes = models.TextField(
+        blank=True, default="", help_text="Additional notes about this series"
+    )
+    seed_transaction = models.ForeignKey(
+        "Transaction",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="seeded_series",
+        help_text="The transaction that seeded this series",
+    )
+
+    class Meta:
+        indexes = [
+            models.Index(
+                fields=["payoree", "amount_cents"], name="recurring_payoree_amount_idx"
+            ),
+            models.Index(fields=["next_due"], name="recurring_next_due_idx"),
+            models.Index(fields=["active"], name="recurring_active_idx"),
+        ]
+
+    def __str__(self):
+        payoree_name = self.payoree.name if self.payoree else "Unknown"
+        return f"Recurring: {payoree_name} @ ${self.amount_cents/100:.2f}"
+
+    @property
+    def effective_merchant_key(self):
+        """Backward compatibility property that returns payoree name."""
+        return self.payoree.name if self.payoree else ""

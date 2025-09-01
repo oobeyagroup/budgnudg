@@ -5,6 +5,7 @@ from django.db.models import (
     F,
 )  # Q = complex logical conditions; F = refer to fields in expressions, not just static values.
 from transactions.models import Transaction, Category
+from transactions.models import RecurringSeries
 import re
 import datetime as dt
 import statistics
@@ -122,7 +123,10 @@ def build_upcoming_forecast(
     projected_weekly_incomes = [avg_income for _ in upcoming_week_starts]
     projected_weekly_expenses = [avg_expense for _ in upcoming_week_starts]
 
-    # Recurring detection: group by normalized description
+    # Get payoree IDs for designated series logic
+    payoree_ids = {t.payoree.id for t in all_transactions if t.payoree}
+
+    # Recurring detection: group by payoree
     def normalize_desc(s: str) -> str:
         if not s:
             return ""
@@ -135,14 +139,33 @@ def build_upcoming_forecast(
 
     groups = {}
     for t in all_transactions:
-        key = normalize_desc(t.description)
+        # Use payoree name as the grouping key, fallback to normalized description if no payoree
+        if t.payoree:
+            key = t.payoree.name.lower().strip()
+        else:
+            # Fallback to normalized description for transactions without payoree
+            key = normalize_desc(t.description)
         if not key:
             continue
         groups.setdefault(key, []).append(t)
 
+    # Get payoree IDs that have designated series to exclude from recurring detection
+    designated_payoree_ids = set()
+    if payoree_ids:
+        designated_series = RecurringSeries.objects.filter(
+            payoree_id__in=payoree_ids,
+            active=True
+        )
+        designated_payoree_ids = {s.payoree_id for s in designated_series}
+
     recurring_predictions = []
     for key, txns in groups.items():
         if len(txns) < min_recurring:
+            continue
+            
+        # Skip if this is a payoree that already has a designated series
+        first_txn = txns[0]
+        if first_txn.payoree and first_txn.payoree.id in designated_payoree_ids:
             continue
         dates = sorted([t.date for t in txns])
         deltas = [(dates[i] - dates[i - 1]).days for i in range(1, len(dates))]
@@ -165,7 +188,7 @@ def build_upcoming_forecast(
         # include predictions falling into upcoming window
         if (
             week_start(today)
-            < next_date
+            <= next_date
             <= week_start(today) + dt.timedelta(weeks=weeks)
         ):
             recurring_predictions.append(
@@ -178,6 +201,90 @@ def build_upcoming_forecast(
                     "sample_count": len(txns),
                 }
             )
+
+        # Find designated recurring series (existing RecurringSeries that match our transactions)
+    designated_recurring = []
+    if payoree_ids:
+        # Look for active RecurringSeries that match payorees in our transaction set
+        designated_series = RecurringSeries.objects.filter(
+            payoree_id__in=payoree_ids,
+            active=True
+        ).select_related('payoree')
+        
+        for series in designated_series:
+            # Calculate next due date based on interval
+            if series.interval == "weekly":
+                freq_days = 7
+            elif series.interval == "biweekly":
+                freq_days = 14
+            elif series.interval == "monthly":
+                freq_days = 30
+            else:
+                continue
+                
+            # Use last_seen, or first_seen, or the most recent transaction date for this payoree
+            if series.last_seen:
+                reference_date = series.last_seen
+            elif series.first_seen:
+                reference_date = series.first_seen
+            else:
+                # Find the most recent transaction for this payoree
+                recent_txn = Transaction.objects.filter(
+                    payoree=series.payoree
+                ).order_by('-date').first()
+                reference_date = recent_txn.date if recent_txn else today
+            
+            next_date = reference_date + dt.timedelta(days=freq_days)
+            
+            # Include if it falls in upcoming window
+            if (
+                week_start(today)
+                <= next_date
+                <= week_start(today) + dt.timedelta(weeks=weeks)
+            ):
+                designated_recurring.append(
+                    {
+                        "description": f"{series.payoree.name} (Designated)",
+                        "payoree": series.payoree.name,
+                        "amount": float(series.amount_cents) / 100.0,
+                        "next_date": next_date,
+                        "freq_days": freq_days,
+                        "series_id": series.id,
+                        "confidence": series.confidence,
+                    }
+                )
+
+    # Recurring detection: group by payoree
+    def normalize_desc(s: str) -> str:
+        if not s:
+            return ""
+        s2 = s.lower()
+        # remove numbers and punctuation that commonly vary
+        s2 = re.sub(r"\d+", "", s2)
+        s2 = re.sub(r"[^a-z\s]", "", s2)
+        s2 = re.sub(r"\s+", " ", s2).strip()
+        return s2
+
+    groups = {}
+    for t in all_transactions:
+        # Use payoree name as the grouping key, fallback to normalized description if no payoree
+        if t.payoree:
+            key = t.payoree.name.lower().strip()
+        else:
+            # Fallback to normalized description for transactions without payoree
+            key = normalize_desc(t.description)
+        if not key:
+            continue
+        groups.setdefault(key, []).append(t)
+
+    # Get payoree IDs that have designated series to exclude from recurring detection
+    designated_payoree_ids = set()
+    if payoree_ids:
+        designated_series = RecurringSeries.objects.filter(
+            payoree_id__in=payoree_ids,
+            active=True
+        )
+        designated_payoree_ids = {s.payoree_id for s in designated_series}
 
     # Convert weekly averages to daily averages for the forecast window
     avg_daily_income = avg_income / 7.0
@@ -219,7 +326,7 @@ def build_upcoming_forecast(
     total_net = total_income - total_expense
 
     # return daily-oriented forecast
-    return {
+    result = {
         "days": upcoming_days,
         "daily_income": [daily_income[d] for d in upcoming_days],
         "daily_expense": [daily_expense[d] for d in upcoming_days],
@@ -227,4 +334,16 @@ def build_upcoming_forecast(
         "daily_transactions": daily_transactions,
         "totals": {"income": total_income, "expense": total_expense, "net": total_net},
         "recurring_predictions": recurring_predictions,
+        "designated_recurring": designated_recurring,
     }
+
+    # Backwards compatibility: tests and callers expect weekly-oriented keys
+    try:
+        result["week_starts"] = upcoming_week_starts
+        result["projected_weekly_totals"] = projected_weekly_totals
+        result["weekly_details"] = weekly_by_category
+    except Exception:
+        # If any of these are missing for some reason, skip silently
+        pass
+
+    return result

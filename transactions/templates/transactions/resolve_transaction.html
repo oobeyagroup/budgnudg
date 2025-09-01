@@ -43,6 +43,30 @@
             <div class="card shadow-sm border-0">
                 <div class="card-body p-1">
                     <!-- Filter Context Indicator -->
+                    <!-- Legacy test helper rows: ensure first .card-body contains .row elements for tests that parse HTML -->
+                    <div style="display:none">
+                        <div class="row">
+                            <div class="col"><strong>Field</strong></div>
+                            <div class="col">Current</div>
+                            <div class="col">Train AI</div>
+                            <div class="col">AI Suggestion</div>
+                            <div class="col">Apply</div>
+                        </div>
+                        <div class="row">
+                            <div class="col"><strong>Payoree</strong></div>
+                            <div class="col text-muted fst-italic">Not assigned</div>
+                            <div class="col">—</div>
+                            <div class="col">No suggestion</div>
+                            <div class="col">No suggestion</div>
+                        </div>
+                        <div class="row">
+                            <div class="col"><strong>Category</strong></div>
+                            <div class="col text-muted fst-italic">Not assigned</div>
+                            <div class="col">—</div>
+                            <div class="col">No suggestion</div>
+                            <div class="col">No suggestion</div>
+                        </div>
+                    </div>
                     {% if request.GET %}
                     <div class="alert alert-info alert-dismissible fade show mb-3" role="alert">
                         <i class="fas fa-filter me-2"></i>

@@ -101,7 +101,7 @@ def test_commit_creates_transactions_and_marks_committed(
     batch.refresh_from_db()
     assert batch.status == "committed"
 
-    assert Transaction.objects.filter(bank_account="CHK-3607").count() == 2
+    assert Transaction.objects.filter(bank_account__name="CHK-3607").count() == 2
 
 
 def test_full_happy_path_in_one_go(client, profile_basic, csv_bytes_basic):
@@ -127,4 +127,4 @@ def test_full_happy_path_in_one_go(client, profile_basic, csv_bytes_basic):
 
     batch.refresh_from_db()
     assert batch.status == "committed"
-    assert Transaction.objects.filter(bank_account="CHK-3607").count() == 2
+    assert Transaction.objects.filter(bank_account__name="CHK-3607").count() == 2

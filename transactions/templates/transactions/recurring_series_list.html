@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+
+{% block title %}Recurring Series{% endblock %}
+
+{% block content %}
+<h1>Recurring Series</h1>
+
+<form class="mb-3" method="get">
+  <div class="input-group">
+    <input type="text" name="q" class="form-control" placeholder="Search merchant key" value="{{ q }}">
+    <button class="btn btn-primary" type="submit">Search</button>
+  </div>
+</form>
+
+<table class="table table-striped" id="recurringTable">
+  <thead>
+    <tr>
+      <th>ID</th>
+  <th>Merchant</th>
+      <th>Amount</th>
+      <th>Last Seen</th>
+      <th>Active</th>
+      <th>Seed Txn</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for s in series_list %}
+    <tr>
+      <td>{{ s.id }}</td>
+  <td>{{ s.payoree.name|default:"Unknown" }}</td>
+  <td>${{ s.amount_cents|stringformat:"d"|slice:":-2" }}.{{ s.amount_cents|stringformat:"d"|slice:"-2:" }}</td>
+      <td>{{ s.last_seen }}</td>
+      <td>{{ s.active }}</td>
+      <td>
+        {% if s.seed_transaction %}
+          <a href="{% url 'transactions:edit_transaction' s.seed_transaction.id %}">T{{ s.seed_transaction.id }}</a>
+        {% endif %}
+        <form method="post" action="{% url 'transactions:recurring_update_seed' s.id %}" style="display:inline; margin-left:8px;">
+          {% csrf_token %}
+          <button class="btn btn-sm btn-outline-secondary" type="submit">Update Seed Txn</button>
+        </form>
+      </td>
+    </tr>
+    {% empty %}
+    <tr><td colspan="6">No recurring series found.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% if is_paginated %}
+<nav>
+  <ul class="pagination">
+    {% if page_obj.has_previous %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a></li>
+    {% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}
+    <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a></li>
+    {% endif %}
+  </ul>
+</nav>
+{% endif %}
+
+<script>
+  // Basic DataTables init for pagination and search (optional)
+  $(document).ready(function() {
+    $('#recurringTable').DataTable({
+      pageLength: 50,
+      ordering: true,
+      order: [[3, 'desc']],
+      responsive: true,
+      searching: false
+    });
+  });
+</script>
+{% endblock %}

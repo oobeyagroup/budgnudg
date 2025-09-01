@@ -500,7 +500,7 @@ class TestIntegrationScenarios:
         assert batch.status == "committed"
 
         # Verify final transactions
-        transactions = Transaction.objects.filter(bank_account="Chase Checking")
+        transactions = Transaction.objects.filter(bank_account__name="Chase Checking")
         assert transactions.count() == 2
 
         starbucks_txn = transactions.get(description="STARBUCKS #1234")
