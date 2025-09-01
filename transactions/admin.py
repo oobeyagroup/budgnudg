@@ -12,6 +12,7 @@ from .models import (
     LearnedSubcat,
     LearnedPayoree,
     KeywordRule,
+    RecurringSeries,
 )
 from transactions.utils import trace
 from django.db.models import Exists, OuterRef
@@ -244,3 +245,30 @@ class KeywordRuleAdmin(admin.ModelAdmin):
                 "Optional: Automatically assign this payoree when keyword matches"
             )
         return form
+
+
+
+@admin.register(RecurringSeries)
+class RecurringSeriesAdmin(admin.ModelAdmin):
+    list_display = [
+        "id",
+        "payoree",
+        "merchant_key",
+    "amount_display",
+        "interval",
+        "active",
+        "next_due",
+    ]
+    list_filter = ["active", "interval", "payoree"]
+    search_fields = ["merchant_key", "payoree__name"]
+    readonly_fields = ["first_seen", "last_seen"]
+
+    def amount_display(self, obj):
+        # return decimal dollars
+        try:
+            return f"${obj.amount_cents/100:.2f}"
+        except Exception:
+            return None
+
+    amount_display.short_description = "Amount"
+    amount_display.admin_order_field = "amount_cents"

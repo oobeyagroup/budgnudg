@@ -9,7 +9,7 @@ from transactions.selectors import build_upcoming_forecast
 @pytest.mark.django_db
 def test_selector_suggests_recurring_when_no_series():
     # create three monthly transactions for "Alpha Merchant"
-    pay, _ = Payoree.objects.get_or_create(name="Alpha Pay")
+    pay = Payoree.objects.create(name="Alpha Pay")
     base = timezone.now().date() - dt.timedelta(days=90)
     for i in range(3):
         Transaction.objects.create(
@@ -23,16 +23,7 @@ def test_selector_suggests_recurring_when_no_series():
             payoree=pay,
         )
 
-    # Debug: check what we created
-    txns = Transaction.objects.filter(payoree=pay)
-    print(f"DEBUG: Created {txns.count()} transactions for payoree {pay.name}")
-    for t in txns:
-        print(f"DEBUG: Transaction date: {t.date}")
-
     forecast = build_upcoming_forecast(weeks=4, lookback_weeks=52, min_recurring=3)
-    print(f"DEBUG: Recurring predictions: {len(forecast.get('recurring_predictions', []))}")
-    print(f"DEBUG: Designated recurring: {len(forecast.get('designated_recurring', []))}")
-    
     # detector should suggest at least one recurring prediction
     assert isinstance(forecast, dict)
     assert len(forecast.get("recurring_predictions", [])) >= 1
@@ -60,6 +51,7 @@ def test_selector_marks_designated_when_series_exists():
     # create a RecurringSeries that should match by payoree name
     RecurringSeries.objects.create(
         payoree=pay,
+        merchant_key="beta merchant charge",
         amount_cents=2000,
         interval="monthly",
         confidence=0.9,
@@ -115,7 +107,6 @@ def test_selector_detects_weekly_and_biweekly_frequencies():
 @pytest.mark.django_db
 def test_selector_median_edge_cases():
     pay = Payoree.objects.create(name="Edge Pay")
-
     # helper to run with given deltas list (days between transactions)
     def make_txns(deltas):
         Transaction.objects.all().delete()
@@ -149,31 +140,31 @@ def test_selector_median_edge_cases():
             )
 
     # deltas that should yield median 5 -> weekly
-    make_txns([5, 5])
+    make_txns([5,5])
     f1 = build_upcoming_forecast(weeks=4, lookback_weeks=52, min_recurring=3)
     freqs1 = {r.get("freq_days") for r in f1.get("recurring_predictions", [])}
     assert 7 in freqs1
 
     # deltas that yield median 10 -> weekly
-    make_txns([10, 10])
+    make_txns([10,10])
     f2 = build_upcoming_forecast(weeks=4, lookback_weeks=52, min_recurring=3)
     freqs2 = {r.get("freq_days") for r in f2.get("recurring_predictions", [])}
     assert 7 in freqs2
 
     # deltas that yield median 11 -> biweekly
-    make_txns([11, 11])
+    make_txns([11,11])
     f3 = build_upcoming_forecast(weeks=4, lookback_weeks=52, min_recurring=3)
     freqs3 = {r.get("freq_days") for r in f3.get("recurring_predictions", [])}
     assert 14 in freqs3
 
     # deltas that yield median 18 -> biweekly
-    make_txns([18, 18])
+    make_txns([18,18])
     f4 = build_upcoming_forecast(weeks=4, lookback_weeks=52, min_recurring=3)
     freqs4 = {r.get("freq_days") for r in f4.get("recurring_predictions", [])}
     assert 14 in freqs4
 
     # deltas that yield median 19 -> should be skipped (irregular)
-    make_txns([19, 19])
+    make_txns([19,19])
     f5 = build_upcoming_forecast(weeks=4, lookback_weeks=52, min_recurring=3)
     freqs5 = {r.get("freq_days") for r in f5.get("recurring_predictions", [])}
     # expect no detection for this irregular median

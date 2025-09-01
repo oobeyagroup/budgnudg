@@ -24,7 +24,7 @@ def test_seed_series_creates_entry(client):
 
     assert isinstance(series, RecurringSeries)
     assert series.payoree == pay
-    assert series.payoree is not None
+    assert series.merchant_key is not None
     assert series.amount_cents == 2500
     assert series.seed_transaction_id == txn.id
     # additional field assertions
@@ -58,10 +58,7 @@ def test_seed_series_is_idempotent(client):
     s2 = seed_series_from_transaction(txn)
 
     assert s1.id == s2.id
-    assert (
-        s2.seed_transaction_id == txn.id
-        or s2.seed_transaction_id == s1.seed_transaction_id
-    )
+    assert s2.seed_transaction_id == txn.id or s2.seed_transaction_id == s1.seed_transaction_id
     # last_seen should be >= first_seen
     assert s2.last_seen is not None
     assert s2.first_seen is not None
@@ -70,4 +67,4 @@ def test_seed_series_is_idempotent(client):
     assert abs(s2.confidence - 0.60) < 1e-6
     assert "Seeded" in s2.notes
     assert s2.active is True
-    # End of test file
+        # End of test file

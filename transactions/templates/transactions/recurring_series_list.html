@@ -16,7 +16,7 @@
   <thead>
     <tr>
       <th>ID</th>
-  <th>Merchant</th>
+      <th>Merchant Key</th>
       <th>Amount</th>
       <th>Last Seen</th>
       <th>Active</th>
@@ -27,7 +27,7 @@
     {% for s in series_list %}
     <tr>
       <td>{{ s.id }}</td>
-  <td>{{ s.payoree.name|default:"Unknown" }}</td>
+      <td>{{ s.merchant_key }}</td>
   <td>${{ s.amount_cents|stringformat:"d"|slice:":-2" }}.{{ s.amount_cents|stringformat:"d"|slice:"-2:" }}</td>
       <td>{{ s.last_seen }}</td>
       <td>{{ s.active }}</td>

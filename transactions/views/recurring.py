@@ -14,30 +14,22 @@ from django.utils import timezone
 @method_decorator(trace, name="dispatch")
 class UpdateSeedTxnView(View):
     """Find the most recent Transaction that matches a RecurringSeries
-    (by payoree and amount_cents) and set it as the seed_transaction.
+    (by merchant_key and amount_cents) and set it as the seed_transaction.
     """
-
     def post(self, request, series_id: int):
         series = get_object_or_404(RecurringSeries, pk=series_id)
 
-        # Find most recent transaction with matching payoree and amount.
-        # so comparison logic remains consistent with what created the series.
-        from transactions.utils import get_payoree_name_for_transaction
-        from transactions.services.recurring import cents
+        # Find most recent transaction with matching merchant_key and amount
+        # Use the same helpers as the recurring service so we normalize merchant
+        # keys the same way and compare cents.
+        from transactions.services.recurring import merchant_key_for, cents
 
-        qs = (
-            Transaction.objects.select_related("payoree").all().order_by("-date", "-id")
-        )
+        qs = Transaction.objects.select_related("payoree").all().order_by("-date", "-id")
 
         latest = None
-        series_key = (series.payoree.name if series.payoree else "").strip().lower()
         for txn in qs:
             try:
-                if get_payoree_name_for_transaction(
-                    txn
-                ).strip().lower() == series_key and cents(txn.amount) == (
-                    series.amount_cents or 0
-                ):
+                if merchant_key_for(txn) == (series.merchant_key or "") and cents(txn.amount) == (series.amount_cents or 0):
                     latest = txn
                     break
             except Exception:
@@ -47,11 +39,9 @@ class UpdateSeedTxnView(View):
             series.last_seen = latest.date
             series.save(update_fields=["seed_transaction", "last_seen"])
             from django.contrib import messages
-
             messages.success(request, f"Seed transaction updated to T{latest.id}.")
         else:
             from django.contrib import messages
-
             messages.warning(request, "No matching transaction found to update seed.")
 
         return redirect(request.META.get("HTTP_REFERER") or "/transactions/recurring/")
@@ -64,6 +54,6 @@ class CreateRecurringFromTransactionView(View):
         series = seed_series_from_transaction(txn)
         messages.success(
             request,
-            f"Recurring series created for “{series.payoree.name if series.payoree else 'Unknown'}” at ~${series.amount_cents/100:.2f}.",
+            f"Recurring series created for “{series.merchant_key}” at ~${series.amount_cents/100:.2f}."
         )
         return redirect(request.META.get("HTTP_REFERER") or "/")

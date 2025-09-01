@@ -409,26 +409,34 @@ class ExcludedSimilarTransaction(models.Model):
 class RecurringSeries(models.Model):
     """Model representing a recurring transaction series."""
 
+    INTERVAL_CHOICES = [
+        ("weekly", "Weekly"),
+        ("biweekly", "Biweekly"),
+        ("monthly", "Monthly"),
+        ("quarterly", "Quarterly"),
+        ("yearly", "Yearly"),
+    ]
+
     payoree = models.ForeignKey(
-        Payoree,
+        "Payoree",
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
         help_text="The payoree for this recurring series",
     )
+    merchant_key = models.CharField(
+        max_length=200,
+        db_index=True,
+        help_text="Normalized merchant key for pattern matching"
+    )
     amount_cents = models.IntegerField(help_text="Amount in cents")
     amount_tolerance_cents = models.IntegerField(
         default=100, help_text="Tolerance for amount matching in cents"
     )
+
     interval = models.CharField(
         max_length=20,
-        choices=[
-            ("weekly", "Weekly"),
-            ("biweekly", "Biweekly"),
-            ("monthly", "Monthly"),
-            ("quarterly", "Quarterly"),
-            ("yearly", "Yearly"),
-        ],
+        choices=INTERVAL_CHOICES,
         help_text="Recurrence interval",
     )
     confidence = models.FloatField(
@@ -443,12 +451,15 @@ class RecurringSeries(models.Model):
     next_due = models.DateField(
         null=True, blank=True, help_text="Next expected occurrence"
     )
+
     active = models.BooleanField(
         default=True, help_text="Whether this series is still active"
     )
     notes = models.TextField(
         blank=True, default="", help_text="Additional notes about this series"
     )
+
+    # optional seed transaction for quick traceability
     seed_transaction = models.ForeignKey(
         "Transaction",
         null=True,
@@ -463,15 +474,14 @@ class RecurringSeries(models.Model):
             models.Index(
                 fields=["payoree", "amount_cents"], name="recurring_payoree_amount_idx"
             ),
-            models.Index(fields=["next_due"], name="recurring_next_due_idx"),
-            models.Index(fields=["active"], name="recurring_active_idx"),
+            models.Index(fields=["merchant_key", "amount_cents"]),
+            models.Index(fields=["next_due"]),
+            models.Index(fields=["active"]),
         ]
 
     def __str__(self):
-        payoree_name = self.payoree.name if self.payoree else "Unknown"
-        return f"Recurring: {payoree_name} @ ${self.amount_cents/100:.2f}"
-
-    @property
-    def effective_merchant_key(self):
-        """Backward compatibility property that returns payoree name."""
-        return self.payoree.name if self.payoree else ""
+        try:
+            dollars = f"${self.amount_cents/100:.2f}"
+        except Exception:
+            dollars = str(self.amount_cents)
+        return f"{self.merchant_key} • {self.interval} • {dollars}"

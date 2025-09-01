@@ -47,6 +47,10 @@ from transactions.views.api import (
     SimilarTransactionsAPIView,
     ExcludeSimilarTransactionAPIView,
 )
+from transactions.views.recurring import CreateRecurringFromTransactionView
+from transactions.views.payorees import RecurringSeriesListView
+from transactions.views.recurring import UpdateSeedTxnView
+from transactions.views.test_api import create_test_transaction, check_series_for_seed
 
 app_name = "transactions"
 
@@ -163,6 +167,14 @@ urlpatterns = [
         ExcludeSimilarTransactionAPIView.as_view(),
         name="api_exclude_similar",
     ),
+    path("recurring/from-txn/<int:pk>/", CreateRecurringFromTransactionView.as_view(), name="recurring_from_txn"),
+    path("recurring/", RecurringSeriesListView.as_view(), name="recurring_series_list"),
+    path("recurring/update-seed/<int:series_id>/", UpdateSeedTxnView.as_view(), name="recurring_update_seed"),
+    # Test-only API endpoints (enabled when DEBUG=True or ENABLE_TEST_API=1)
+    path("test-api/create-transaction/", create_test_transaction, name="test_create_transaction"),
+    path("test-api/check-series/<int:txn_id>/", check_series_for_seed, name="test_check_series"),
+    path("test-api/seed-series/<int:txn_id>/", __import__("transactions.views.test_api").views.test_api.seed_series_test_api, name="test_seed_series"),
+    path("test-api/debug-series/<int:txn_id>/", __import__("transactions.views.test_api").views.test_api.debug_list_series_for_txn, name="test_debug_series"),
     # Pattern Management
     path("patterns/", pattern_management, name="pattern_management"),
     path("patterns/<str:pattern_key>/", pattern_detail, name="pattern_detail"),
