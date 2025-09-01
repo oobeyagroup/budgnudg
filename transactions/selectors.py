@@ -309,16 +309,10 @@ def build_upcoming_forecast(
         # RecurringSeries is optional; only import if present in models
         from transactions.models import RecurringSeries
 
-        # Build a list of designated series with normalized keys, payoree name,
+        # Build a list of designated series with payoree name,
         # amount cents and tolerance so we can match by amount within tolerance.
         designated_series = []
         for s in RecurringSeries.objects.filter(active=True):
-            key = None
-            for attr in ("merchant_key", "pattern", "description"):
-                if hasattr(s, attr):
-                    key = getattr(s, attr)
-                    break
-            norm_key = normalize_desc(str(key)) if key else None
             pay_name = None
             if hasattr(s, "payoree") and getattr(s, "payoree"):
                 try:
@@ -327,7 +321,6 @@ def build_upcoming_forecast(
                     pass
             designated_series.append(
                 {
-                    "key": norm_key,
                     "pay": pay_name,
                     "amount_cents": getattr(s, "amount_cents", None),
                     "tolerance": getattr(s, "amount_tolerance_cents", 0),
@@ -352,9 +345,8 @@ def build_upcoming_forecast(
 
         matched = False
         for s in designated_series:
-            key_match = pd and s.get("key") and pd == s.get("key")
             pay_match = pay and s.get("pay") and pay == s.get("pay")
-            if not (key_match or pay_match):
+            if not pay_match:
                 continue
 
             # If we have amount information, apply tolerance matching.

@@ -4,8 +4,6 @@ from decimal import Decimal, ROUND_HALF_UP
 from django.utils import timezone
 
 from transactions.models import Transaction, RecurringSeries
-from transactions.models import Payoree
-from transactions.categorization import extract_merchant_from_description
 
 
 def cents(amount: Decimal | float | int) -> int:
@@ -18,20 +16,19 @@ def cents(amount: Decimal | float | int) -> int:
     return int(round(abs(float(amount)) * 100))
 
 
-def merchant_key_for(txn: Transaction) -> str:
+def payoree_key_for(txn: Transaction) -> str:
     if getattr(txn, "payoree_id", None) and getattr(txn, "payoree", None):
         try:
             return txn.payoree.name.strip().lower()
         except Exception:
             pass
-    return extract_merchant_from_description(txn.description or "").strip().lower() or "unknown"
+    return txn.description.strip().lower() or "unknown"
 
 
 def seed_series_from_transaction(txn: Transaction) -> RecurringSeries:
-    mkey = merchant_key_for(txn)
     bucket = cents(txn.amount)
 
-    existing = RecurringSeries.objects.filter(merchant_key=mkey, amount_cents=bucket).first()
+    existing = RecurringSeries.objects.filter(payoree=txn.payoree, amount_cents=bucket).first()
     if existing:
         if not existing.active:
             existing.active = True
@@ -44,11 +41,10 @@ def seed_series_from_transaction(txn: Transaction) -> RecurringSeries:
         return existing
 
     return RecurringSeries.objects.create(
-        merchant_key=mkey,
+        payoree=txn.payoree,
         amount_cents=bucket,
         interval="monthly",
         confidence=0.60,
-        payoree=txn.payoree,
         first_seen=txn.date or timezone.now().date(),
         last_seen=txn.date or timezone.now().date(),
         next_due=None,

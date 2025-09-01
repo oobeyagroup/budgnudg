@@ -424,11 +424,6 @@ class RecurringSeries(models.Model):
         on_delete=models.SET_NULL,
         help_text="The payoree for this recurring series",
     )
-    merchant_key = models.CharField(
-        max_length=200,
-        db_index=True,
-        help_text="Normalized merchant key for pattern matching"
-    )
     amount_cents = models.IntegerField(help_text="Amount in cents")
     amount_tolerance_cents = models.IntegerField(
         default=100, help_text="Tolerance for amount matching in cents"
@@ -474,7 +469,6 @@ class RecurringSeries(models.Model):
             models.Index(
                 fields=["payoree", "amount_cents"], name="recurring_payoree_amount_idx"
             ),
-            models.Index(fields=["merchant_key", "amount_cents"]),
             models.Index(fields=["next_due"]),
             models.Index(fields=["active"]),
         ]
@@ -484,4 +478,5 @@ class RecurringSeries(models.Model):
             dollars = f"${self.amount_cents/100:.2f}"
         except Exception:
             dollars = str(self.amount_cents)
-        return f"{self.merchant_key} • {self.interval} • {dollars}"
+        payoree_name = self.payoree.name if self.payoree else "Unknown"
+        return f"{payoree_name} • {self.interval} • {dollars}"
