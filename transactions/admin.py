@@ -253,14 +253,13 @@ class RecurringSeriesAdmin(admin.ModelAdmin):
     list_display = [
         "id",
         "payoree",
-        "merchant_key",
-    "amount_display",
+        "amount_display",
         "interval",
         "active",
         "next_due",
     ]
     list_filter = ["active", "interval", "payoree"]
-    search_fields = ["merchant_key", "payoree__name"]
+    search_fields = ["payoree__name"]
     readonly_fields = ["first_seen", "last_seen"]
 
     def amount_display(self, obj):

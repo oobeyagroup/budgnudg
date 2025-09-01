@@ -202,7 +202,7 @@ def build_upcoming_forecast(
                 }
             )
 
-        # Find designated recurring series (existing RecurringSeries that match our transactions)
+    # Find designated recurring series (existing RecurringSeries that match our transactions)
     designated_recurring = []
     if payoree_ids:
         # Look for active RecurringSeries that match payorees in our transaction set
@@ -254,38 +254,6 @@ def build_upcoming_forecast(
                     }
                 )
 
-    # Recurring detection: group by payoree
-    def normalize_desc(s: str) -> str:
-        if not s:
-            return ""
-        s2 = s.lower()
-        # remove numbers and punctuation that commonly vary
-        s2 = re.sub(r"\d+", "", s2)
-        s2 = re.sub(r"[^a-z\s]", "", s2)
-        s2 = re.sub(r"\s+", " ", s2).strip()
-        return s2
-
-    groups = {}
-    for t in all_transactions:
-        # Use payoree name as the grouping key, fallback to normalized description if no payoree
-        if t.payoree:
-            key = t.payoree.name.lower().strip()
-        else:
-            # Fallback to normalized description for transactions without payoree
-            key = normalize_desc(t.description)
-        if not key:
-            continue
-        groups.setdefault(key, []).append(t)
-
-    # Get payoree IDs that have designated series to exclude from recurring detection
-    designated_payoree_ids = set()
-    if payoree_ids:
-        designated_series = RecurringSeries.objects.filter(
-            payoree_id__in=payoree_ids,
-            active=True
-        )
-        designated_payoree_ids = {s.payoree_id for s in designated_series}
-
     # Convert weekly averages to daily averages for the forecast window
     avg_daily_income = avg_income / 7.0
     avg_daily_expense = avg_expense / 7.0
@@ -305,29 +273,24 @@ def build_upcoming_forecast(
     # detector as a recommendation layer while letting user-managed recurrences
     # drive the canonical schedule.
     designated_recurring = []
-    try:
-        # RecurringSeries is optional; only import if present in models
-        from transactions.models import RecurringSeries
-
-        # Build a list of designated series with payoree name,
-        # amount cents and tolerance so we can match by amount within tolerance.
-        designated_series = []
-        for s in RecurringSeries.objects.filter(active=True):
-            pay_name = None
-            if hasattr(s, "payoree") and getattr(s, "payoree"):
-                try:
-                    pay_name = s.payoree.name
-                except Exception:
-                    pass
-            designated_series.append(
-                {
-                    "pay": pay_name,
-                    "amount_cents": getattr(s, "amount_cents", None),
-                    "tolerance": getattr(s, "amount_tolerance_cents", 0),
-                }
-            )
-    except Exception:
-        designated_series = []
+    
+    # Build a list of designated series with payoree name,
+    # amount cents and tolerance so we can match by amount within tolerance.
+    designated_series = []
+    for s in RecurringSeries.objects.filter(active=True):
+        pay_name = None
+        if hasattr(s, "payoree") and getattr(s, "payoree"):
+            try:
+                pay_name = s.payoree.name
+            except Exception:
+                pass
+        designated_series.append(
+            {
+                "pay": pay_name,
+                "amount_cents": getattr(s, "amount_cents", None),
+                "tolerance": getattr(s, "amount_tolerance_cents", 0),
+            }
+        )
 
     # split detected predictions into designated (user-managed) and suggested
     suggested_predictions = []
@@ -401,7 +364,7 @@ def build_upcoming_forecast(
         "daily_transactions": daily_transactions,
         "totals": {"income": total_income, "expense": total_expense, "net": total_net},
         "recurring_predictions": suggested_predictions,
-        "designated_recurring": remaining_designated,
+        "designated_recurring": designated_recurring,
     }
 
     # Backwards compatibility: tests and callers expect weekly-oriented keys
