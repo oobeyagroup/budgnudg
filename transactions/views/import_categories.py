@@ -10,13 +10,13 @@ from transactions.services.helpers import read_uploaded_text
 from transactions.services.categories import import_categories_from_text
 from transactions.utils import trace  # your function decorator
 
+
 class ImportCategoriesView(View):
     template_name = "transactions/import_categories_form.html"
 
     @method_decorator(trace)
     def get(self, request):
         return render(request, self.template_name, {"form": CategoryImportForm()})
-
 
     def post(self, request):
         form = CategoryImportForm(request.POST, request.FILES)
@@ -32,6 +32,6 @@ class ImportCategoriesView(View):
 
         messages.success(
             request,
-            f"Categories imported from {name}: {stats['created']} created, {stats['rows']} rows processed."
+            f"Categories imported from {name}: {stats['created']} created, {stats['rows']} rows processed.",
         )
-        return redirect("categories_list")  # reuse your existing page
+        return redirect("transactions:categories_list")  # reuse your existing page
