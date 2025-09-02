@@ -239,9 +239,9 @@ def get_designated_recurring_series(
             next_date = reference_date + dt.timedelta(days=freq_days)
 
         if (
-            week_start(today)
+            week_start(today) + dt.timedelta(weeks=1)
             <= next_date
-            <= week_start(today) + dt.timedelta(weeks=weeks)
+            <= week_start(today) + dt.timedelta(weeks=weeks + 1)
         ):
             if series.payoree:
                 designated_recurring.append(

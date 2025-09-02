@@ -5,7 +5,7 @@ from datetime import timedelta
 
 
 class Command(BaseCommand):
-    help = 'Update next_due field for RecurringSeries records that have it set to None'
+    help = "Update next_due field for RecurringSeries records that have it set to None"
 
     def handle(self, *args, **options):
         today = timezone.now().date()
@@ -46,9 +46,11 @@ class Command(BaseCommand):
 
                 self.stdout.write(
                     f'Updated {series.payoree.name if series.payoree else "Unknown"}: '
-                    f'next_due set to {next_due}'
+                    f"next_due set to {next_due}"
                 )
 
         self.stdout.write(
-            self.style.SUCCESS(f'Successfully updated {updated_count} RecurringSeries records')
+            self.style.SUCCESS(
+                f"Successfully updated {updated_count} RecurringSeries records"
+            )
         )

@@ -492,6 +492,15 @@ class RecurringSeries(models.Model):
                     days = 30  # default to monthly
 
                 from datetime import timedelta
+
                 self.next_due = reference_date + timedelta(days=days)
 
         super().save(*args, **kwargs)
+
+    def __str__(self):
+        try:
+            dollars = f"${self.amount_cents/100:.2f}"
+        except Exception:
+            dollars = str(self.amount_cents)
+        payoree_name = self.payoree.name if self.payoree else "Unknown"
+        return f"{payoree_name} • {self.interval} • {dollars}"
