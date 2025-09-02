@@ -1,3 +1,4 @@
+from venv import logger
 from django.views import View
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -34,6 +35,8 @@ class UpcomingReportView(View):
             # skip days with no transactions as requested
             if not txs:
                 continue
+            logger.debug(f"Processing transactions for {d}:")
+            logger.debug(f"{txs}")
             # sum transaction amounts for the day
             tx_sum = sum(float(t.get("amount", 0)) for t in txs)
             # determine week start for this day

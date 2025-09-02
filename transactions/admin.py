@@ -247,7 +247,6 @@ class KeywordRuleAdmin(admin.ModelAdmin):
         return form
 
 
-
 @admin.register(RecurringSeries)
 class RecurringSeriesAdmin(admin.ModelAdmin):
     list_display = [

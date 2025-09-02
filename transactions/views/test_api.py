@@ -25,9 +25,15 @@ def create_test_transaction(request):
     # Expect JSON payload or form data with minimal fields
     data = request.POST or request.body
     # Simple extraction, prefer POST form
-    desc = request.POST.get("description") or request.GET.get("description") or "Test Merchant"
+    desc = (
+        request.POST.get("description")
+        or request.GET.get("description")
+        or "Test Merchant"
+    )
     amount = request.POST.get("amount") or request.GET.get("amount") or "-1.00"
-    pay_name = request.POST.get("payoree") or request.GET.get("payoree") or "Test Payoree"
+    pay_name = (
+        request.POST.get("payoree") or request.GET.get("payoree") or "Test Payoree"
+    )
 
     pay, _ = Payoree.objects.get_or_create(name=pay_name)
 
@@ -57,18 +63,20 @@ def check_series_for_seed(request, txn_id: int):
     if exists:
         return JsonResponse({"exists": True})
 
-    # Otherwise, consider a matching series by merchant_key and amount_cents as equivalent
+    # Otherwise, consider a matching series by payoree and amount_cents as equivalent
     try:
         txn = Transaction.objects.get(id=txn_id)
     except Transaction.DoesNotExist:
         return JsonResponse({"exists": False})
 
-    # Use service helpers to compute merchant key and cents
-    from transactions.services.recurring import merchant_key_for, cents
+    # Use service helpers to compute payoree key and cents
+    from transactions.services.recurring import payoree_key_for, cents
 
-    mkey = merchant_key_for(txn)
+    pkey = payoree_key_for(txn)
     bucket = cents(txn.amount)
-    exists = RecurringSeries.objects.filter(merchant_key=mkey, amount_cents=bucket).exists()
+    exists = RecurringSeries.objects.filter(
+        payoree=txn.payoree, amount_cents=bucket
+    ).exists()
     return JsonResponse({"exists": exists})
 
 

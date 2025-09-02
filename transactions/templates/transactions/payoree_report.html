@@ -88,7 +88,7 @@
                         </div>
                         <div class="text-muted">
                             Total: <span class="{% if grand_total_amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
-                                ${{ grand_total_amount|floatformat:2|intcomma }}
+                                <small>$</small>{{ grand_total_amount|floatformat:2|intcomma }}
                             </span>
                         </div>
                     </div>
@@ -124,7 +124,7 @@
                             </td>
                             <td class="amount-cell text-end">
                                 <span class="{% if data.total_amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
-                                    ${{ data.total_amount|floatformat:2|intcomma }}
+                                    <small>$</small>{{ data.total_amount|floatformat:2|intcomma }}
                                 </span>
                             </td>
                             <td class="count-cell text-center">{{ data.count }}</td>
@@ -166,7 +166,7 @@
                                                 <td>{{ txn.description }}</td>
                                                 <td class="text-end">
                                                     <span class="{% if txn.amount >= 0 %}text-success{% else %}text-danger{% endif %}">
-                                                        ${{ txn.amount|floatformat:2|intcomma }}
+                                                        <small>$</small>{{ txn.amount|floatformat:2|intcomma }}
                                                     </span>
                                                 </td>
                                             </tr>
@@ -195,7 +195,7 @@
                                         <strong>
                                             {% if amount != 0 %}
                                                 <span class="{% if amount >= 0 %}text-success-subtle{% else %}text-danger-subtle{% endif %}">
-                                                    ${{ amount|floatformat:0|intcomma }}
+                                                    <small>$</small>{{ amount|floatformat:0|intcomma }}
                                                 </span>
                                             {% else %}
                                                 <span class="text-muted">-</span>

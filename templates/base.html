@@ -12,8 +12,9 @@
  <style>
     body {
         background-color: #F1EDE1; /* Blank Canvas */
+        padding-top: 56px;
     }
-    header {
+    .navbar {
         background-color: #596D69; /* Hidden Gem */
         color: white;
     }
@@ -37,11 +38,56 @@
       text-overflow: ellipsis;
       max-width: 150px;
     }
+    
+    /* Currency formatting utilities */
+    :root {
+      --currency-symbol-size: 0.75rem;
+    }
+    
+    .currency {
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+    
+    .currency::before {
+      content: '$';
+      font-size: var(--currency-symbol-size);
+      margin-right: 0.1em;
+      opacity: 0.8;
+    }
+    
+    .currency-negative {
+      color: #dc3545;
+    }
+    
+    .currency-positive {
+      color: #198754;
+    }
+    
+    .currency-zero {
+      color: #6c757d;
+    }
+    
+    /* Alternative: Explicit currency wrapper */
+    .currency-wrapper {
+      display: inline-flex;
+      align-items: baseline;
+      font-variant-numeric: tabular-nums;
+    }
+    
+    .currency-symbol {
+      font-size: var(--currency-symbol-size);
+      opacity: 0.8;
+      margin-right: 0.1em;
+    }
+    
+    .currency-amount {
+      /* Inherits parent font-size */
+    }
       </style>
-<body>
 
 <header>
-      <nav class="navbar navbar-expand-lg ">
+      <nav class="navbar navbar-expand-lg fixed-top">
       <div class="container-fluid">
         <a class="navbar-brand" href="#">Finance Tool</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load humanize %}
 
 {% block title %}Recurring Series{% endblock %}
 
@@ -16,9 +17,11 @@
   <thead>
     <tr>
       <th>ID</th>
-      <th>Merchant Key</th>
-      <th>Amount</th>
+      <th>Payoree</th>
+      <th class="text-end">Amount</th>
       <th>Last Seen</th>
+      <th>Interval</th>
+      <th>Next Due</th>
       <th>Active</th>
       <th>Seed Txn</th>
     </tr>
@@ -27,9 +30,15 @@
     {% for s in series_list %}
     <tr>
       <td>{{ s.id }}</td>
-      <td>{{ s.merchant_key }}</td>
-  <td>${{ s.amount_cents|stringformat:"d"|slice:":-2" }}.{{ s.amount_cents|stringformat:"d"|slice:"-2:" }}</td>
+      <td>{{ s.payoree.name }}</td>
+      <td class="text-end">
+        <span class="currency {% if s.amount_cents >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+          {{ s.amount_cents|floatformat:0|intcomma }}
+        </span>
+      </td>
       <td>{{ s.last_seen }}</td>
+      <td>{{ s.interval }}</td>
+      <td>{{ s.next_due }}</td>
       <td>{{ s.active }}</td>
       <td>
         {% if s.seed_transaction %}

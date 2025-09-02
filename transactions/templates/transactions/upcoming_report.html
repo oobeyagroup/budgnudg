@@ -1,5 +1,6 @@
 {# Minimal upcoming report template #}
 {% extends "base.html" %}
+{% load humanize %}
 
 {% block content %}
 <h1>Upcoming Forecast ({{ weeks_count }} weeks)</h1>
@@ -9,9 +10,10 @@
 <table class="table table-sm">
     <thead>
         <tr>
-            <th>Date</th>
+            <th style="width: 15%;">Date</th>
+            <th style="width: 10%;">Frequency</th>
             <th>Transactions</th>
-            <th>Amount</th>
+            <th  class="text-end" style="width: 10%;">Amount</th>
         </tr>
     </thead>
     <tbody>
@@ -21,8 +23,13 @@
                     {% if forloop.first %}
                         <td rowspan="{{ row.transactions|length }}">{{ row.date|date:"D Y-m-d" }}</td>
                     {% endif %}
-                    <td>{{ t.payoree|default:t.description }}</td>
-                    <td>{{ t.amount }}</td>
+                    <td>{{ t.freq_days }}</td>
+                    <td>{% if "(Designated)" in t.description %}{{ t.description }}{% else %}{{ t.payoree|default:t.description }}{% endif %}</td>
+                    <td class="text-end">
+                      <span class="currency {% if t.amount_cents >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                        {{ t.amount|floatformat:2|intcomma }}
+                      </span>
+                    </td>
                 </tr>
             {% endfor %}
         {% endfor %}
@@ -31,8 +38,9 @@
         <tr>
             <th>Week total</th>
             <th></th>
-            <th>{{ week.week_total|floatformat:2 }}</th>
             <th></th>
+            <th class="text-end"><small>$</small> {{ week.week_total|floatformat:2 }}</th>
+
         </tr>
     </tfoot>
 </table>

@@ -473,10 +473,25 @@ class RecurringSeries(models.Model):
             models.Index(fields=["active"]),
         ]
 
-    def __str__(self):
-        try:
-            dollars = f"${self.amount_cents/100:.2f}"
-        except Exception:
-            dollars = str(self.amount_cents)
-        payoree_name = self.payoree.name if self.payoree else "Unknown"
-        return f"{payoree_name} • {self.interval} • {dollars}"
+    def save(self, *args, **kwargs):
+        """Set next_due automatically if not set."""
+        if not self.next_due and (self.last_seen or self.first_seen):
+            reference_date = self.last_seen or self.first_seen
+            if reference_date:
+                if self.interval == "weekly":
+                    days = 7
+                elif self.interval == "biweekly":
+                    days = 14
+                elif self.interval == "monthly":
+                    days = 30
+                elif self.interval == "quarterly":
+                    days = 90
+                elif self.interval == "yearly":
+                    days = 365
+                else:
+                    days = 30  # default to monthly
+
+                from datetime import timedelta
+                self.next_due = reference_date + timedelta(days=days)
+
+        super().save(*args, **kwargs)

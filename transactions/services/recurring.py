@@ -11,7 +11,9 @@ def cents(amount: Decimal | float | int) -> int:
     if amount is None:
         return 0
     if isinstance(amount, Decimal):
-        q = (abs(amount) * Decimal("100")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        q = (abs(amount) * Decimal("100")).quantize(
+            Decimal("1"), rounding=ROUND_HALF_UP
+        )
         return int(q)
     return int(round(abs(float(amount)) * 100))
 
@@ -28,7 +30,9 @@ def payoree_key_for(txn: Transaction) -> str:
 def seed_series_from_transaction(txn: Transaction) -> RecurringSeries:
     bucket = cents(txn.amount)
 
-    existing = RecurringSeries.objects.filter(payoree=txn.payoree, amount_cents=bucket).first()
+    existing = RecurringSeries.objects.filter(
+        payoree=txn.payoree, amount_cents=bucket
+    ).first()
     if existing:
         if not existing.active:
             existing.active = True

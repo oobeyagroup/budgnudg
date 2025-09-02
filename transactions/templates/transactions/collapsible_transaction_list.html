@@ -149,7 +149,7 @@
                                         {{ type_data.total_count }} transaction{{ type_data.total_count|pluralize }}
                                     </span>
                                     <span class="{% if type_data.total_amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
-                                        ${{ type_data.total_amount|floatformat:2|intcomma }}
+                                        <small>$</small>{{ type_data.total_amount|floatformat:2|intcomma }}
                                     </span>
                                 </div>
                             </div>
@@ -178,7 +178,7 @@
                                                     {{ category_data.total_count }} transaction{{ category_data.total_count|pluralize }}
                                                 </span>
                                                 <span class="{% if category_data.total_amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
-                                                    ${{ category_data.total_amount|floatformat:2|intcomma }}
+                                                    <small>$</small>{{ category_data.total_amount|floatformat:2|intcomma }}
                                                 </span>
                                             </div>
                                         </div>
@@ -207,7 +207,7 @@
                                                                 {{ subcategory_data.count }} transaction{{ subcategory_data.count|pluralize }}
                                                             </span>
                                                             <span class="{% if subcategory_data.total_amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
-                                                                ${{ subcategory_data.total_amount|floatformat:2|intcomma }}
+                                                                <small>$</small>{{ subcategory_data.total_amount|floatformat:2|intcomma }}
                                                             </span>
                                                         </div>
                                                     </div>
@@ -237,7 +237,7 @@
                                                                         </td>
                                                                         <td class="text-end">
                                                                             <span class="{% if transaction.amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
-                                                                                ${{ transaction.amount|floatformat:2|intcomma }}
+                                                                                <small>$</small>{{ transaction.amount|floatformat:2|intcomma }}
                                                                             </span>
                                                                         </td>
                                                                         <td class="text-center">
