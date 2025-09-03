@@ -321,6 +321,21 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Handle category assignment partial (different field names)
+    const partialCategorySelect = document.getElementById('category');
+    const partialSubcategorySelect = document.getElementById('subcategory');
+    
+    if (partialCategorySelect && partialSubcategorySelect) {
+        partialCategorySelect.addEventListener('change', function() {
+            const categoryId = this.value;
+            if (categoryId && categoryId !== '__new__') {
+                loadPartialSubcategories(categoryId);
+            } else {
+                partialSubcategorySelect.innerHTML = '<option value="">-- Select Subcategory --</option>';
+            }
+        });
+    }
+    
     // Utility functions
     function showValidationError(message) {
         validationMessage.textContent = message;
@@ -358,6 +373,27 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
+    function loadPartialSubcategories(categoryId) {
+        fetch(`/transactions/api/subcategories/${categoryId}/`)
+            .then(response => response.json())
+            .then(data => {
+                const partialSubcategorySelect = document.getElementById('subcategory');
+                if (partialSubcategorySelect) {
+                    partialSubcategorySelect.innerHTML = '<option value="">-- Select Subcategory --</option>';
+                    data.subcategories.forEach(sub => {
+                        const option = document.createElement('option');
+                        option.value = sub.id;
+                        option.textContent = sub.name;
+                        partialSubcategorySelect.appendChild(option);
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading partial subcategories:', error);
+                showToast('error', 'Failed to load subcategories');
+            });
+    }
+    
     // Enhanced utility functions
     function getTransactionId() {
         // Extract transaction ID from URL
@@ -382,23 +418,30 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function applySuggestion(categoryId, subcategoryId) {
-        if (categoryId) {
-            const categorySelect = document.getElementById('id_category');
-            if (categorySelect) {
-                categorySelect.value = categoryId;
-                categorySelect.dispatchEvent(new Event('change'));
-                
-                // Apply subcategory after category loads
-                if (subcategoryId) {
-                    setTimeout(() => {
-                        const subcategorySelect = document.getElementById('id_subcategory');
-                        if (subcategorySelect) {
-                            subcategorySelect.value = subcategoryId;
-                        }
-                    }, 500);
-                }
+        // Try main form fields first
+        let categorySelect = document.getElementById('id_category');
+        let subcategorySelect = document.getElementById('id_subcategory');
+        
+        // If main form fields not found, try partial template fields
+        if (!categorySelect) {
+            categorySelect = document.getElementById('category');
+            subcategorySelect = document.getElementById('subcategory');
+        }
+        
+        if (categorySelect) {
+            categorySelect.value = categoryId;
+            categorySelect.dispatchEvent(new Event('change'));
+            
+            // Apply subcategory after category loads
+            if (subcategoryId) {
+                setTimeout(() => {
+                    if (subcategorySelect) {
+                        subcategorySelect.value = subcategoryId;
+                    }
+                }, 500);
             }
         }
+    }
     }
     
     function loadMoreSimilarTransactions() {

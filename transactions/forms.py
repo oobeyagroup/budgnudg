@@ -45,6 +45,13 @@ class TransactionForm(forms.ModelForm):
 
         self.fields["subcategory"].empty_label = "-- No Subcategory --"
 
+        # Set defaults from payoree if available and fields are empty
+        if self.instance and self.instance.payoree:
+            if not self.initial.get('category') and self.instance.payoree.default_category:
+                self.initial['category'] = self.instance.payoree.default_category
+            if not self.initial.get('subcategory') and self.instance.payoree.default_subcategory:
+                self.initial['subcategory'] = self.instance.payoree.default_subcategory
+
         # Add CSS classes and attributes for better styling and UX
         form_control_class = "form-control"
 

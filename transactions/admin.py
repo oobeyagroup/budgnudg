@@ -100,9 +100,10 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Payoree)
 class PayoreeAdmin(admin.ModelAdmin):
-    list_display = ["name", "transaction_count"]
+    list_display = ["name", "default_category", "default_subcategory", "transaction_count"]
     search_fields = ["name"]
     ordering = ["name"]
+    list_filter = ["default_category", "default_subcategory"]
 
     def get_queryset(self, request):
         """Override queryset to add transaction count annotation for sorting"""

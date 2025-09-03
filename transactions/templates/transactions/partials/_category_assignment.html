@@ -16,7 +16,8 @@
                     <option disabled>────────────────────</option>
                     {% for cat in top_level_categories %}
                         <option value="{{ cat.id }}" 
-                                {% if transaction.category and transaction.category.id == cat.id %}selected{% endif %}>
+                                {% if transaction.category and transaction.category.id == cat.id %}selected{% endif %}
+                                {% if not transaction.category and transaction.payoree and transaction.payoree.default_category and transaction.payoree.default_category.id == cat.id %}selected{% endif %}>
                             {{ cat.name }} ({{ cat.subcategories.all|length }} subcategories)
                         </option>
                     {% endfor %}
@@ -30,6 +31,12 @@
                            placeholder="Enter new category name">
                 </div>
                 <div class="form-text">Select the main category first</div>
+                {% if not transaction.category and transaction.payoree and transaction.payoree.default_category %}
+                    <div class="form-text text-info">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Default category from payoree "{{ transaction.payoree.name }}" applied
+                    </div>
+                {% endif %}
             </div>
             
             <!-- Subcategory Selection -->
@@ -43,6 +50,13 @@
                             <option value="{{ transaction.subcategory.id }}" selected>{{ transaction.subcategory.name }}</option>
                         {% endif %}
                         <!-- Subcategories will be loaded dynamically via JavaScript -->
+                    {% elif transaction.payoree and transaction.payoree.default_category %}
+                        <!-- If no category selected but payoree has default category, show default subcategories -->
+                        <option value="">-- Select Subcategory --</option>
+                        {% if transaction.payoree.default_subcategory %}
+                            <option value="{{ transaction.payoree.default_subcategory.id }}" selected>{{ transaction.payoree.default_subcategory.name }}</option>
+                        {% endif %}
+                        <!-- Additional subcategories will be loaded dynamically via JavaScript -->
                     {% else %}
                         <option value="">-- Select Category First --</option>
                     {% endif %}
@@ -54,6 +68,12 @@
                            placeholder="Enter new subcategory name">
                 </div>
                 <div class="form-text">Choose a specific subcategory for more detail</div>
+                {% if not transaction.subcategory and transaction.payoree and transaction.payoree.default_subcategory %}
+                    <div class="form-text text-info">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Default subcategory from payoree "{{ transaction.payoree.name }}" applied
+                    </div>
+                {% endif %}
             </div>
         </div>
         

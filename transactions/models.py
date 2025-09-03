@@ -13,6 +13,22 @@ class Payoree(models.Model):
         ]
 
     name = models.CharField(max_length=255, unique=True)
+    default_category = models.ForeignKey(
+        'Category', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='payoree_default_categories',
+        help_text="Default category for this payoree"
+    )
+    default_subcategory = models.ForeignKey(
+        'Category', 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name='payoree_default_subcategories',
+        help_text="Default subcategory for this payoree"
+    )
 
     def __str__(self):
         return self.name
