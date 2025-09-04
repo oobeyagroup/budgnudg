@@ -5,6 +5,7 @@ from transactions.models import Payoree
 from transactions.utils import trace
 from transactions.models import RecurringSeries
 
+
 class PayoreesListView(ListView):
     template_name = "transactions/payorees_list.html"
     context_object_name = "payorees"
@@ -36,7 +37,9 @@ class RecurringSeriesListView(ListView):
     paginate_by = 100
 
     def get_queryset(self):
-        qs = RecurringSeries.objects.all().order_by("-last_seen")
+        qs = RecurringSeries.objects.filter(manually_disabled=False).order_by(
+            "-last_seen"
+        )
         q = (self.request.GET.get("q") or "").strip()
         if q:
             qs = qs.filter(merchant_key__icontains=q)

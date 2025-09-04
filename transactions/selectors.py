@@ -182,7 +182,7 @@ def detect_recurring_transactions(
 
         recurring_predictions.append(
             {
-                "description": last_tx.description,
+                "description": f"{last_tx.description} (Detected)",
                 "payoree": (last_tx.payoree.name if last_tx.payoree else None),
                 "amount": float(last_tx.amount),
                 "next_date": next_date,
@@ -206,7 +206,7 @@ def get_designated_recurring_series(
         return []
 
     designated_series = RecurringSeries.objects.filter(
-        payoree_id__in=payoree_ids, active=True
+        payoree_id__in=payoree_ids, active=True, manually_disabled=False
     ).select_related("payoree")
 
     designated_recurring: List[Dict[str, Any]] = []
@@ -236,7 +236,10 @@ def get_designated_recurring_series(
                 )
                 reference_date = recent_txn.date if recent_txn else today
 
+            # Keep adding frequency until we get a date in the future
             next_date = reference_date + dt.timedelta(days=freq_days)
+            while next_date < today:
+                next_date = next_date + dt.timedelta(days=freq_days)
 
         if (
             week_start(today) + dt.timedelta(weeks=1)
@@ -246,7 +249,7 @@ def get_designated_recurring_series(
             if series.payoree:
                 designated_recurring.append(
                     {
-                        "description": f"{series.payoree.name} (Designated)",
+                        "description": f"{series.payoree.name}",
                         "payoree": series.payoree.name,
                         "amount": float(series.amount_cents) / 100.0,
                         "next_date": next_date,
@@ -318,12 +321,46 @@ def build_daily_projections(
     for p in predictions:
         nd = p.get("next_date")
         if nd and nd in daily_transactions:
+            # Create or get RecurringSeries for this prediction if it doesn't exist
+            series_id = p.get("series_id")
+            if not series_id and p.get("payoree"):
+                # Check if there's already a series for this payoree
+                try:
+                    existing_series = RecurringSeries.objects.get(
+                        payoree__name=p.get("payoree"), active=True
+                    )
+                    # If the series exists but is manually disabled, skip this prediction
+                    if existing_series.manually_disabled:
+                        continue
+                    series_id = existing_series.id
+                except RecurringSeries.DoesNotExist:
+                    # Create a new series for detected recurring transactions
+                    try:
+                        from transactions.models import Payoree
+
+                        payoree_obj = Payoree.objects.get(name=p.get("payoree"))
+                        new_series = RecurringSeries.objects.create(
+                            payoree=payoree_obj,
+                            amount_cents=int(
+                                p.get("amount", 0) * 100
+                            ),  # Preserve original sign
+                            interval="monthly",  # Default to monthly, could be improved
+                            confidence=0.5,  # Lower confidence for detected patterns
+                            active=True,
+                            manually_disabled=False,
+                        )
+                        series_id = new_series.id
+                    except Exception:
+                        # If we can't create a series, continue without series_id
+                        pass
+
             tx: Dict[str, Any] = {
                 "date": nd,
                 "amount": p.get("amount", 0),
                 "description": p.get("description"),
                 "payoree": p.get("payoree"),
                 "freq_days": p.get("freq_days"),
+                "series_id": series_id,  # Now includes series_id for both designated and detected
             }
             daily_transactions[nd].append(tx)
 
@@ -379,7 +416,7 @@ def build_upcoming_forecast(
     designated_payoree_ids: Set[int] = set()
     if payoree_ids:
         designated_series = RecurringSeries.objects.filter(
-            payoree_id__in=payoree_ids, active=True
+            payoree_id__in=payoree_ids, active=True, manually_disabled=False
         )
         designated_payoree_ids = {s.payoree_id for s in designated_series}  # type: ignore
 
@@ -393,7 +430,7 @@ def build_upcoming_forecast(
 
     # Build designated series list for matching
     designated_series_list: List[Dict[str, Any]] = []
-    for s in RecurringSeries.objects.filter(active=True):
+    for s in RecurringSeries.objects.filter(active=True, manually_disabled=False):
         pay_name = None
         if hasattr(s, "payoree") and getattr(s, "payoree"):
             try:

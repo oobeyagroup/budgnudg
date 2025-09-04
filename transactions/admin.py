@@ -100,7 +100,12 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Payoree)
 class PayoreeAdmin(admin.ModelAdmin):
-    list_display = ["name", "default_category", "default_subcategory", "transaction_count"]
+    list_display = [
+        "name",
+        "default_category",
+        "default_subcategory",
+        "transaction_count",
+    ]
     search_fields = ["name"]
     ordering = ["name"]
     list_filter = ["default_category", "default_subcategory"]
@@ -256,9 +261,10 @@ class RecurringSeriesAdmin(admin.ModelAdmin):
         "amount_display",
         "interval",
         "active",
+        "manually_disabled",
         "next_due",
     ]
-    list_filter = ["active", "interval", "payoree"]
+    list_filter = ["active", "manually_disabled", "interval", "payoree"]
     search_fields = ["payoree__name"]
     readonly_fields = ["first_seen", "last_seen"]
 

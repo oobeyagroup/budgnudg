@@ -58,6 +58,7 @@ Thumbs.db
 # Backup files
 *.bak
 budgnudg_backup/
+backup*.json
 
 # Temporary analysis files
 

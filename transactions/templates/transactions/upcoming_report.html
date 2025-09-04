@@ -5,6 +5,8 @@
 {% block content %}
 <h1>Upcoming Forecast ({{ weeks_count }} weeks)</h1>
 
+{% csrf_token %}
+
 {% for week in weeks %}
 <h4>Week of {{ week.week_start|date:"Y-m-d" }}</h4>
 <table class="table table-sm">
@@ -12,8 +14,9 @@
         <tr>
             <th style="width: 15%;">Date</th>
             <th style="width: 10%;">Frequency</th>
-            <th>Transactions</th>
-            <th  class="text-end" style="width: 10%;">Amount</th>
+            <th>Transactions <span class="fw-normal text-muted">(detected will be saved as designated recurring unless deleted <i class="fas fa-ban fa-sm text-danger"></i>)</span></th>
+            <th class="text-end" style="width: 10%;">Amount</th>
+            <th style="width: 8%;">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -24,11 +27,21 @@
                         <td rowspan="{{ row.transactions|length }}">{{ row.date|date:"D Y-m-d" }}</td>
                     {% endif %}
                     <td>{{ t.freq_days }}</td>
-                    <td>{% if "(Designated)" in t.description %}{{ t.description }}{% else %}{{ t.payoree|default:t.description }}{% endif %}</td>
+                    <td>{% if "(Designated)" in t.description or "(Detected)" in t.description %}{{ t.description }}{% else %}{{ t.payoree|default:t.description }}{% endif %}</td>
                     <td class="text-end">
-                      <span class="currency {% if t.amount_cents >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                      <span class="currency {% if t.amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
                         {{ t.amount|floatformat:2|intcomma }}
                       </span>
+                    </td>
+                    <td>
+                        {% if t.series_id %}
+                            <button type="button" class="btn btn-sm btn-outline-danger disable-series-btn ms-3"
+                                    data-series-id="{{ t.series_id }}"
+                                    data-payoree="{{ t.payoree|default:t.description }}"
+                                    title="Mark as non-recurring">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        {% endif %}
                     </td>
                 </tr>
             {% endfor %}
@@ -40,9 +53,114 @@
             <th></th>
             <th></th>
             <th class="text-end"><small>$</small> {{ week.week_total|floatformat:2 }}</th>
-
+                <span class="currency {% if week.week_total >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                  {{ week.week_total|floatformat:2|intcomma }}
+                </span>
+            <th></th>
         </tr>
     </tfoot>
 </table>
 {% endfor %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle disable series buttons
+    document.querySelectorAll('.disable-series-btn').forEach(button => {
+        button.addEventListener('click', function() {
+            const seriesId = this.getAttribute('data-series-id');
+            const payoree = this.getAttribute('data-payoree');
+
+            if (confirm(`Are you sure you want to mark "${payoree}" as non-recurring? This will remove it from future upcoming reports.`)) {
+                // Disable the button to prevent double-clicks
+                this.disabled = true;
+                this.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+                // Send request to disable the series
+                fetch('/transactions/report_upcoming/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: `series_id=${seriesId}`
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Handle row removal properly considering rowspan
+                        const row = this.closest('tr');
+                        const tableBody = row.closest('tbody');
+                        
+                        // Check if this row has a date cell (first row in group)
+                        const dateCell = row.querySelector('td[rowspan]');
+                        
+                        if (dateCell) {
+                            // This is the first row in a group with rowspan
+                            const currentRowspan = parseInt(dateCell.getAttribute('rowspan'));
+                            
+                            if (currentRowspan > 2) {
+                                // More than 2 rows left, decrease rowspan
+                                dateCell.setAttribute('rowspan', currentRowspan - 1);
+                                row.remove();
+                            } else if (currentRowspan === 2) {
+                                // Only 1 row will be left, remove rowspan and the row
+                                dateCell.removeAttribute('rowspan');
+                                row.remove();
+                            } else {
+                                // Only this row left, remove it
+                                row.remove();
+                            }
+                        } else {
+                            // This is a continuation row, just remove it
+                            row.remove();
+                        }
+                        
+                        // Check if the table body is now empty
+                        if (!tableBody.querySelector('tr')) {
+                            // Remove the entire table if no rows left
+                            const table = tableBody.closest('table');
+                            table.remove();
+                        }
+                        
+                        showToast('Series marked as non-recurring', 'success');
+                    } else {
+                        // Re-enable the button
+                        this.disabled = false;
+                        this.innerHTML = '<i class="fas fa-ban"></i>';
+                        showToast(data.error || 'Failed to disable series', 'error');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    // Re-enable the button
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-ban"></i>';
+                    showToast('Network error occurred', 'error');
+                });
+            }
+        });
+    });
+
+    function showToast(message, type) {
+        // Simple toast notification
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'success' ? 'success' : 'danger'} alert-dismissible fade show position-fixed`;
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        toast.innerHTML = `
+            <strong>${type === 'success' ? 'Success!' : 'Error!'}</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.body.appendChild(toast);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 5000);
+    }
+});
+</script>
 {% endblock %}

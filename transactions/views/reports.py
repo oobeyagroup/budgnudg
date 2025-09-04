@@ -1,12 +1,15 @@
 from venv import logger
 from django.views import View
 from django.shortcuts import render
+from django.http import JsonResponse
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from transactions.utils import trace
 import datetime as dt
 
 # from transactions.selectors import build_time_span_report, build_income_statement
 from transactions.selectors import build_upcoming_forecast
+from transactions.models import RecurringSeries
 
 
 class UpcomingReportView(View):
@@ -66,6 +69,45 @@ class UpcomingReportView(View):
             "totals": forecast.get("totals", {}),
         }
         return render(request, self.template_name, ctx)
+
+    @method_decorator(csrf_exempt)
+    @method_decorator(trace)
+    def post(self, request):
+        """Handle POST request to disable a recurring series."""
+        try:
+            series_id = request.POST.get("series_id")
+            if not series_id:
+                return JsonResponse(
+                    {"success": False, "error": "Series ID is required"}, status=400
+                )
+
+            # Get the recurring series
+            series = RecurringSeries.objects.get(id=series_id)
+
+            # Mark as manually disabled
+            series.manually_disabled = True
+            series.save()
+
+            return JsonResponse(
+                {
+                    "success": True,
+                    "message": f'Series "{str(series)}" has been disabled',
+                }
+            )
+
+        except RecurringSeries.DoesNotExist:
+            return JsonResponse(
+                {"success": False, "error": "Recurring series not found"}, status=404
+            )
+        except Exception as e:
+            logger.error(f"Error disabling recurring series: {e}")
+            return JsonResponse(
+                {
+                    "success": False,
+                    "error": "An error occurred while disabling the series",
+                },
+                status=500,
+            )
 
 
 class ReportAccountTimeSpanView(View):
