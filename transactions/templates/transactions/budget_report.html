@@ -148,6 +148,9 @@
                             Total: <span class="currency {% if grand_total_amount >= 0 %}currency-positive{% elif grand_total_amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">{{ grand_total_amount|floatformat:2|intcomma }}</span>
                         </div>
                         <div>
+                            <a href="?format=csv" class="btn btn-success btn-sm me-2">
+                                <i class="fas fa-download me-1"></i>Export CSV
+                            </a>
                             <button class="btn btn-outline-primary btn-sm me-2" onclick="expandAll()">
                                 <i class="fas fa-expand-arrows-alt me-1"></i>Expand All
                             </button>
@@ -194,7 +197,7 @@
                                         <strong class="text-capitalize">{{ category_type }}</strong>
                                     </td>
                                     <td class="amount-cell text-end">
-                                        <span class="{% if type_data.total_amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
+                                        <span class="fw-semibold currency {% if grand_total_amount >= 0 %}currency-positive {% elif grand_total_amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">
                                             ${{ type_data.total_amount|floatformat:2|intcomma|intcomma }}
                                         </span>
                                     </td>
@@ -204,7 +207,7 @@
                                             {% with amount=type_data.monthly_totals|lookup:month_key %}
                                             <td class="monthly-column text-end">
                                                 {% if amount != 0 %}
-                                                    <span class="currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ amount|floatformat:0|intcomma }}</span>
+                                                    <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ amount|floatformat:2|intcomma }}</span>
                                                 {% else %}
                                                     <span class="text-muted fst-italic">-</span>
                                                 {% endif %}
@@ -236,8 +239,8 @@
                                                 {% with amount=category_data.monthly_totals|lookup:month_key %}
                                                 <td class="monthly-column text-end">
                                                     {% if amount != 0 %}
-                                                        <span class="{% if amount >= 0 %}text-success {% else %}text-danger {% endif %}">
-                                                            ${{ amount|floatformat:0|intcomma }}
+                                                        <span class="currency {% if category_data.total_amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                                                            ${{ amount|floatformat:2|intcomma }}
                                                         </span>
                                                     {% else %}
                                                         <span class="text-muted fst-italic">-</span>
@@ -272,8 +275,8 @@
                                                     {% with amount=subcategory_data.monthly_totals|lookup:month_key %}
                                                     <td class="monthly-column text-end">
                                                         {% if amount != 0 %}
-                                                            <span class="{% if amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
-                                                                ${{ amount|floatformat:0|intcomma }}
+                                                            <span class="currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                                                                ${{ amount|floatformat:2|intcomma }}
                                                             </span>
                                                         {% else %}
                                                             <span class="text-muted fst-italic">-</span>
@@ -297,8 +300,8 @@
                                                     </a>
                                                 </td>
                                                 <td class="amount-cell text-end">
-                                                    <span class="{% if transaction.amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
-                                                        ${{ transaction.amount|floatformat:2|intcomma|intcomma }}
+                                                    <span class="currency {% if transaction.amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                                                        ${{ transaction.amount|floatformat:2|intcomma }}
                                                     </span>
                                                 </td>
                                                 <td class="count-cell text-center">1</td>
@@ -307,7 +310,7 @@
                                                         {% with transaction_month=transaction.date|date:"Y-m" %}
                                                         <td class="monthly-column text-end">
                                                             {% if transaction_month == month_key %}
-                                                                <span class="{% if transaction.amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
+                                                                <span class="currency {% if transaction.amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
                                                                     ${{ transaction.amount|floatformat:0|intcomma }}
                                                                 </span>
                                                             {% else %}
@@ -343,7 +346,7 @@
                                         <strong>
                                             {% if amount != 0 %}
                                                 <span class="{% if amount >= 0 %}text-success-subtle{% else %}text-danger-subtle{% endif %}">
-                                                    ${{ amount|floatformat:0|intcomma }}
+                                                    ${{ amount|floatformat:2|intcomma }}
                                                 </span>
                                             {% else %}
                                                 <span class="text-muted">-</span>

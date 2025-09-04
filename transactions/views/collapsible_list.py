@@ -1,6 +1,8 @@
 from django.views.generic import TemplateView
 from django.utils.decorators import method_decorator
 from django.db.models import Count, Q
+from django.http import HttpResponse
+import csv
 from transactions.models import Transaction, Category
 from transactions.utils import trace
 from collections import defaultdict
@@ -231,3 +233,50 @@ class CollapsibleTransactionListView(TemplateView):
         )
 
         return context
+
+    @method_decorator(trace)
+    def get(self, request, *args, **kwargs):
+        # Check if CSV export is requested
+        if request.GET.get("format") == "csv":
+            return self.export_csv(request)
+        return super().get(request, *args, **kwargs)
+
+    def export_csv(self, request):
+        """Export budget report data as CSV"""
+        # Get the same data as the template view
+        context = self.get_context_data()
+
+        # Create CSV response
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = 'attachment; filename="budget_report.csv"'
+
+        writer = csv.writer(response)
+
+        # Write header row
+        header = ["Type", "Category", "Total", "Count"]
+        for month in context["months"]:
+            header.append(month["name"])
+        writer.writerow(header)
+
+        # Write data rows for each category
+        for category_type in context["category_type_order"]:
+            if category_type in context["organized_data"]:
+                type_data = context["organized_data"][category_type]
+
+                for category_name, category_data in type_data["categories"].items():
+                    row = [
+                        category_type.title(),
+                        category_name,
+                        f"{category_data['total_amount']:.2f}",
+                        str(category_data["total_count"]),
+                    ]
+
+                    # Add monthly amounts
+                    for month in context["months"]:
+                        month_key = month["date"].strftime("%Y-%m")
+                        amount = category_data["monthly_totals"].get(month_key, 0)
+                        row.append(f"{amount:.2f}" if amount != 0 else "0.00")
+
+                    writer.writerow(row)
+
+        return response
