@@ -1,0 +1,40 @@
+{# templates/transactions/report_budget_nested.html #}
+{% extends "base.html" %}
+
+{% block title %}Budget Report (Nested){% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+  <h2 class="mb-3">Budget Report — {{ year }}</h2>
+
+  <div class="table-responsive">
+    <table class="table table-sm align-middle">
+      <thead class="table-dark">
+        <tr>
+          <th style="min-width: 280px;">Row</th>
+          {% for m in month_labels %}
+            <th class="text-end">{{ m }}</th>
+          {% endfor %}
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {# Top-level rows #}
+        {% for node in nodes %}
+          {% include "transactions/partials/_report_budget_row.html" with node=node level=0 %}
+        {% empty %}
+          <tr><td colspan="{{ month_labels|length|add:'2' }}">No data found.</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr class="table-secondary">
+          <th>Grand Total</th>
+          {# Blank cells to align; leave monthly rollups out or add if you compute them #}
+          {% for _ in month_labels %}<th>GT</th>{% endfor %}
+          <th class="text-end fw-bold">{{ grand_total }}</th>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+{% endblock %}

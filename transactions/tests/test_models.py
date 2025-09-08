@@ -501,3 +501,209 @@ class TestTransactionDisplayMethods:
         )
 
         assert transaction.effective_payoree_display() == "Unknown"
+
+
+class TestNeedsLevel:
+    """Tests for the needs_level field and related methods."""
+
+    def test_primary_needs_level_single_level(self):
+        """Test primary_needs_level with single level assignment."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level={"core": 100},
+        )
+
+        assert transaction.primary_needs_level() == "core"
+
+    def test_primary_needs_level_tie_breaks_to_more_essential(self):
+        """Test that ties in primary_needs_level break to more essential level."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level={"core": 50, "luxury": 50},
+        )
+
+        assert transaction.primary_needs_level() == "core"
+
+    def test_primary_needs_level_highest_percentage_wins(self):
+        """Test that highest percentage wins when no tie."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level={"discretionary": 40, "luxury": 60},
+        )
+
+        assert transaction.primary_needs_level() == "luxury"
+
+    def test_primary_needs_level_empty_dict_returns_uncategorized(self):
+        """Test that empty needs_level returns 'uncategorized'."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level={},
+        )
+
+        assert transaction.primary_needs_level() == "uncategorized"
+
+    def test_primary_needs_level_none_returns_uncategorized(self):
+        """Test that None needs_level returns 'uncategorized'."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level=None,
+        )
+
+        assert transaction.primary_needs_level() == "uncategorized"
+
+    def test_effective_needs_levels_with_data(self):
+        """Test effective_needs_levels returns the stored data."""
+        needs_data = {"critical": 30, "core": 70}
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level=needs_data,
+        )
+
+        assert transaction.effective_needs_levels() == needs_data
+
+    def test_effective_needs_levels_empty_returns_uncategorized(self):
+        """Test effective_needs_levels returns {'uncategorized': 100} for empty/None."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level=None,
+        )
+
+        assert transaction.effective_needs_levels() == {"uncategorized": 100}
+
+    def test_amount_by_needs_level_calculates_correctly(self):
+        """Test amount_by_needs_level calculates dollar allocations correctly."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("1000.00"),
+            account_type="checking",
+            needs_level={"critical": 30, "core": 30, "discretionary": 25, "luxury": 15},
+        )
+
+        expected = {
+            "critical": 300.0,
+            "core": 300.0,
+            "discretionary": 250.0,
+            "luxury": 150.0,
+        }
+        assert transaction.amount_by_needs_level() == expected
+
+    def test_amount_by_needs_level_handles_zero_amount(self):
+        """Test amount_by_needs_level handles zero/None amounts gracefully."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("0.00"),
+            account_type="checking",
+            needs_level={"core": 100},
+        )
+
+        assert transaction.amount_by_needs_level() == {"core": 0.0}
+
+    def test_amount_by_needs_level_handles_none_amount(self):
+        """Test amount_by_needs_level handles None amount gracefully."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level={"core": 100},
+        )
+
+        # Simulate None amount by setting it after creation
+        transaction.amount = None
+        assert transaction.amount_by_needs_level() == {"core": 0.0}
+
+    def test_needs_level_order_constant_exists(self):
+        """Test that NEEDS_LEVEL_ORDER constant is properly defined."""
+        expected_order = [
+            "critical",
+            "core",
+            "lifestyle",
+            "discretionary",
+            "luxury",
+            "deferred",
+        ]
+        assert Transaction.NEEDS_LEVEL_ORDER == expected_order
+
+    def test_primary_needs_level_uses_correct_priority_order(self):
+        """Test that primary_needs_level uses the correct priority order for tie-breaking."""
+        # Test that critical beats core in a tie
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level={"critical": 50, "core": 50},
+        )
+
+        assert transaction.primary_needs_level() == "critical"
+
+    def test_primary_needs_level_with_complex_allocation(self):
+        """Test primary_needs_level with a complex multi-tier allocation."""
+        transaction = Transaction.objects.create(
+            source="test.csv",
+            bank_account=_create_chk_account(),
+            sheet_account="expense",
+            date=dt.date(2025, 1, 15),
+            description="Test transaction",
+            amount=Decimal("100.00"),
+            account_type="checking",
+            needs_level={"critical": 25, "core": 75},
+        )
+
+        assert transaction.primary_needs_level() == "core"

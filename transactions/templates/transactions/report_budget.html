@@ -1,0 +1,13 @@
+{# templates/transactions/report_budget.html #}
+{% extends "base.html" %}
+{% load custom_filters %}
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+  <h2 class="mb-3">{{ title }}</h2>
+
+  {# optional hint/filter UI area could go here #}
+
+  {% include "transactions/partials/_monthly_pivot_table.html" with heading=heading months=months rows=rows %}
+
+{% endblock %}

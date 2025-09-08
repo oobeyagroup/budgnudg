@@ -20,6 +20,30 @@ def apply_transaction_filters(queryset, request):
     if account:
         queryset = queryset.filter(bank_account__name=account)
 
+    # Filter by category
+    category = request.GET.get("category")
+    if category:
+        queryset = queryset.filter(category__id=category)
+
+    # Filter by category type
+    category_type = request.GET.get("category_type")
+    if category_type:
+        queryset = queryset.filter(category__type=category_type)
+
+    # Filter by needs level
+    needs_level = request.GET.get("needs_level")
+    if needs_level:
+        queryset = queryset.filter(needs_level__has_key=needs_level)
+
+    # Filter by date range
+    date_from = request.GET.get("date_from")
+    if date_from:
+        queryset = queryset.filter(date__gte=date_from)
+
+    date_to = request.GET.get("date_to")
+    if date_to:
+        queryset = queryset.filter(date__lte=date_to)
+
     # Filter for uncategorized transactions (missing payoree)
     if request.GET.get("uncategorized") == "1":
         queryset = queryset.filter(Q(payoree__isnull=True) | Q(payoree__name=""))

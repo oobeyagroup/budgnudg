@@ -31,6 +31,7 @@ class TransactionAdmin(admin.ModelAdmin):
         "parent_category",
         "account_type",
         "payoree",
+        "primary_needs_level_display",
         "has_scanned_check",
     ]
     search_fields = ["description", "payoree__name", "bank_account__name"]
@@ -57,11 +58,136 @@ class TransactionAdmin(admin.ModelAdmin):
     has_scanned_check.boolean = True
     has_scanned_check.short_description = "Check image"
 
+    def primary_needs_level_display(self, obj):
+        """Display the primary needs level for this transaction."""
+        if obj.needs_level:
+            primary = obj.primary_needs_level()
+            if len(obj.needs_level) == 1:
+                return primary.title()
+            else:
+                # Show allocation for multi-level
+                allocations = [f"{k.title()}: {v}%" for k, v in obj.needs_level.items()]
+                return f"{primary.title()} ({', '.join(allocations)})"
+        return "—"
+
+    primary_needs_level_display.short_description = "Needs Level"
+
+
+@admin.register(Payoree)
+class PayoreeAdmin(admin.ModelAdmin):
+    list_display = [
+        "name",
+        "default_category",
+        "default_subcategory",
+        "primary_needs_level_display",
+        "transaction_count",
+    ]
+    search_fields = ["name"]
+    list_filter = ["default_category", "default_subcategory"]
+    actions = [
+        "set_needs_level_critical",
+        "set_needs_level_core",
+        "set_needs_level_lifestyle",
+        "set_needs_level_discretionary",
+        "set_needs_level_luxury",
+        "set_needs_level_deferred",
+        "clear_needs_level",
+    ]
+
+    def primary_needs_level_display(self, obj):
+        """Display the primary needs level for this payoree."""
+        if obj.default_needs_level:
+            primary = obj.primary_needs_level()
+            if len(obj.default_needs_level) == 1:
+                return primary.title()
+            else:
+                # Show allocation for multi-level
+                allocations = [
+                    f"{k.title()}: {v}%" for k, v in obj.default_needs_level.items()
+                ]
+                return f"{primary.title()} ({', '.join(allocations)})"
+        return "—"
+
+    primary_needs_level_display.short_description = "Needs Level"
+
+    def transaction_count(self, obj):
+        """Display the number of transactions for this payoree."""
+        return obj.transaction_count
+
+    transaction_count.short_description = "Transactions"
+
+    # Bulk actions for setting needs levels
+    def set_needs_level_critical(self, request, queryset):
+        """Set selected payorees to Critical needs level."""
+        updated = queryset.update(default_needs_level={"critical": 100})
+        self.message_user(
+            request, f"Successfully set {updated} payoree(s) to Critical needs level."
+        )
+
+    set_needs_level_critical.short_description = "Set needs level to Critical 100%%"
+
+    def set_needs_level_core(self, request, queryset):
+        """Set selected payorees to Core needs level."""
+        updated = queryset.update(default_needs_level={"core": 100})
+        self.message_user(
+            request, f"Successfully set {updated} payoree(s) to Core needs level."
+        )
+
+    set_needs_level_core.short_description = "Set needs level to Core 100%%"
+
+    def set_needs_level_lifestyle(self, request, queryset):
+        """Set selected payorees to Lifestyle needs level."""
+        updated = queryset.update(default_needs_level={"lifestyle": 100})
+        self.message_user(
+            request, f"Successfully set {updated} payoree(s) to Lifestyle needs level."
+        )
+
+    set_needs_level_lifestyle.short_description = "Set needs level to Lifestyle 100%%"
+
+    def set_needs_level_discretionary(self, request, queryset):
+        """Set selected payorees to Discretionary needs level."""
+        updated = queryset.update(default_needs_level={"discretionary": 100})
+        self.message_user(
+            request,
+            f"Successfully set {updated} payoree(s) to Discretionary needs level.",
+        )
+
+    set_needs_level_discretionary.short_description = (
+        "Set needs level to Discretionary 100%%"
+    )
+
+    def set_needs_level_luxury(self, request, queryset):
+        """Set selected payorees to Luxury needs level."""
+        updated = queryset.update(default_needs_level={"luxury": 100})
+        self.message_user(
+            request, f"Successfully set {updated} payoree(s) to Luxury needs level."
+        )
+
+    set_needs_level_luxury.short_description = "Set needs level to Luxury 100%%"
+
+    def set_needs_level_deferred(self, request, queryset):
+        """Set selected payorees to Deferred needs level."""
+        updated = queryset.update(default_needs_level={"deferred": 100})
+        self.message_user(
+            request, f"Successfully set {updated} payoree(s) to Deferred needs level."
+        )
+
+    set_needs_level_deferred.short_description = "Set needs level to Deferred 100%%"
+
+    def clear_needs_level(self, request, queryset):
+        """Clear the needs level for selected payorees."""
+        updated = queryset.update(default_needs_level=None)
+        self.message_user(
+            request, f"Successfully cleared needs level for {updated} payoree(s)."
+        )
+
+    clear_needs_level.short_description = "Clear needs level"
+
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = [
-        "name",
+        "id","name",
         "parent",
         "type",
         "category_transaction_count",
@@ -96,33 +222,6 @@ class CategoryAdmin(admin.ModelAdmin):
 
     subcategory_transaction_count.short_description = "Subcategory Transactions"
     subcategory_transaction_count.admin_order_field = "subcategory_count"
-
-
-@admin.register(Payoree)
-class PayoreeAdmin(admin.ModelAdmin):
-    list_display = [
-        "name",
-        "default_category",
-        "default_subcategory",
-        "transaction_count",
-    ]
-    search_fields = ["name"]
-    ordering = ["name"]
-    list_filter = ["default_category", "default_subcategory"]
-
-    def get_queryset(self, request):
-        """Override queryset to add transaction count annotation for sorting"""
-        queryset = super().get_queryset(request)
-        queryset = queryset.annotate(trans_count=Count("transaction", distinct=True))
-        return queryset
-
-    def transaction_count(self, obj):
-        """Count transactions assigned to this payoree"""
-        # Use the annotated value if available, otherwise fall back to direct count
-        return getattr(obj, "trans_count", obj.transaction_set.count())
-
-    transaction_count.short_description = "Transactions"
-    transaction_count.admin_order_field = "trans_count"
 
 
 @admin.register(Tag)

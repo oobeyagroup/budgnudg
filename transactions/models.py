@@ -29,6 +29,11 @@ class Payoree(models.Model):
         related_name="payoree_default_subcategories",
         help_text="Default subcategory for this payoree",
     )
+    default_needs_level = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="Default needs level for this payoree (e.g., {'discretionary': 100})",
+    )
 
     def __str__(self):
         return self.name
@@ -49,6 +54,56 @@ class Payoree(models.Model):
             if cls.normalize_name(payoree.name) == normalized:
                 return payoree
         return None
+
+    def save(self, *args, **kwargs):
+        """Set default needs_level to 100% discretionary if not set."""
+        if not self.default_needs_level:
+            self.default_needs_level = {"discretionary": 100}
+        super().save(*args, **kwargs)
+
+    # Needs level constants and helper methods
+    NEEDS_LEVEL_ORDER = [
+        "critical",  # most essential
+        "core",
+        "lifestyle",
+        "discretionary",
+        "luxury",
+        "deferred",  # least essential
+    ]
+
+    def effective_needs_levels(self):
+        """Always returns a valid dictionary with categories and %."""
+        if not self.default_needs_level:
+            return {"no level defined": 100}
+        return self.default_needs_level
+
+    def primary_needs_level(self):
+        """
+        Returns a single fallback label for a possibly multi-tier allocation,
+        favoring the most essential when tied.
+        """
+        levels = self.effective_needs_levels()
+        if not levels:
+            return "no level defined"
+
+        # Find highest percentage
+        max_pct = max(levels.values())
+
+        # Filter keys with that max value
+        top_levels = [lvl for lvl, pct in levels.items() if pct == max_pct]
+
+        # Return the most essential among them
+        for candidate in self.NEEDS_LEVEL_ORDER:
+            if candidate in top_levels:
+                return candidate
+
+        # Just in case: return first
+        return top_levels[0]
+
+    @property
+    def transaction_count(self):
+        """Get the count of transactions for this payoree."""
+        return self.transaction_set.count()
 
 
 # -----------------------------------------------------
@@ -208,6 +263,20 @@ class Transaction(models.Model):
 
     tags = models.ManyToManyField(Tag, blank=True, related_name="transactions")
 
+    needs_level = models.JSONField(
+        blank=True,
+        null=True,
+        help_text="Single value (e.g., {'core': 100}) or percentage allocation across budget tiers",
+    )
+
+    # Valid needs level values:
+    # 1 Critical Needs: Food, utilities, insurance, medical, taxes. Non-negotiable.
+    # 2 Core Operations: Groceries, transportation, home maintenance. Flexible but vital.
+    # 3 Stable Lifestyle: Reasonable dining out, hobbies, basic tech, gym, gifts.
+    # 4 Discretionary Joy: Travel, entertainment, upscale dining, non-essential upgrades.
+    # 5 Luxury/Aspirational: High-end travel, expensive gear, second home projects.
+    # 6 Deferred Dreams: If a windfall happens—art collection, luxury car, bucket-list trip.
+
     @property
     def scanned_check_or_none(self):
         try:
@@ -292,6 +361,56 @@ class Transaction(models.Model):
             return f"ERROR: {self.categorization_error}"
         else:
             return "Unknown"
+
+    # Needs level constants and helper methods
+    NEEDS_LEVEL_ORDER = [
+        "critical",  # most essential
+        "core",
+        "lifestyle",
+        "discretionary",
+        "luxury",
+        "deferred",  # least essential
+    ]
+
+    def effective_needs_levels(self):
+        """Always returns a valid dictionary with categories and %."""
+        if self.needs_level:
+            return self.needs_level
+        elif self.payoree and self.payoree.default_needs_level:
+            return self.payoree.default_needs_level
+        else:
+            return {"uncategorized": 100}
+
+    def amount_by_needs_level(self):
+        """Returns dollar allocation by needs level."""
+        amount = self.amount or 0
+        return {
+            level: round(amount * pct / 100, 2)
+            for level, pct in self.effective_needs_levels().items()
+        }
+
+    def primary_needs_level(self):
+        """
+        Returns a single fallback label for a possibly multi-tier allocation,
+        favoring the most essential when tied.
+        """
+        levels = self.effective_needs_levels()
+        if not levels:
+            return "uncategorized"
+
+        # Find highest percentage
+        max_pct = max(levels.values())
+
+        # Filter keys with that max value
+        top_levels = [lvl for lvl, pct in levels.items() if pct == max_pct]
+
+        # Return the most essential among them
+        for candidate in self.NEEDS_LEVEL_ORDER:
+            if candidate in top_levels:
+                return candidate
+
+        # Just in case: return first
+        return top_levels[0]
 
 
 # transactions/models.py

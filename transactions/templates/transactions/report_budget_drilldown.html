@@ -1,0 +1,68 @@
+{# templates/transactions/report_budget_drilldown.html #}
+{% extends "base.html" %}
+
+{% block title %}Budget Drilldown — {{ category.name }} / {{ subcat.name }} ({{ year }}){% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+  <div class="d-flex align-items-center justify-content-between">
+    <h2 class="mb-3">
+      Budget Drilldown — {{ category.name }} / {{ subcat.name }} ({{ year }})
+    </h2>
+    <div>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'transactions:report_budget_nested' %}?year={{ year }}">← Back to Budget</a>
+    </div>
+  </div>
+
+  <div class="table-responsive mb-4">
+    <table class="table table-sm align-middle">
+      <thead class="table-dark">
+        <tr>
+          {% for m in month_labels %}
+            <th class="text-end">{{ m }}</th>
+          {% endfor %}
+          <th class="text-end">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          {% for v in month_values %}
+            <td class="text-end">{{ v }}</td>
+          {% endfor %}
+          <td class="text-end fw-bold">{{ grand_total }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h5 class="mb-2">Transactions</h5>
+  <div class="table-responsive">
+    <table class="table table-striped table-bordered table-sm">
+      <thead class="table-light">
+        <tr>
+          <th style="min-width: 120px;">Date</th>
+          <th>Description</th>
+          <th style="min-width: 180px;">Payoree</th>
+          <th class="text-end" style="min-width: 120px;">Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in transactions %}
+          <tr>
+            <td>{{ t.date }}</td>
+            <td>{{ t.description }}</td>
+            <td>
+                {% if t.payoree %}
+                    {{ t.payoree.name }}
+                {% endif %}
+            </td>
+            <td class="text-end">{{ t.amount }}</td>
+          </tr>
+        {% empty %}
+          <tr><td colspan="4" class="text-center text-muted">No transactions found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

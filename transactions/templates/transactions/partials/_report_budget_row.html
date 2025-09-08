@@ -1,0 +1,23 @@
+{% load custom_filters %}
+{% load humanize %}
+
+{% for child in node.children %}
+  {% include "transactions/partials/_report_budget_row.html" with node=child level=node.level month_labels=month_labels %}
+{% endfor %}
+
+{# Row for this node #}
+<tr>
+  <td style="padding-left: {{ level|mult:20 }}px;">
+    <strong>{{ node.label }}</strong>
+  </td>
+  {% for cell in node.cells %}
+    <td class="text-end">
+      {% if cell != 0 %}
+        <span class="currency {% if cell >= 0 %}currency-positive {% elif cell < 0 %}currency-negative{% else %}currency-zero{% endif %}">
+            ${{ cell|floatformat:2|intcomma }}
+        </span>
+      {% endif %}
+    </td>
+  {% endfor %}
+  <td class="text-end"><strong>{{ node.row_total|floatformat:2 }}</strong></td>
+</tr>

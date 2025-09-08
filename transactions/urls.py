@@ -5,8 +5,9 @@ from django.urls import path
 from transactions.views.import_categories import ImportCategoriesView
 from transactions.views.transactions_list import TransactionListView
 from transactions.views.collapsible_list import CollapsibleTransactionListView
+from transactions.views.needs_level_report import NeedsLevelReportView
 from transactions.views.dashboard import DashboardView
-from transactions.views.payorees import PayoreesListView
+from transactions.views.payorees import PayoreesListView, PayoreeEditView
 from transactions.views.categorize import CategorizeTransactionView
 
 # Legacy uncategorized view import - replaced with filters on transaction list
@@ -51,6 +52,8 @@ from transactions.views.recurring import CreateRecurringFromTransactionView
 from transactions.views.payorees import RecurringSeriesListView
 from transactions.views.recurring import UpdateSeedTxnView
 from transactions.views.test_api import create_test_transaction, check_series_for_seed
+from transactions.views.reports import BudgetMonthlyReport2
+from transactions.views.report_budget import BudgetNestedReportView, BudgetDrilldownView
 
 app_name = "transactions"
 
@@ -66,6 +69,16 @@ urlpatterns = [
         ).views.payoree_detail.PayoreeDetailView.as_view(),
         name="payoree_detail",
     ),
+    path("reports/budget2/", BudgetMonthlyReport2.as_view(), name="report_budget"),
+    path(
+        "reports/budget/", BudgetNestedReportView.as_view(), name="report_budget_nested"
+    ),
+    path(
+        "reports/budget/subcat/<int:subcat_id>/",
+        BudgetDrilldownView.as_view(),
+        name="report_budget_drilldown",
+    ),
+    path("payoree/<int:pk>/edit/", PayoreeEditView.as_view(), name="payoree_edit"),
     path("payorees/", PayoreesListView.as_view(), name="payorees_list"),
     path("categories/", CategoriesListView.as_view(), name="categories_list"),
     path(
@@ -119,6 +132,12 @@ urlpatterns = [
         CollapsibleTransactionListView.as_view(),
         name="collapsible_transaction_list",
     ),
+    # Needs level report (CBV)
+    path(
+        "needs-level-report/",
+        NeedsLevelReportView.as_view(),
+        name="needs_level_report",
+    ),
     # Transaction edit
     path("edit/<int:pk>/", TransactionEditView.as_view(), name="edit_transaction"),
     # Legacy uncategorized view - replaced with filters on transaction list
@@ -167,14 +186,40 @@ urlpatterns = [
         ExcludeSimilarTransactionAPIView.as_view(),
         name="api_exclude_similar",
     ),
-    path("recurring/from-txn/<int:pk>/", CreateRecurringFromTransactionView.as_view(), name="recurring_from_txn"),
+    path(
+        "recurring/from-txn/<int:pk>/",
+        CreateRecurringFromTransactionView.as_view(),
+        name="recurring_from_txn",
+    ),
     path("recurring/", RecurringSeriesListView.as_view(), name="recurring_series_list"),
-    path("recurring/update-seed/<int:series_id>/", UpdateSeedTxnView.as_view(), name="recurring_update_seed"),
+    path(
+        "recurring/update-seed/<int:series_id>/",
+        UpdateSeedTxnView.as_view(),
+        name="recurring_update_seed",
+    ),
     # Test-only API endpoints (enabled when DEBUG=True or ENABLE_TEST_API=1)
-    path("test-api/create-transaction/", create_test_transaction, name="test_create_transaction"),
-    path("test-api/check-series/<int:txn_id>/", check_series_for_seed, name="test_check_series"),
-    path("test-api/seed-series/<int:txn_id>/", __import__("transactions.views.test_api").views.test_api.seed_series_test_api, name="test_seed_series"),
-    path("test-api/debug-series/<int:txn_id>/", __import__("transactions.views.test_api").views.test_api.debug_list_series_for_txn, name="test_debug_series"),
+    path(
+        "test-api/create-transaction/",
+        create_test_transaction,
+        name="test_create_transaction",
+    ),
+    path(
+        "test-api/check-series/<int:txn_id>/",
+        check_series_for_seed,
+        name="test_check_series",
+    ),
+    path(
+        "test-api/seed-series/<int:txn_id>/",
+        __import__("transactions.views.test_api").views.test_api.seed_series_test_api,
+        name="test_seed_series",
+    ),
+    path(
+        "test-api/debug-series/<int:txn_id>/",
+        __import__(
+            "transactions.views.test_api"
+        ).views.test_api.debug_list_series_for_txn,
+        name="test_debug_series",
+    ),
     # Pattern Management
     path("patterns/", pattern_management, name="pattern_management"),
     path("patterns/<str:pattern_key>/", pattern_detail, name="pattern_detail"),

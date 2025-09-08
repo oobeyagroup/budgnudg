@@ -1,0 +1,24 @@
+{# templates/partials/monthly_pivot_table.html #}
+{% load custom_filters %}
+<table class="table table-striped table-sm">
+  <thead>
+    <tr>
+      <th>{{ heading|default:"Group" }}</th>
+      {% for m in months %}
+        <th class="text-end">{{ m|date:"M y" }}</th>
+      {% endfor %}
+      <th class="text-end">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for r in rows %}
+      <tr>
+        <td>{{ r.dimension|default:"—" }}</td>
+        {% for m in months %}
+          <td class="text-end">{{ r|get_item:m|floatformat:2 }}</td>
+        {% endfor %}
+        <td class="text-end fw-semibold">{{ r.total|floatformat:2 }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>

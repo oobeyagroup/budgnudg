@@ -165,6 +165,156 @@
                                     </div>
                                 </div>
 
+                                <!-- Needs Level -->
+                                <div class="mb-3">
+                                    <label class="form-label">Budget Priority Level</label>
+                                    <small class="form-text text-muted mb-2">{{ form.needs_level.help_text }}</small>
+                                    
+                                    <!-- Current Value Display -->
+                                    {% if transaction.effective_needs_levels %}
+                                        <div class="mb-2 current-needs-level-display">
+                                            <small class="text-muted">
+                                                <strong>Current:</strong> 
+                                                {% for level, percentage in transaction.effective_needs_levels.items %}
+                                                    {{ level|title }}: {{ percentage }}%
+                                                    {% if not forloop.last %}, {% endif %}
+                                                {% endfor %}
+                                                {% if transaction.needs_level %}
+                                                    <em>(Custom)</em>
+                                                {% else %}
+                                                    <em>(From Payoree)</em>
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <!-- Hidden form field for needs_level -->
+                                    <input type="hidden" name="needs_level" id="id_needs_level" 
+                                           value='{{ transaction.needs_level|default:""|escapejs }}'>
+                                    
+                                    <!-- Quick Selection Buttons -->
+                                    <div class="mb-3">
+                                        <div class="row g-2">
+                                            <div class="col-auto">
+                                                <button type="button" class="btn btn-outline-danger btn-sm needs-level-btn" 
+                                                        data-level="critical">
+                                                    <i class="fas fa-exclamation-triangle"></i> Critical
+                                                </button>
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="button" class="btn btn-outline-warning btn-sm needs-level-btn" 
+                                                        data-level="core">
+                                                    <i class="fas fa-home"></i> Core
+                                                </button>
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="button" class="btn btn-outline-info btn-sm needs-level-btn" 
+                                                        data-level="lifestyle">
+                                                    <i class="fas fa-heart"></i> Lifestyle
+                                                </button>
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="button" class="btn btn-outline-success btn-sm needs-level-btn" 
+                                                        data-level="discretionary">
+                                                    <i class="fas fa-gift"></i> Discretionary
+                                                </button>
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="button" class="btn btn-outline-secondary btn-sm needs-level-btn" 
+                                                        data-level="luxury">
+                                                    <i class="fas fa-star"></i> Luxury
+                                                </button>
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="button" class="btn btn-outline-dark btn-sm needs-level-btn" 
+                                                        data-level="deferred">
+                                                    <i class="fas fa-clock"></i> Deferred
+                                                </button>
+                                            </div>
+                                            <div class="col-auto">
+                                                <button type="button" class="btn btn-outline-light btn-sm" 
+                                                        id="clear-needs-level">
+                                                    <i class="fas fa-times"></i> Clear
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Advanced Multi-Level Allocation -->
+                                    <div class="card" id="advanced-needs-level" style="display: none;">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">
+                                                <i class="fas fa-sliders-h"></i> Advanced Allocation
+                                                <button type="button" class="btn btn-sm btn-outline-secondary float-end" 
+                                                        id="toggle-advanced">
+                                                    <i class="fas fa-chevron-up"></i> Hide
+                                                </button>
+                                            </h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row g-3">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Critical (%)</label>
+                                                    <input type="number" class="form-control allocation-input" 
+                                                           data-level="critical" min="0" max="100" step="5" value="0">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Core (%)</label>
+                                                    <input type="number" class="form-control allocation-input" 
+                                                           data-level="core" min="0" max="100" step="5" value="0">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Lifestyle (%)</label>
+                                                    <input type="number" class="form-control allocation-input" 
+                                                           data-level="lifestyle" min="0" max="100" step="5" value="0">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Discretionary (%)</label>
+                                                    <input type="number" class="form-control allocation-input" 
+                                                           data-level="discretionary" min="0" max="100" step="5" value="0">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Luxury (%)</label>
+                                                    <input type="number" class="form-control allocation-input" 
+                                                           data-level="luxury" min="0" max="100" step="5" value="0">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Deferred (%)</label>
+                                                    <input type="number" class="form-control allocation-input" 
+                                                           data-level="deferred" min="0" max="100" step="5" value="0">
+                                                </div>
+                                            </div>
+                                            <div class="mt-3">
+                                                <small class="text-muted" id="allocation-total">Total: 0%</small>
+                                                <button type="button" class="btn btn-sm btn-outline-primary ms-2" 
+                                                        id="apply-allocation">
+                                                    Apply Allocation
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Show Advanced Button -->
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-link btn-sm p-0" id="show-advanced">
+                                            <i class="fas fa-sliders-h"></i> Advanced Multi-Level Allocation
+                                        </button>
+                                    </div>
+                                    
+                                    {% if form.needs_level.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.needs_level.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <!-- Save Button -->
+                                    <div class="mt-3 d-flex justify-content-end">
+                                        <button type="submit" class="btn btn-success btn-sm" id="save-needs-level">
+                                            <i class="fas fa-save"></i> Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <!-- Memo -->
                                 <div class="mb-3">
                                     <label for="{{ form.memo.id_for_label }}" class="form-label">
@@ -289,8 +439,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (categoryField && subcategoryField) {
         categoryField.addEventListener('change', function() {
             const categoryId = this.value;
+            const currentSubcategoryId = subcategoryField.value;
             
-            // Clear subcategory options
+            // Clear subcategory options but preserve current value temporarily
+            const currentValue = subcategoryField.value;
             subcategoryField.innerHTML = '<option value="">-- No Subcategory --</option>';
             
             if (categoryId) {
@@ -303,9 +455,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                 const option = document.createElement('option');
                                 option.value = subcategory.id;
                                 option.textContent = subcategory.name;
+                                if (subcategory.id == currentValue) {
+                                    option.selected = true;
+                                }
                                 subcategoryField.appendChild(option);
                             });
                         }
+                        // If no subcategories match the current value, it will remain empty
                     })
                     .catch(error => {
                         console.error('Error fetching subcategories:', error);
@@ -325,6 +481,334 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Needs Level Editing Functionality
+    const needsLevelField = document.getElementById('id_needs_level');
+    const needsLevelButtons = document.querySelectorAll('.needs-level-btn');
+    const clearButton = document.getElementById('clear-needs-level');
+    const showAdvancedButton = document.getElementById('show-advanced');
+    const advancedSection = document.getElementById('advanced-needs-level');
+    const toggleAdvancedButton = document.getElementById('toggle-advanced');
+    const allocationInputs = document.querySelectorAll('.allocation-input');
+    const applyAllocationButton = document.getElementById('apply-allocation');
+    const allocationTotal = document.getElementById('allocation-total');
+    
+    // Load existing needs level data
+    function loadExistingNeedsLevel() {
+        const currentValue = needsLevelField.value;
+        if (currentValue) {
+            try {
+                const data = JSON.parse(currentValue);
+                
+                // If it's a single level, highlight the button
+                if (Object.keys(data).length === 1) {
+                    const level = Object.keys(data)[0];
+                    const button = document.querySelector(`[data-level="${level}"]`);
+                    if (button) {
+                        button.classList.remove('btn-outline-danger', 'btn-outline-warning', 'btn-outline-info', 'btn-outline-success', 'btn-outline-secondary', 'btn-outline-dark');
+                        button.classList.add('btn-primary');
+                    }
+                } else {
+                    // Multi-level, load into advanced section
+                    Object.entries(data).forEach(([level, percentage]) => {
+                        const input = document.querySelector(`[data-level="${level}"]`);
+                        if (input) {
+                            input.value = percentage;
+                        }
+                    });
+                    updateAllocationTotal();
+                    advancedSection.style.display = 'block';
+                    showAdvancedButton.style.display = 'none';
+                }
+            } catch (e) {
+                console.error('Error parsing existing needs level:', e);
+            }
+        }
+    }
+    
+    // Handle quick selection buttons
+    needsLevelButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const level = this.dataset.level;
+            const needsLevelData = { [level]: 100 };
+            
+            // Update hidden field
+            needsLevelField.value = JSON.stringify(needsLevelData);
+            
+            // Update button states
+            needsLevelButtons.forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add(btn.dataset.level === 'critical' ? 'btn-outline-danger' :
+                                 btn.dataset.level === 'core' ? 'btn-outline-warning' :
+                                 btn.dataset.level === 'lifestyle' ? 'btn-outline-info' :
+                                 btn.dataset.level === 'discretionary' ? 'btn-outline-success' :
+                                 btn.dataset.level === 'luxury' ? 'btn-outline-secondary' :
+                                 'btn-outline-dark');
+            });
+            
+            this.classList.remove('btn-outline-danger', 'btn-outline-warning', 'btn-outline-info', 'btn-outline-success', 'btn-outline-secondary', 'btn-outline-dark');
+            this.classList.add('btn-primary');
+            
+            // Hide advanced section if visible
+            advancedSection.style.display = 'none';
+            showAdvancedButton.style.display = 'block';
+            
+            // Auto-save the change
+            saveNeedsLevel();
+        });
+    });
+    
+    // Handle clear button
+    clearButton.addEventListener('click', function() {
+        needsLevelField.value = '';
+        
+        // Reset button states
+        needsLevelButtons.forEach(btn => {
+            btn.classList.remove('btn-primary');
+            btn.classList.add(btn.dataset.level === 'critical' ? 'btn-outline-danger' :
+                             btn.dataset.level === 'core' ? 'btn-outline-warning' :
+                             btn.dataset.level === 'lifestyle' ? 'btn-outline-info' :
+                             btn.dataset.level === 'discretionary' ? 'btn-outline-success' :
+                             btn.dataset.level === 'luxury' ? 'btn-outline-secondary' :
+                             'btn-outline-dark');
+        });
+        
+        // Clear allocation inputs
+        allocationInputs.forEach(input => input.value = '0');
+        updateAllocationTotal();
+        
+        // Hide advanced section
+        advancedSection.style.display = 'none';
+        showAdvancedButton.style.display = 'block';
+        
+        // Auto-save the change
+        saveNeedsLevel();
+    });
+    
+    // Handle show advanced button
+    showAdvancedButton.addEventListener('click', function() {
+        advancedSection.style.display = 'block';
+        this.style.display = 'none';
+    });
+    
+    // Handle toggle advanced button
+    toggleAdvancedButton.addEventListener('click', function() {
+        advancedSection.style.display = 'none';
+        showAdvancedButton.style.display = 'block';
+    });
+    
+    // Handle allocation input changes
+    allocationInputs.forEach(input => {
+        input.addEventListener('input', updateAllocationTotal);
+    });
+    
+    // Update allocation total
+    function updateAllocationTotal() {
+        let total = 0;
+        allocationInputs.forEach(input => {
+            total += parseInt(input.value) || 0;
+        });
+        
+        allocationTotal.textContent = `Total: ${total}%`;
+        
+        if (total === 100) {
+            allocationTotal.className = 'text-success';
+        } else if (total === 0) {
+            allocationTotal.className = 'text-muted';
+        } else {
+            allocationTotal.className = 'text-warning';
+        }
+    }
+    
+    // Save needs level changes
+    function saveNeedsLevel() {
+        const saveButton = document.getElementById('save-needs-level');
+        const originalText = saveButton.innerHTML;
+        
+        // Show loading state
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+        
+        // Create form data for AJAX submission
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+        formData.append('needs_level', needsLevelField.value);
+        
+        // Add all form fields to preserve existing values
+        const allFields = ['date', 'description', 'amount', 'bank_account', 'payoree', 'category', 'subcategory', 'memo'];
+        allFields.forEach(fieldName => {
+            const field = document.querySelector(`[name=${fieldName}]`);
+            if (field) {
+                formData.append(fieldName, field.value);
+            }
+        });
+        
+        // Submit via AJAX
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update current value display
+                updateCurrentValueDisplay();
+                
+                // Show success message
+                showSuccessMessage('Needs level updated successfully!');
+                
+                // Reset button state
+                saveButton.disabled = false;
+                saveButton.innerHTML = originalText;
+            } else {
+                // Handle errors
+                console.error('Save failed:', data.errors);
+                showErrorMessage('Failed to save needs level. Please try again.');
+                
+                // Reset button state
+                saveButton.disabled = false;
+                saveButton.innerHTML = originalText;
+            }
+        })
+        .catch(error => {
+            console.error('Save error:', error);
+            showErrorMessage('An error occurred while saving. Please try again.');
+            
+            // Reset button state
+            saveButton.disabled = false;
+            saveButton.innerHTML = originalText;
+        });
+    }
+    
+    // Update current value display
+    function updateCurrentValueDisplay() {
+        const currentValue = needsLevelField.value;
+        const currentDisplay = document.querySelector('.current-needs-level-display');
+        
+        if (currentValue) {
+            try {
+                const data = JSON.parse(currentValue);
+                let displayText = '';
+                Object.entries(data).forEach(([level, percentage]) => {
+                    displayText += `${level.charAt(0).toUpperCase() + level.slice(1)}: ${percentage}%, `;
+                });
+                displayText = displayText.slice(0, -2); // Remove trailing comma and space
+                
+                currentDisplay.innerHTML = `<strong>Current:</strong> ${displayText} <em>(Custom)</em>`;
+            } catch (e) {
+                currentDisplay.innerHTML = '<strong>Current:</strong> <em>Invalid data</em>';
+            }
+        } else {
+            // Show payoree default if available
+            const payoreeDefault = '{{ transaction.payoree.default_needs_level|default:""|escapejs }}';
+            if (payoreeDefault) {
+                try {
+                    const data = JSON.parse(payoreeDefault);
+                    let displayText = '';
+                    Object.entries(data).forEach(([level, percentage]) => {
+                        displayText += `${level.charAt(0).toUpperCase() + level.slice(1)}: ${percentage}%, `;
+                    });
+                    displayText = displayText.slice(0, -2);
+                    
+                    currentDisplay.innerHTML = `<strong>Current:</strong> ${displayText} <em>(From Payoree)</em>`;
+                } catch (e) {
+                    currentDisplay.innerHTML = '<strong>Current:</strong> <em>No needs level set</em>';
+                }
+            } else {
+                currentDisplay.innerHTML = '<strong>Current:</strong> <em>No needs level set</em>';
+            }
+        }
+    }
+    
+    // Show success message
+    function showSuccessMessage(message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            <i class="fas fa-check-circle"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 3000);
+    }
+    
+    // Show error message
+    function showErrorMessage(message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show position-fixed';
+        alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+        alertDiv.innerHTML = `
+            <i class="fas fa-exclamation-triangle"></i> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(alertDiv);
+        
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+    
+    // Handle save button click
+    const saveButton = document.getElementById('save-needs-level');
+    if (saveButton) {
+        saveButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            saveNeedsLevel();
+        });
+    }
+    
+    // Handle apply allocation button
+    applyAllocationButton.addEventListener('click', function() {
+        const allocationData = {};
+        let hasValues = false;
+        
+        allocationInputs.forEach(input => {
+            const value = parseInt(input.value) || 0;
+            if (value > 0) {
+                allocationData[input.dataset.level] = value;
+                hasValues = true;
+            }
+        });
+        
+        if (hasValues) {
+            needsLevelField.value = JSON.stringify(allocationData);
+            
+            // Reset button states (no single button selected for multi-level)
+            needsLevelButtons.forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add(btn.dataset.level === 'critical' ? 'btn-outline-danger' :
+                                 btn.dataset.level === 'core' ? 'btn-outline-warning' :
+                                 btn.dataset.level === 'lifestyle' ? 'btn-outline-info' :
+                                 btn.dataset.level === 'discretionary' ? 'btn-outline-success' :
+                                 btn.dataset.level === 'luxury' ? 'btn-outline-secondary' :
+                                 'btn-outline-dark');
+            });
+            
+            // Auto-save the change
+            saveNeedsLevel();
+        } else {
+            needsLevelField.value = '';
+        }
+    });
+    
+    // Initialize
+    loadExistingNeedsLevel();
+    updateAllocationTotal();
 });
 </script>
 {% endblock %}

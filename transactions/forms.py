@@ -1,5 +1,5 @@
 from django import forms
-from .models import Transaction, Category
+from .models import Transaction, Category, Payoree
 from django.utils.decorators import method_decorator
 from transactions.utils import trace
 import logging
@@ -100,6 +100,10 @@ class TransactionForm(forms.ModelForm):
             }
         )
 
+        # Initialize needs_level field with current value for display
+        if self.instance and self.instance.needs_level:
+            self.initial["needs_level"] = self.instance.needs_level
+
     class Meta:
         model = Transaction
         fields = [
@@ -110,6 +114,7 @@ class TransactionForm(forms.ModelForm):
             "payoree",
             "category",
             "subcategory",
+            "needs_level",
             "memo",
         ]
         widgets = {
@@ -129,6 +134,7 @@ class TransactionForm(forms.ModelForm):
             "payoree": "The person or business involved in this transaction",
             "category": "Main category for this transaction",
             "subcategory": "Optional subcategory (depends on main category)",
+            "needs_level": "Budget priority level - single value (e.g., {'core': 100}) or percentage allocation across tiers",
             "memo": "Additional notes or details about this transaction",
         }
 
@@ -230,3 +236,75 @@ class TransactionReviewForm(forms.Form):
         required=False,
         widget=forms.Textarea(attrs={"class": "form-control", "rows": 2}),
     )
+
+
+class PayoreeForm(forms.ModelForm):
+    """Form for editing payoree details including defaults."""
+
+    NEEDS_LEVEL_CHOICES = [
+        ("critical", "Critical Needs (Food, utilities, insurance, medical, taxes)"),
+        ("core", "Core Operations (Groceries, transportation, home maintenance)"),
+        ("lifestyle", "Stable Lifestyle (Dining out, hobbies, basic tech, gym)"),
+        ("discretionary", "Discretionary Joy (Travel, entertainment, upscale dining)"),
+        ("luxury", "Luxury/Aspirational (High-end travel, expensive gear)"),
+        ("deferred", "Deferred Dreams (Windfall items, bucket-list trips)"),
+    ]
+
+    default_needs_level_key = forms.ChoiceField(
+        choices=NEEDS_LEVEL_CHOICES,
+        required=False,
+        label="Default Needs Level",
+        help_text="Primary needs level for transactions with this payoree",
+        widget=forms.Select(attrs={"class": "form-control"}),
+    )
+
+    class Meta:
+        model = Payoree
+        fields = ["name", "default_category", "default_subcategory"]
+        widgets = {
+            "name": forms.TextInput(attrs={"class": "form-control"}),
+            "default_category": forms.Select(attrs={"class": "form-control"}),
+            "default_subcategory": forms.Select(attrs={"class": "form-control"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Set up category choices (top-level only)
+        self.fields["default_category"].queryset = Category.objects.filter(
+            parent=None
+        ).order_by("name")
+        self.fields["default_category"].empty_label = "-- Select Category --"
+
+        # Set up subcategory choices based on current category
+        if self.instance and self.instance.default_category:
+            self.fields["default_subcategory"].queryset = Category.objects.filter(
+                parent=self.instance.default_category
+            ).order_by("name")
+        else:
+            self.fields["default_subcategory"].queryset = Category.objects.none()
+
+        self.fields["default_subcategory"].empty_label = "-- No Subcategory --"
+
+        # Set the default needs level key from the instance
+        if self.instance and self.instance.default_needs_level:
+            # Get the primary needs level key
+            primary_level = self.instance.primary_needs_level()
+            if primary_level in dict(self.NEEDS_LEVEL_CHOICES):
+                self.fields["default_needs_level_key"].initial = primary_level
+
+    def save(self, commit=True):
+        """Save the payoree with updated needs level."""
+        instance = super().save(commit=False)
+
+        # Update the needs level based on the selected key
+        needs_level_key = self.cleaned_data.get("default_needs_level_key")
+        if needs_level_key:
+            instance.default_needs_level = {needs_level_key: 100}
+        elif not instance.default_needs_level:
+            # Set default if none exists
+            instance.default_needs_level = {"discretionary": 100}
+
+        if commit:
+            instance.save()
+        return instance

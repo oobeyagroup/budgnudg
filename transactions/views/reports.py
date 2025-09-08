@@ -11,6 +11,11 @@ import datetime as dt
 from transactions.selectors import build_upcoming_forecast
 from transactions.models import RecurringSeries
 
+from datetime import date
+from django.views.generic import TemplateView
+from django.db.models import Q
+from transactions.reporting.pivot import MonthlyPivot, MonthlyPivotSpec
+
 
 class UpcomingReportView(View):
     template_name = "transactions/upcoming_report.html"
@@ -138,3 +143,29 @@ class ReportIncomeStatementView(View):
             # "report": build_income_statement()
         }
         return render(request, self.template_name, ctx)
+
+
+class BudgetMonthlyReport2(TemplateView):
+    template_name = "transactions/report_budget.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        # Example: show expense categories only (amount < 0), current year
+        spec = MonthlyPivotSpec(
+            dimension_expr="subcategory__parent__name",  # top-level category name
+            metric_expr="amount",
+            filters=Q(amount__lt=0),
+            start=date(date.today().year, 1, 1),
+        )
+        months, rows = MonthlyPivot(spec).run()
+
+        ctx.update({
+            "months": months,
+            "rows": rows,
+            "heading": "Category",
+            "title": "Budget (Monthly, by Category)",
+        })
+        return ctx
+    
+    

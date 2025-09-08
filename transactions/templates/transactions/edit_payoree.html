@@ -1,0 +1,253 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Edit Payoree: {{ payoree.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header with Navigation -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">Edit Payoree</h1>
+                    <p class="text-muted mb-0">Update payoree details and default categorization</p>
+                </div>
+                <div>
+                    <a href="{% url 'transactions:payorees_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to List
+                    </a>
+                </div>
+            </div>
+
+            <!-- Navigation Buttons -->
+            <div class="mb-4">
+                <div class="btn-group" role="group">
+                    {% if prev_payoree %}
+                    <a href="{% url 'transactions:payoree_edit' prev_payoree.pk %}" class="btn btn-outline-primary">
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </a>
+                    {% else %}
+                    <button class="btn btn-outline-secondary" disabled>
+                        <i class="fas fa-chevron-left"></i> Previous
+                    </button>
+                    {% endif %}
+
+                    <div class="btn btn-secondary">
+                        {{ current_index }} of {{ total_payorees }}
+                    </div>
+
+                    {% if next_payoree %}
+                    <a href="{% url 'transactions:payoree_edit' next_payoree.pk %}" class="btn btn-outline-primary">
+                        Next <i class="fas fa-chevron-right"></i>
+                    </a>
+                    {% else %}
+                    <button class="btn btn-outline-secondary" disabled>
+                        Next <i class="fas fa-chevron-right"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Payoree Edit Form -->
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">Payoree Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="payoree-edit-form">
+                                {% csrf_token %}
+
+                                <!-- Payoree Name -->
+                                <div class="mb-3">
+                                    <label for="{{ form.name.id_for_label }}" class="form-label">
+                                        {{ form.name.label }}
+                                        {% if form.name.field.required %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    {{ form.name }}
+                                    {% if form.name.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.name.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    {% if form.name.help_text %}
+                                        <small class="form-text text-muted">{{ form.name.help_text }}</small>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Default Needs Level -->
+                                <div class="mb-3">
+                                    <label for="{{ form.default_needs_level_key.id_for_label }}" class="form-label">
+                                        {{ form.default_needs_level_key.label }}
+                                        {% if form.default_needs_level_key.field.required %}<span class="text-danger">*</span>{% endif %}
+                                    </label>
+                                    {{ form.default_needs_level_key }}
+                                    {% if form.default_needs_level_key.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.default_needs_level_key.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    {% if form.default_needs_level_key.help_text %}
+                                        <small class="form-text text-muted">{{ form.default_needs_level_key.help_text }}</small>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Default Category -->
+                                <div class="mb-3">
+                                    <label for="{{ form.default_category.id_for_label }}" class="form-label">
+                                        {{ form.default_category.label }}
+                                    </label>
+                                    {{ form.default_category }}
+                                    {% if form.default_category.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.default_category.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    {% if form.default_category.help_text %}
+                                        <small class="form-text text-muted">{{ form.default_category.help_text }}</small>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Default Subcategory -->
+                                <div class="mb-3">
+                                    <label for="{{ form.default_subcategory.id_for_label }}" class="form-label">
+                                        {{ form.default_subcategory.label }}
+                                    </label>
+                                    {{ form.default_subcategory }}
+                                    {% if form.default_subcategory.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.default_subcategory.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    {% if form.default_subcategory.help_text %}
+                                        <small class="form-text text-muted">{{ form.default_subcategory.help_text }}</small>
+                                    {% endif %}
+                                </div>
+
+                                <!-- Form Errors -->
+                                {% if form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        {{ form.non_field_errors }}
+                                    </div>
+                                {% endif %}
+
+                                <!-- Form Actions -->
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save"></i> Save Changes
+                                        </button>
+                                        <a href="{% url 'transactions:payorees_list' %}" class="btn btn-secondary ms-2">
+                                            Cancel
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <small class="text-muted">
+                                            <span class="text-danger">*</span> Required fields
+                                        </small>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payoree Info Sidebar -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">Payoree Info</h6>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row">
+                                <dt class="col-sm-4">ID:</dt>
+                                <dd class="col-sm-8">{{ payoree.id }}</dd>
+
+                                <dt class="col-sm-4">Transactions:</dt>
+                                <dd class="col-sm-8">{{ payoree.transaction_count|default:0 }}</dd>
+
+                                {% if payoree.default_category %}
+                                <dt class="col-sm-4">Default Category:</dt>
+                                <dd class="col-sm-8">{{ payoree.default_category.name }}</dd>
+                                {% endif %}
+
+                                {% if payoree.default_subcategory %}
+                                <dt class="col-sm-4">Default Subcategory:</dt>
+                                <dd class="col-sm-8">{{ payoree.default_subcategory.name }}</dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">Quick Actions</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'transactions:payoree_detail' payoree.pk %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-list"></i> View Transactions
+                                </a>
+                                <a href="{% url 'transactions:payoree_report' %}" class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-chart-bar"></i> Payoree Report
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('payoree-edit-form');
+    const categoryField = document.getElementById('id_default_category');
+    const subcategoryField = document.getElementById('id_default_subcategory');
+
+    // Handle form submission
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            }
+        });
+    }
+
+    // Handle dynamic subcategory loading
+    if (categoryField && subcategoryField) {
+        categoryField.addEventListener('change', function() {
+            const categoryId = this.value;
+
+            // Clear subcategory options
+            subcategoryField.innerHTML = '<option value="">-- Select Subcategory --</option>';
+
+            if (categoryId) {
+                // Fetch subcategories for selected category
+                fetch(`{% url 'transactions:api_subcategories' category_id=0 %}`.replace('0', categoryId))
+                    .then(response => response.json())
+                    .then(data => {
+                        data.forEach(subcategory => {
+                            const option = document.createElement('option');
+                            option.value = subcategory.id;
+                            option.textContent = subcategory.name;
+                            subcategoryField.appendChild(option);
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading subcategories:', error);
+                    });
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
