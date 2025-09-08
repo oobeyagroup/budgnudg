@@ -1,9 +1,8 @@
 {% load custom_filters %}
-{% load humanize %}
 
 {# Row for this node #}
 <tr class="{% if node.is_intermediate %}table-secondary{% endif %}">
-  <td style="padding-left: {{ level|mult:20 }}px;">
+  <td style="padding-left: {{ level|mul:20 }}px;">
     {% if node.is_intermediate %}
       <i class="fas fa-folder me-2 text-primary"></i>
       <strong class="text-primary">{{ node.label }}</strong>
@@ -15,16 +14,10 @@
   </td>
   {% for cell in node.cells %}
     <td class="text-end">
-      {% if cell != 0 %}
-        {% if node.is_intermediate %}
-          <span class="currency text-primary fw-semibold {% if cell >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
-            ${{ cell|floatformat:2|intcomma }}
-          </span>
-        {% else %}
-          <span class="currency {% if cell >= 0 %}currency-positive {% elif cell < 0 %}currency-negative{% else %}currency-zero{% endif %}">
-            ${{ cell|floatformat:2|intcomma }}
-          </span>
-        {% endif %}
+      {% if node.is_intermediate %}
+        <strong class="text-primary">{{ cell|floatformat:2 }}</strong>
+      {% else %}
+        {{ cell|floatformat:2 }}
       {% endif %}
     </td>
   {% endfor %}
@@ -32,12 +25,12 @@
     {% if node.is_intermediate %}
       <strong class="text-primary">{{ node.row_total|floatformat:2 }}</strong>
     {% else %}
-      <strong>{{ node.row_total|floatformat:2 }}</strong>
+      {{ node.row_total|floatformat:2 }}
     {% endif %}
   </td>
 </tr>
 
 {# Recursively include children #}
 {% for child in node.children %}
-  {% include "transactions/partials/_report_budget_row.html" with node=child level=node.level|add:1 %}
+  {% include "transactions/_report_budget_row.html" with node=child level=node.level|add:1 %}
 {% endfor %}

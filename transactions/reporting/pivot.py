@@ -24,12 +24,14 @@ class MonthlyPivot:
     def __init__(self, spec: MonthlyPivotSpec):
         self.spec = spec
 
+    @method_decorator(trace)
     def months_range(self, qs) -> list[date]:
         qs = qs.annotate(m=TruncMonth("date")).values("m").order_by("m").distinct()
         if self.spec.start: qs = qs.filter(date__gte=self.spec.start)
         if self.spec.end: qs = qs.filter(date__lt=self.spec.end)
         return [row["m"] for row in qs]
 
+    @method_decorator(trace)
     def run(self) -> tuple[list[date], list[dict]]:
         qs = Transaction.objects.all()
         if self.spec.filters:

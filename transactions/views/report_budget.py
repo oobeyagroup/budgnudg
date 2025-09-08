@@ -14,6 +14,9 @@ from django.db.models.functions import ExtractMonth
 from transactions.reporting.nested_pivot import NestedPivotSpec, nested_budget_data
 from transactions.models import Category, Transaction
 
+from django.utils.decorators import method_decorator
+from transactions.utils import trace
+
 
 def _safe_sum(values: list[Any] | None) -> Decimal:
     if not values:
@@ -48,6 +51,7 @@ def _annotate_totals(node: dict) -> None:
 class BudgetNestedReportView(View):
     template_name = "transactions/report_budget_nested.html"
 
+    @method_decorator(trace)
     def get(self, request):
         year = int(request.GET.get("year", date.today().year))
 
@@ -87,6 +91,7 @@ class BudgetNestedReportView(View):
         }
         return render(request, self.template_name, context)
 
+    @method_decorator(trace)
     def _tree_to_nodes(self, tree: dict, level: int = 0) -> list[dict]:
         """Convert nested tree dict to list of nodes for template."""
         nodes = []
@@ -95,24 +100,37 @@ class BudgetNestedReportView(View):
                 continue  # Skip None keys
             if isinstance(value, dict):
                 if "__cells__" in value:
-                    # This is a leaf node
+                    # This node has cells (either leaf or intermediate with totals)
                     node = {
                         "label": str(key),
                         "cells": value["__cells__"],
                         "children": [],
                         "level": level,
+                        "is_intermediate": value.get("__is_intermediate__", False),
                     }
                     if "__extra__" in value:
                         node["extra"] = value["__extra__"]
+
+                    # Recursively get children (excluding special keys)
+                    children = []
+                    for child_key, child_value in value.items():
+                        if not child_key.startswith("__"):
+                            child_nodes = self._tree_to_nodes(
+                                {child_key: child_value}, level + 1
+                            )
+                            children.extend(child_nodes)
+
+                    node["children"] = children
                     nodes.append(node)
                 else:
-                    # This is an intermediate node
+                    # This is an intermediate node without cells (shouldn't happen with new logic)
                     children = self._tree_to_nodes(value, level + 1)
                     node = {
                         "label": str(key),
-                        "cells": [],  # Intermediate nodes don't have their own cells
+                        "cells": [],  # No cells
                         "children": children,
                         "level": level,
+                        "is_intermediate": True,
                     }
                     nodes.append(node)
         return nodes
@@ -126,6 +144,7 @@ class BudgetDrilldownView(View):
 
     template_name = "transactions/report_budget_drilldown.html"
 
+    @method_decorator(trace)
     def get(self, request, *args, **kwargs):
         subcat_id = kwargs.get("subcat_id")
         if not subcat_id:

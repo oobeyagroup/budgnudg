@@ -24,7 +24,6 @@ class UpcomingReportView(View):
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
-    @method_decorator(trace)
     def get(self, request):
         weeks = int(request.GET.get("weeks", 4))
         forecast = build_upcoming_forecast(weeks=weeks)
@@ -122,7 +121,6 @@ class ReportAccountTimeSpanView(View):
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
-    @method_decorator(trace)
     def get(self, request):
         ctx = {
             # "report": build_time_span_report()
@@ -137,7 +135,6 @@ class ReportIncomeStatementView(View):
     def dispatch(self, request, *args, **kwargs):
         return super().dispatch(request, *args, **kwargs)
 
-    @method_decorator(trace)
     def get(self, request):
         ctx = {
             # "report": build_income_statement()
@@ -148,6 +145,7 @@ class ReportIncomeStatementView(View):
 class BudgetMonthlyReport2(TemplateView):
     template_name = "transactions/report_budget.html"
 
+    @method_decorator(trace)
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
 
