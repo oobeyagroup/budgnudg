@@ -2,14 +2,18 @@
 {% load humanize %}
 
 {# Row for this node #}
-<tr class="{% if node.is_intermediate %}table-secondary{% endif %}">
-  <td style="padding-left: {{ level|mult:20 }}px;">
+<tr id="header-{{ parent_label|slugify }}-{{ parent_level }}"
+   {% if node.is_intermediate %}
+    class="collapsible-header"
+    data-bs-toggle="collapse"
+    data-bs-target="#tbody-{{ node.label|slugify }}-{{ node.level }}"
+    aria-expanded="false"
+    {% endif %}>
+  <td class="border border-left align-middle" style="padding-left: {{ level|mult:20 }}px;">
     {% if node.is_intermediate %}
-      <i class="fas fa-folder me-2 text-primary"></i>
-      <strong class="text-primary">{{ node.label }}</strong>
-      <small class="text-muted">(total)</small>
+     <i class="fas fa-folder me-2 text-primary"></i>
+      <span class="text-primary">{{ node.label }}</span><small>(total)</small>
     {% else %}
-      <i class="fas fa-file me-2 text-muted"></i>
       {{ node.label }}
     {% endif %}
   </td>
@@ -17,12 +21,12 @@
     <td class="text-end">
       {% if cell != 0 %}
         {% if node.is_intermediate %}
-          <span class="currency text-primary fw-semibold {% if cell >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
-            ${{ cell|floatformat:2|intcomma }}
+          <span class="currency text-primary {% if cell >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+            {{ cell|floatformat:2|intcomma }}
           </span>
         {% else %}
           <span class="currency {% if cell >= 0 %}currency-positive {% elif cell < 0 %}currency-negative{% else %}currency-zero{% endif %}">
-            ${{ cell|floatformat:2|intcomma }}
+            {{ cell|floatformat:2|intcomma }}
           </span>
         {% endif %}
       {% endif %}
@@ -37,7 +41,12 @@
   </td>
 </tr>
 
-{# Recursively include children #}
-{% for child in node.children %}
-  {% include "transactions/partials/_report_budget_row.html" with node=child level=node.level|add:1 %}
-{% endfor %}
+{# Children content in separate tbody #}
+{% if node.children %}
+<tbody class="collapse" id="tbody-{{ node.label|slugify }}-{{ node.level }}">
+  {# Recursively include children #}
+  {% for child in node.children %}
+    {% include "transactions/partials/_report_budget_row.html" with node=child level=node.level|add:1 parent_level=node.level parent_label=node.label %}
+  {% endfor %}
+</tbody>
+{% endif %}  

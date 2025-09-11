@@ -147,3 +147,54 @@ def apply_profile_to_batch(batch: ImportBatch, profile, bank_account_hint: str =
         batch.save(update_fields=["profile", "status"])
 
     return updated, dup_count
+```
+## Collapsing
+
+  BUDGET REPORT COLLAPSE/EXPAND HTML/CSS STRUCTURE
+  ===============================================
+
+  This template creates a hierarchical tree structure for budget reports with Bootstrap collapse functionality.
+
+  HIERARCHICAL STRUCTURE:
+  - Category Type Level (e.g., Income, Expense) - Always expanded
+  - Category Level (e.g., Salary, Auto) - Collapsible headers
+  - Subcategory Level (e.g., Gas, Insurance) - Collapsible headers
+  - Transaction Level - Always collapsed, shown only when parent is expanded
+
+  BOOTSTRAP COLLAPSE CLASSES:
+  - 'collapsible-header': Custom CSS class for styling clickable headers (cursor, hover effects)
+  - 'collapse': Bootstrap class making elements hideable/showable
+  - 'show': Bootstrap class making collapsed content initially visible (used on top-level containers)
+
+  DATA ATTRIBUTES (Bootstrap Collapse Triggers):
+  - 'data-bs-toggle="collapse"': Enables click-to-toggle behavior
+  - 'data-bs-target="#tbody-{slugified-label}-{level}"': Targets entire <tbody> sections
+  - 'aria-expanded="false"': Accessibility attribute for screen readers
+
+  ID GENERATION:
+  - Format: "tbody-{slugified-label}-{level}" for <tbody> sections
+  - Used for targeting entire collapsible sections
+  - Must be unique within the page
+
+  TABLE STRUCTURE:
+  - Each collapsible section is its own <tbody> element
+  - Headers are <tr> elements in parent <tbody>
+  - Content is wrapped in separate <tbody> with collapse classes
+  - Recursive includes generate additional <tbody> sections
+
+  CONDITIONAL LOGIC:
+  - node.is_intermediate: True for category/subcategory headers, False for transaction rows
+  - Headers get: collapsible-header + data-bs-toggle + data-bs-target
+  - Content gets: wrapped in separate <tbody> with collapse class
+
+  TABLE STRUCTURE APPROACH:
+  - Headers are <tr> elements in the main table flow
+  - Each collapsible section is its own <tbody> element
+  - Bootstrap targets entire <tbody> sections for collapse
+  - Recursive includes generate nested <tbody> structures
+
+  FUNCTIONAL FLOW:
+  1. Click header → Bootstrap finds target <tbody> via data-bs-target
+  2. Target <tbody> toggles between show/hide
+  3. aria-expanded updates for accessibility
+  4. Visual feedback via CSS transitions

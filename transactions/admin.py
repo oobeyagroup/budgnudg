@@ -4,6 +4,9 @@ from django.utils.html import format_html
 from django.urls import reverse
 from django.shortcuts import redirect
 from django.db.models import Sum, Count
+from django.http import HttpResponse
+import csv
+from datetime import datetime
 from .models import (
     Transaction,
     Category,
@@ -36,6 +39,7 @@ class TransactionAdmin(admin.ModelAdmin):
     ]
     search_fields = ["description", "payoree__name", "bank_account__name"]
     list_filter = ["subcategory"]
+    actions = ["export_csv", "export_all_csv"]
 
     def parent_category(self, obj):
         if obj.subcategory and obj.subcategory.parent:
@@ -71,6 +75,125 @@ class TransactionAdmin(admin.ModelAdmin):
         return "—"
 
     primary_needs_level_display.short_description = "Needs Level"
+
+    def export_csv(self, request, queryset):
+        """Export selected transactions to CSV with all fields."""
+        # Create the HttpResponse object with CSV header
+        response = HttpResponse(content_type="text/csv")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        response["Content-Disposition"] = (
+            f'attachment; filename="transactions_export_{timestamp}.csv"'
+        )
+
+        writer = csv.writer(response)
+
+        # Write header row with all field names
+        field_names = [
+            "id",
+            "source",
+            "bank_account",
+            "sheet_account",
+            "date",
+            "description",
+            "amount",
+            "account_type",
+            "check_num",
+            "payoree",
+            "memo",
+            "category",
+            "subcategory",
+            "categorization_error",
+            "needs_level",
+        ]
+        writer.writerow(field_names)
+
+        # Write data rows
+        for transaction in queryset:
+            row = [
+                transaction.id,
+                transaction.source,
+                transaction.bank_account.name if transaction.bank_account else "",
+                transaction.sheet_account,
+                transaction.date.strftime("%Y-%m-%d") if transaction.date else "",
+                transaction.description,
+                str(transaction.amount),
+                transaction.account_type,
+                transaction.check_num or "",
+                transaction.payoree.name if transaction.payoree else "",
+                transaction.memo or "",
+                transaction.category.name if transaction.category else "",
+                transaction.subcategory.name if transaction.subcategory else "",
+                transaction.categorization_error or "",
+                str(transaction.needs_level) if transaction.needs_level else "",
+            ]
+            writer.writerow(row)
+
+        return response
+
+    export_csv.short_description = "Export selected transactions to CSV"
+
+    def export_all_csv(self, request, queryset):
+        """Export ALL transactions to CSV with all fields (ignores selection)."""
+        # Get all transactions, not just selected ones
+        all_transactions = (
+            Transaction.objects.all()
+            .select_related("bank_account", "payoree", "category", "subcategory")
+            .order_by("date")
+        )
+
+        # Create the HttpResponse object with CSV header
+        response = HttpResponse(content_type="text/csv")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        response["Content-Disposition"] = (
+            f'attachment; filename="transactions_all_export_{timestamp}.csv"'
+        )
+
+        writer = csv.writer(response)
+
+        # Write header row with all field names
+        field_names = [
+            "id",
+            "source",
+            "bank_account",
+            "sheet_account",
+            "date",
+            "description",
+            "amount",
+            "account_type",
+            "check_num",
+            "payoree",
+            "memo",
+            "category",
+            "subcategory",
+            "categorization_error",
+            "needs_level",
+        ]
+        writer.writerow(field_names)
+
+        # Write data rows
+        for transaction in all_transactions:
+            row = [
+                transaction.id,
+                transaction.source,
+                transaction.bank_account.name if transaction.bank_account else "",
+                transaction.sheet_account,
+                transaction.date.strftime("%Y-%m-%d") if transaction.date else "",
+                transaction.description,
+                str(transaction.amount),
+                transaction.account_type,
+                transaction.check_num or "",
+                transaction.payoree.name if transaction.payoree else "",
+                transaction.memo or "",
+                transaction.category.name if transaction.category else "",
+                transaction.subcategory.name if transaction.subcategory else "",
+                transaction.categorization_error or "",
+                str(transaction.needs_level) if transaction.needs_level else "",
+            ]
+            writer.writerow(row)
+
+        return response
+
+    export_all_csv.short_description = "Export ALL transactions to CSV"
 
 
 @admin.register(Payoree)
@@ -187,7 +310,8 @@ class PayoreeAdmin(admin.ModelAdmin):
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
     list_display = [
-        "id","name",
+        "id",
+        "name",
         "parent",
         "type",
         "category_transaction_count",

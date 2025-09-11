@@ -52,13 +52,13 @@
                        class="btn btn-outline-primary btn-sm mx-1" 
                        style="--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .5rem;"
                        title="Edit Transaction">
-                        <i class="fas fa-edit"></i>Edit
+                        <i class="fas fa-edit"></i>
                     </a></div>
                     <div><a href="{% url 'transactions:categorize_transaction' txn.pk %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" 
                        class="btn btn-outline-secondary btn-sm" 
                        style="--bs-btn-padding-y: .1rem; --bs-btn-padding-x: .2rem; --bs-btn-font-size: .5rem;"
                        title="Quick Categorize">
-                        <i class="fas fa-tags"></i>Suggest
+                        <i class="fas fa-tags"></i>
                     </a></div>
                 </div>
             </td>

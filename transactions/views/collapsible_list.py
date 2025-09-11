@@ -24,10 +24,20 @@ class CollapsibleTransactionListView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Get all transactions with related data
-        transactions = Transaction.objects.select_related(
-            "category", "subcategory", "payoree"
-        ).order_by("-date", "description")
+        # Get all transactions with related data, filtered to last 12 months
+        # Calculate the date range for the last 12 months
+        today = date.today()
+        start_date = (
+            date(today.year - 1, today.month, 1)
+            if today.month > 1
+            else date(today.year - 1, 12, 1)
+        )
+
+        transactions = (
+            Transaction.objects.select_related("category", "subcategory", "payoree")
+            .filter(date__gte=start_date)
+            .order_by("-date", "description")
+        )
 
         # Generate list of last 12 months including current month
         today = date.today()
@@ -157,8 +167,12 @@ class CollapsibleTransactionListView(TemplateView):
                     # Add to category totals
                     category_data["total_count"] += subcategory_count
                     category_data["total_amount"] += subcategory_total
+                    logger.debug(f"Category_data: {category_data}")
+                    logger.debug(f"Monthly Totals: {monthly_totals}")
                     for month_key, amount in monthly_totals.items():
-                        category_data["monthly_totals"][month_key] += amount
+                        category_data["monthly_totals"][month_key] = (
+                            category_data["monthly_totals"].get(month_key, 0) + amount
+                        )
 
                 organized_data[category_type]["categories"][
                     category_name
@@ -172,7 +186,12 @@ class CollapsibleTransactionListView(TemplateView):
 
                 # Add to category type monthly totals
                 for month_key, amount in category_data["monthly_totals"].items():
-                    organized_data[category_type]["monthly_totals"][month_key] += amount
+                    organized_data[category_type]["monthly_totals"][month_key] = (
+                        organized_data[category_type]["monthly_totals"].get(
+                            month_key, 0
+                        )
+                        + amount
+                    )
 
         # Calculate grand totals including monthly
         grand_total_count = sum(data["total_count"] for data in organized_data.values())
@@ -183,7 +202,9 @@ class CollapsibleTransactionListView(TemplateView):
 
         for data in organized_data.values():
             for month_key, amount in data["monthly_totals"].items():
-                grand_monthly_totals[month_key] += amount
+                grand_monthly_totals[month_key] = (
+                    grand_monthly_totals.get(month_key, 0) + amount
+                )
 
         # Sort category types for consistent display
         category_type_order = [

@@ -91,7 +91,7 @@ class BudgetNestedReportView(View):
         }
         return render(request, self.template_name, context)
 
-    @method_decorator(trace)
+
     def _tree_to_nodes(self, tree: dict, level: int = 0) -> list[dict]:
         """Convert nested tree dict to list of nodes for template."""
         nodes = []
