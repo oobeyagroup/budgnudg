@@ -54,6 +54,7 @@ from transactions.views.recurring import UpdateSeedTxnView
 from transactions.views.test_api import create_test_transaction, check_series_for_seed
 from transactions.views.reports import BudgetMonthlyReport2
 from transactions.views.report_budget import BudgetNestedReportView, BudgetDrilldownView
+from transactions.views.pivot_table import FlexiblePivotTableView
 
 app_name = "transactions"
 
@@ -77,6 +78,11 @@ urlpatterns = [
         "reports/budget/subcat/<int:subcat_id>/",
         BudgetDrilldownView.as_view(),
         name="report_budget_drilldown",
+    ),
+    path(
+        "reports/pivot/",
+        FlexiblePivotTableView.as_view(),
+        name="pivot_table",
     ),
     path("payoree/<int:pk>/edit/", PayoreeEditView.as_view(), name="payoree_edit"),
     path("payorees/", PayoreesListView.as_view(), name="payorees_list"),

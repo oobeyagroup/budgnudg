@@ -1,0 +1,56 @@
+{% load custom_filters %}
+{% load humanize %}
+
+{# Recursive template for pivot table rows #}
+<tr class="{% if node.is_leaf %}leaf-row{% else %}level-{{ node.level }}{% endif %} {% if not node.is_leaf %}collapsible-header{% endif %}"
+    {% if node.has_children %}data-bs-toggle="collapse" data-bs-target="#collapse-{{ node.path|join:'-'|slugify }}"{% endif %}>
+
+    <td class="row-header">
+        {% if node.has_children %}
+            <i class="fas fa-chevron-right collapse-icon me-2"></i>
+        {% endif %}
+        {% if node.level > 0 %}
+            {% for i in node.level|make_list %}
+                <span class="text-muted">│</span>
+            {% endfor %}
+            <span class="text-muted">├─</span>
+        {% endif %}
+        <strong>{{ node.label }}</strong>
+        {% if node.field_name %}
+            <!-- <small class="text-muted ms-2">({{ node.field_name|title }})</small> -->
+        {% endif %}
+    </td>
+
+    {% for value in node.monthly_values %}
+    <td class="{% if value < 0 %}negative-amount{% else %}positive-amount{% endif %}">
+        {% if value != 0 %}
+            {{ value|floatformat:2|intcomma }}
+        {% endif %}
+    </td>
+    {% endfor %}
+
+    <td class="total-column {% if node.total < 0 %}negative-amount{% else %}positive-amount{% endif %}">
+        {{ node.total|floatformat:2|intcomma }}
+    </td>
+</tr>
+
+{% if node.has_children %}
+<tr>
+    <td colspan="{{ node.monthly_values|length|add:2 }}" class="p-0">
+        <div class="collapse" id="collapse-{{ node.path|join:'-'|slugify }}">
+            <table class="table table-sm mb-0 nested-pivot-table">
+                <colgroup>
+                    <col style="width: 300px;">
+                    {% for value in node.monthly_values %}
+                    <col style="width: 90px;">
+                    {% endfor %}
+                    <col style="width: 100px;">
+                </colgroup>
+                {% for child in node.children %}
+                    {% include "transactions/pivot_table_row.html" with node=child %}
+                {% endfor %}
+            </table>
+        </div>
+    </td>
+</tr>
+{% endif %}

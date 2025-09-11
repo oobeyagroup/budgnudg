@@ -1,0 +1,530 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% load humanize %}
+
+{% block title %}Flexible Pivot Table{% endblock %}
+
+{% block extra_css %}
+<style>
+    .pivot-table {
+        font-size: 0.875rem;
+        table-layout: fixed;
+        width: 100%;
+    }
+
+    .pivot-table th, .pivot-table td {
+        padding: 0.5rem;
+        text-align: right;
+        border: 1px solid #dee2e6;
+    }
+
+    .pivot-table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+
+    .pivot-table .row-header {
+        text-align: left;
+        background-color: #e9ecef;
+        font-weight: 500;
+        width: 300px; /* Fixed width for hierarchy column */
+        min-width: 300px;
+        max-width: 300px;
+    }
+
+    .pivot-table .total-column {
+        background-color: #fff3cd;
+        font-weight: bold;
+    }
+
+    .pivot-table .total-row {
+        background-color: #d1ecf1;
+        font-weight: bold;
+    }
+
+    .pivot-table .grand-total {
+        background-color: #f8d7da;
+        font-weight: bold;
+        font-size: 1.1em;
+    }
+
+    .form-container {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 0.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .form-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        padding: 0.5rem 0;
+        margin: -1.5rem -1.5rem 1rem -1.5rem;
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+        border-radius: 0.5rem 0.5rem 0 0;
+    }
+
+    .form-header:hover {
+        opacity: 0.9;
+    }
+
+    .form-toggle-icon {
+        transition: transform 0.3s ease;
+    }
+
+    .form-collapsed .form-toggle-icon {
+        transform: rotate(180deg);
+    }
+
+    .form-container.collapsed {
+        margin-bottom: 1rem;
+    }
+
+    .form-container.collapsed .form-header {
+        border-radius: 0.5rem;
+        margin-bottom: 0;
+    }
+
+    /* Nested row styling */
+    .level-0 {
+        background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        color: white;
+        font-weight: bold;
+    }
+
+    .level-1 {
+        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+        color: white;
+        font-weight: 600;
+    }
+
+    .level-2 {
+        background: linear-gradient(135deg, #198754 0%, #146c43 100%);
+        color: white;
+        font-weight: 500;
+    }
+
+    .level-3 {
+        background: linear-gradient(135deg, #fd7e14 0%, #e8680f 100%);
+        color: white;
+        font-weight: 500;
+    }
+
+    .level-4 {
+        background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%);
+        color: white;
+        font-weight: 500;
+    }
+
+    .leaf-row {
+        background-color: #f8f9fa;
+    }
+
+    .leaf-row:hover {
+        background-color: #e9ecef;
+    }
+
+    .collapsible-header {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+
+    .collapsible-header:hover {
+        opacity: 0.9;
+    }
+
+    .collapse-icon {
+        transition: transform 0.3s ease;
+        margin-right: 0.5rem;
+    }
+
+    .collapsed .collapse-icon {
+        transform: rotate(-90deg);
+    }
+
+    .monthly-column {
+        width: 90px; /* Fixed width for each month column */
+        min-width: 90px;
+        max-width: 90px;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .total-column {
+        width: 100px; /* Fixed width for total column */
+        min-width: 100px;
+        max-width: 100px;
+        background-color: #fff3cd;
+        font-weight: bold;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .negative-amount {
+        color: #dc3545;
+    }
+
+    .positive-amount {
+        color: #198754;
+    }
+
+    .table-responsive {
+        max-height: 80vh;
+        overflow-y: auto;
+        overflow-x: auto;
+    }
+
+    .field-selection {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    .field-item {
+        background-color: white;
+        border: 1px solid #dee2e6;
+        border-radius: 0.25rem;
+        padding: 0.5rem;
+        cursor: move;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .field-item input[type="checkbox"] {
+        margin: 0;
+    }
+
+    .field-item label {
+        margin: 0;
+        cursor: pointer;
+    }
+
+    .form-toggle-icon {
+        transition: transform 0.3s ease;
+        font-size: 1.2rem;
+    }
+
+    .form-container.collapsed .form-header {
+        border-bottom: none;
+        border-radius: 0.375rem;
+    }
+
+    .nested-pivot-table {
+        table-layout: fixed;
+        width: 100%;
+        margin: 0;
+        border: none;
+    }
+
+    .nested-pivot-table td, .nested-pivot-table th {
+        border: 1px solid #dee2e6;
+        padding: 0.25rem 0.5rem;
+    }
+
+    .nested-pivot-table .row-header {
+        text-align: left;
+        background-color: #f8f9fa;
+        font-weight: 500;
+        padding-left: 1rem; /* Add indentation for nested rows */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1 class="mb-4">Flexible Nested Pivot Table</h1>
+
+    <div class="form-container{% if pivot_data %} collapsed{% endif %}">
+        <div class="form-header" data-bs-toggle="collapse" data-bs-target="#configForm" aria-expanded="{% if not pivot_data %}true{% else %}false{% endif %}" aria-controls="configForm">
+            <div>
+                <h3 class="mb-0">
+                    Configure Nested Pivot Table
+                    <small class="text-light opacity-75 ms-2">(click to toggle)</small>
+                </h3>
+                {% if pivot_data %}
+                <small class="text-light opacity-75">
+                    Current: {{ row_fields|length }} fields → {{ pivot_data.nodes|length }} groups ({{ year }})
+                </small>
+                {% endif %}
+            </div>
+            <i class="fas fa-chevron-{% if pivot_data %}down{% else %}up{% endif %} form-toggle-icon"></i>
+        </div>
+        <div id="configForm" class="collapse{% if not pivot_data %} show{% endif %}">
+            <form method="get" id="pivot-form">
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label class="form-label">Row Fields (order matters for nesting)</label>
+                        <div id="field-selection" class="field-selection">
+                            {% comment %} Render checkboxes in submitted order first, then unselected ones {% endcomment %}
+                            {% for value in form.row_fields.value %}
+                            <div class="field-item" data-field="{{ value }}">
+                                <input type="checkbox"
+                                       name="row_fields"
+                                       value="{{ value }}"
+                                       id="id_row_fields_{{ forloop.counter }}"
+                                       checked>
+                                <label for="id_row_fields_{{ forloop.counter }}">
+                                    {% for choice_value, choice_label in form.row_fields.field.choices %}
+                                        {% if choice_value == value %}{{ choice_label }}{% endif %}
+                                    {% endfor %}
+                                </label>
+                            </div>
+                            {% endfor %}
+                            {% comment %} Render unselected checkboxes {% endcomment %}
+                            {% for choice_value, choice_label in form.row_fields.field.choices %}
+                                {% if choice_value not in form.row_fields.value %}
+                                <div class="field-item" data-field="{{ choice_value }}">
+                                    <input type="checkbox"
+                                           name="row_fields"
+                                           value="{{ choice_value }}"
+                                           id="id_row_fields_{{ forloop.counter }}"
+                                           >
+                                    <label for="id_row_fields_{{ forloop.counter }}">{{ choice_label }}</label>
+                                </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        {% if form.row_fields.errors %}
+                            <div class="text-danger">{{ form.row_fields.errors }}</div>
+                        {% endif %}
+                        <div class="form-text">
+                            Select fields in the order you want them nested. The first field will be the top level, second field nested under it, etc.
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="{{ form.year.id_for_label }}" class="form-label">{{ form.year.label }}</label>
+                        {{ form.year }}
+                        {% if form.year.errors %}
+                            <div class="text-danger">{{ form.year.errors }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check">
+                            {{ form.include_uncategorized }}
+                            <label class="form-check-label" for="{{ form.include_uncategorized.id_for_label }}">
+                                {{ form.include_uncategorized.label }}
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Generate Pivot Table</button>
+                </div>
+            </div>
+        </form>
+        </div>
+    </div>
+
+    {% if pivot_data %}
+    <!-- Pivot Table -->
+    <div class="table-responsive">
+        <table class="table table-striped pivot-table">
+            <colgroup>
+                <col style="width: 300px;">
+                {% for month in pivot_data.month_labels %}
+                <col style="width: 90px;">
+                {% endfor %}
+                <col style="width: 100px;">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th class="row-header">Hierarchy</th>
+                    {% for month in pivot_data.month_labels %}
+                    <th class="monthly-column">{{ month|date:"M Y" }}</th>
+                    {% endfor %}
+                    <th class="total-column">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for node in pivot_data.nodes %}
+                    {% include "transactions/pivot_table_row.html" with node=node %}
+                {% endfor %}
+
+                <!-- Column Totals Row -->
+                <tr class="total-row">
+                    <th class="row-header">TOTAL</th>
+                    {% for total in pivot_data.column_totals %}
+                    <th class="{% if total < 0 %}negative-amount{% else %}positive-amount{% endif %}">
+                        {{ total|floatformat:2|intcomma }}
+                    </th>
+                    {% endfor %}
+                    <th class="grand-total {% if pivot_data.grand_total < 0 %}negative-amount{% else %}positive-amount{% endif %}">
+                        {{ pivot_data.grand_total|floatformat:2|intcomma }}
+                    </th>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="mt-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <button class="btn btn-outline-primary btn-sm me-2" onclick="expandAll()">
+                    <i class="fas fa-expand-arrows-alt me-1"></i>Expand All
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" onclick="collapseAll()">
+                    <i class="fas fa-compress-arrows-alt me-1"></i>Collapse All
+                </button>
+            </div>
+            <div class="text-muted">
+                Showing {{ pivot_data.nodes|length }} top-level groups for {{ year }}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.min.js"></script>
+<script>
+$(document).ready(function() {
+    // Make field selection sortable
+    $("#field-selection").sortable({
+        placeholder: "sortable-placeholder",
+        tolerance: "pointer",
+        update: function(event, ui) {
+            console.log('Fields reordered');
+        }
+    });
+
+    // Intercept form submission to preserve field order
+    $('#pivot-form').on('submit', function(e) {
+        // Get the current visual order of checked fields
+        var checkedFields = [];
+        $('#field-selection .field-item').each(function() {
+            var checkbox = $(this).find('input[type="checkbox"]');
+            if (checkbox.is(':checked')) {
+                checkedFields.push(checkbox.val());
+            }
+        });
+
+        console.log('Submitting with field order:', checkedFields);
+
+        // Remove existing row_fields parameters from URL
+        var url = window.location.href.split('?')[0];
+        var params = new URLSearchParams(window.location.search);
+
+        // Clear existing row_fields
+        params.delete('row_fields');
+
+        // Add row_fields in the correct visual order
+        checkedFields.forEach(function(field) {
+            params.append('row_fields', field);
+        });
+
+        // Update the form action with the reordered parameters
+        $(this).attr('action', url + '?' + params.toString());
+
+        // Continue with form submission
+        return true;
+    });
+
+    // Auto-submit form when inputs change
+    $('input[name="row_fields"]').change(function() {
+        $('#pivot-form').submit();
+    });
+
+    $('#{{ form.year.id_for_label }}').change(function() {
+        $('#pivot-form').submit();
+    });
+
+    $('#{{ form.include_uncategorized.id_for_label }}').change(function() {
+        $('#pivot-form').submit();
+    });
+});
+
+// Expand/Collapse functionality
+function expandAll() {
+    document.querySelectorAll('.collapse').forEach(element => {
+        const bsCollapse = new bootstrap.Collapse(element, {toggle: false});
+        bsCollapse.show();
+    });
+
+    // Update all chevron icons
+    document.querySelectorAll('.collapse-icon').forEach(icon => {
+        icon.closest('tr').classList.remove('collapsed');
+    });
+}
+
+function collapseAll() {
+    document.querySelectorAll('.collapse.show').forEach(element => {
+        const bsCollapse = new bootstrap.Collapse(element, {toggle: false});
+        bsCollapse.hide();
+    });
+
+    // Update all chevron icons
+    document.querySelectorAll('.collapse-icon').forEach(icon => {
+        icon.closest('tr').classList.add('collapsed');
+    });
+}
+
+// Handle collapse icon rotation
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(element => {
+        element.addEventListener('click', function() {
+            const icon = this.querySelector('.collapse-icon');
+            if (icon) {
+                // Toggle collapsed class on the row
+                this.classList.toggle('collapsed');
+            }
+        });
+
+        // Initialize as collapsed for non-leaf nodes
+        const row = element.closest('tr');
+        if (row && !row.classList.contains('leaf-row')) {
+            element.classList.add('collapsed');
+        }
+    });
+
+    // Handle form header toggle
+    const formHeader = document.querySelector('.form-header');
+    const formContainer = document.querySelector('.form-container');
+    
+    if (formHeader && formContainer) {
+        formHeader.addEventListener('click', function() {
+            const icon = this.querySelector('.form-toggle-icon');
+            if (icon) {
+                // Toggle rotation class
+                this.classList.toggle('form-collapsed');
+                formContainer.classList.toggle('collapsed');
+            }
+        });
+    }
+    
+    // Handle Bootstrap collapse events to sync icon state
+    const configForm = document.getElementById('configForm');
+    if (configForm) {
+        configForm.addEventListener('shown.bs.collapse', function() {
+            const container = document.querySelector('.form-container');
+            const icon = document.querySelector('.form-toggle-icon');
+            if (container && icon) {
+                container.classList.remove('collapsed');
+                icon.classList.remove('fa-chevron-down');
+                icon.classList.add('fa-chevron-up');
+            }
+        });
+        
+        configForm.addEventListener('hidden.bs.collapse', function() {
+            const container = document.querySelector('.form-container');
+            const icon = document.querySelector('.form-toggle-icon');
+            if (container && icon) {
+                container.classList.add('collapsed');
+                icon.classList.remove('fa-chevron-up');
+                icon.classList.add('fa-chevron-down');
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
