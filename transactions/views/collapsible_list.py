@@ -141,7 +141,10 @@ class CollapsibleTransactionListView(TemplateView):
                         )
                         month_count = len(transactions_data)
 
-                        monthly_totals[month_key] = month_total
+                        # Use defensive programming to avoid KeyError
+                        monthly_totals[month_key] = (
+                            monthly_totals.get(month_key, 0) + month_total
+                        )
                         subcategory_total += month_total
                         subcategory_count += month_count
                         all_transactions.extend(transactions_data)
@@ -202,6 +205,7 @@ class CollapsibleTransactionListView(TemplateView):
 
         for data in organized_data.values():
             for month_key, amount in data["monthly_totals"].items():
+                # Use defensive programming to avoid KeyError
                 grand_monthly_totals[month_key] = (
                     grand_monthly_totals.get(month_key, 0) + amount
                 )

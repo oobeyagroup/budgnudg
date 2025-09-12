@@ -106,7 +106,7 @@
 <header>
       <nav class="navbar navbar-expand-lg fixed-top">
       <div class="container-fluid">
-        <a class="navbar-brand" href="#"><img src="/media/budnudglogo.png" style="max-height:42px;" alt="BudgNudg" /></a>
+        <a class="navbar-brand" href="#"><img src="/media/budgnudglogo.png" style="max-height:42px;" alt="BudgNudg" /></a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
           <span class="navbar-toggler-icon"></span>
         </button>
@@ -170,6 +170,7 @@
                 <li><a class="dropdown-item" href="{% url 'transactions:needs_level_report' %}"><i class="fas fa-chart-pie me-1"></i>Needs Level Report</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:payoree_report' %}"><i class="fas fa-chart-line me-1"></i>Payor/ee Report</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:report_upcoming' %}"><i class="fas fa-calendar-week me-1"></i>Upcoming</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:pivot_table' %}"><i class="fas fa-calendar-week me-1"></i>Pivot Table Report</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item disabled" href="{% url 'transactions:report_account_time_span' %}">Account Time Span</a></li>
                 <li><a class="dropdown-item disabled" href="{% url 'transactions:report_income_statement' %}">Income Statement</a></li>

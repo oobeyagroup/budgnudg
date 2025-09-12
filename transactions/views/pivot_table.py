@@ -20,11 +20,11 @@ class PivotTableForm(forms.Form):
 
     # Available row fields (excluding Sheet Account and Account Type as requested)
     ROW_FIELD_CHOICES = [
-        ('category__name', 'Category'),
-        ('subcategory__name', 'Subcategory'),
-        ('category__type', 'Category Type'),
-        ('payoree__name', 'Payoree'),
-        ('bank_account__name', 'Bank Account'),
+        ("category__name", "Category"),
+        ("subcategory__name", "Subcategory"),
+        ("category__type", "Category Type"),
+        ("payoree__name", "Payoree"),
+        ("bank_account__name", "Bank Account"),
     ]
 
     row_fields = forms.MultipleChoiceField(
@@ -32,20 +32,15 @@ class PivotTableForm(forms.Form):
         widget=forms.CheckboxSelectMultiple,
         required=True,
         label="Row Fields (order matters for nesting)",
-        help_text="Select and order the fields to use as nested rows"
+        help_text="Select and order the fields to use as nested rows",
     )
 
     year = forms.IntegerField(
-        initial=date.today().year,
-        min_value=2000,
-        max_value=2030,
-        label="Year"
+        initial=date.today().year, min_value=2000, max_value=2030, label="Year"
     )
 
     include_uncategorized = forms.BooleanField(
-        required=False,
-        initial=True,
-        label="Include uncategorized transactions"
+        required=False, initial=True, label="Include uncategorized transactions"
     )
 
 
@@ -58,32 +53,34 @@ class FlexiblePivotTableView(View):
 
         if form.is_valid():
             # Get selected row fields
-            row_fields = form.cleaned_data['row_fields']
-            year = form.cleaned_data['year']
-            include_uncategorized = form.cleaned_data['include_uncategorized']
+            row_fields = form.cleaned_data["row_fields"]
+            year = form.cleaned_data["year"]
+            include_uncategorized = form.cleaned_data["include_uncategorized"]
 
             # Generate pivot data
             pivot_data = self._generate_pivot_data(
                 row_fields=row_fields,
                 year=year,
-                include_uncategorized=include_uncategorized
+                include_uncategorized=include_uncategorized,
             )
 
             context = {
-                'form': form,
-                'pivot_data': pivot_data,
-                'year': year,
-                'row_fields': row_fields,
+                "form": form,
+                "pivot_data": pivot_data,
+                "year": year,
+                "row_fields": row_fields,
             }
         else:
             context = {
-                'form': form,
-                'pivot_data': None,
+                "form": form,
+                "pivot_data": None,
             }
 
         return render(request, self.template_name, context)
 
-    def _generate_pivot_data(self, row_fields: List[str], year: int, include_uncategorized: bool) -> dict:
+    def _generate_pivot_data(
+        self, row_fields: List[str], year: int, include_uncategorized: bool
+    ) -> dict:
         """Generate nested pivot table data with hierarchical structure."""
 
         # Create filters
@@ -100,7 +97,7 @@ class FlexiblePivotTableView(View):
             month_key = f"{display_date.year:04d}-{display_date.month:02d}"
             month_annos[month_key] = Sum(
                 Case(
-                    When(date__gte=first, date__lte=last, then=F('amount')),
+                    When(date__gte=first, date__lte=last, then=F("amount")),
                     default=Value(0),
                     output_field=DecimalField(max_digits=12, decimal_places=2),
                 )
@@ -133,9 +130,9 @@ class FlexiblePivotTableView(View):
             monthly_values = []
             for display_date in month_labels:
                 month_key = f"{display_date.year:04d}-{display_date.month:02d}"
-                monthly_values.append(row.get(month_key, Decimal('0')))
-            current['__monthly__'] = monthly_values
-            current['__total__'] = sum(monthly_values)
+                monthly_values.append(row.get(month_key, Decimal("0")))
+            current["__monthly__"] = monthly_values
+            current["__total__"] = sum(monthly_values)
 
         # Convert tree to nested nodes for template
         nodes = self._tree_to_nodes(root, row_fields)
@@ -144,7 +141,7 @@ class FlexiblePivotTableView(View):
         column_totals = []
         for i in range(len(month_labels)):
             column_total = sum(
-                node.get('monthly_values', [Decimal('0')] * len(month_labels))[i]
+                node.get("monthly_values", [Decimal("0")] * len(month_labels))[i]
                 for node in self._flatten_nodes(nodes)
             )
             column_totals.append(column_total)
@@ -152,14 +149,20 @@ class FlexiblePivotTableView(View):
         grand_total = sum(column_totals)
 
         return {
-            'nodes': nodes,
-            'month_labels': month_labels,
-            'column_totals': column_totals,
-            'grand_total': grand_total,
-            'row_fields': row_fields,
+            "nodes": nodes,
+            "month_labels": month_labels,
+            "column_totals": column_totals,
+            "grand_total": grand_total,
+            "row_fields": row_fields,
         }
 
-    def _tree_to_nodes(self, tree: dict, row_fields: List[str], level: int = 0, parent_path: List[str] = None) -> List[dict]:
+    def _tree_to_nodes(
+        self,
+        tree: dict,
+        row_fields: List[str],
+        level: int = 0,
+        parent_path: List[str] = None,
+    ) -> List[dict]:
         """Convert tree structure to nested nodes for template."""
         if parent_path is None:
             parent_path = []
@@ -167,41 +170,44 @@ class FlexiblePivotTableView(View):
         nodes = []
 
         for key, value in tree.items():
-            if key.startswith('__'):
+            if key.startswith("__"):
                 continue  # Skip special keys
 
             current_path = parent_path + [key]
             node = {
-                'label': key,
-                'level': level,
-                'path': current_path,
-                'field_name': row_fields[level] if level < len(row_fields) else '',
-                'children': [],
-                'has_children': isinstance(value, dict) and any(not k.startswith('__') for k in value.keys()),
+                "label": key,
+                "level": level,
+                "path": current_path,
+                "field_name": row_fields[level] if level < len(row_fields) else "",
+                "children": [],
+                "has_children": isinstance(value, dict)
+                and any(not k.startswith("__") for k in value.keys()),
             }
 
             # If this is a leaf node (has monthly data)
-            if '__monthly__' in value:
-                node['monthly_values'] = value['__monthly__']
-                node['total'] = value['__total__']
-                node['is_leaf'] = True
+            if "__monthly__" in value:
+                node["monthly_values"] = value["__monthly__"]
+                node["total"] = value["__total__"]
+                node["is_leaf"] = True
             else:
-                node['is_leaf'] = False
-                node['monthly_values'] = [Decimal('0')] * 12  # Placeholder
-                node['total'] = Decimal('0')
+                node["is_leaf"] = False
+                node["monthly_values"] = [Decimal("0")] * 12  # Placeholder
+                node["total"] = Decimal("0")
 
             # Recursively process children
             if isinstance(value, dict):
-                child_nodes = self._tree_to_nodes(value, row_fields, level + 1, current_path)
-                node['children'] = child_nodes
+                child_nodes = self._tree_to_nodes(
+                    value, row_fields, level + 1, current_path
+                )
+                node["children"] = child_nodes
 
                 # Calculate totals from children
-                if not node['is_leaf']:
+                if not node["is_leaf"]:
                     for child in child_nodes:
-                        for i, val in enumerate(child['monthly_values']):
-                            if i < len(node['monthly_values']):
-                                node['monthly_values'][i] += val
-                        node['total'] += child['total']
+                        for i, val in enumerate(child["monthly_values"]):
+                            if i < len(node["monthly_values"]):
+                                node["monthly_values"][i] += val
+                        node["total"] += child["total"]
 
             nodes.append(node)
 
@@ -211,10 +217,10 @@ class FlexiblePivotTableView(View):
         """Flatten nested nodes to get all leaf nodes."""
         result = []
         for node in nodes:
-            if node.get('is_leaf'):
+            if node.get("is_leaf"):
                 result.append(node)
             else:
-                result.extend(self._flatten_nodes(node.get('children', [])))
+                result.extend(self._flatten_nodes(node.get("children", [])))
         return result
 
     def _get_month_edges(self, year: int) -> List[tuple]:

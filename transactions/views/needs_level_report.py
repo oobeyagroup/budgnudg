@@ -149,7 +149,11 @@ class NeedsLevelReportView(TemplateView):
                     needs_level_data["total_count"] += category_count
                     needs_level_data["total_amount"] += category_total
                     for month_key, amount in monthly_totals.items():
-                        needs_level_data["monthly_totals"][month_key] += amount
+                        # Use defensive programming to avoid KeyError
+                        needs_level_data["monthly_totals"][month_key] = (
+                            needs_level_data["monthly_totals"].get(month_key, 0)
+                            + amount
+                        )
 
                 organized_data[category_type]["needs_levels"][
                     needs_level
@@ -163,7 +167,13 @@ class NeedsLevelReportView(TemplateView):
 
                 # Add to category type monthly totals
                 for month_key, amount in needs_level_data["monthly_totals"].items():
-                    organized_data[category_type]["monthly_totals"][month_key] += amount
+                    # Use defensive programming to avoid KeyError
+                    organized_data[category_type]["monthly_totals"][month_key] = (
+                        organized_data[category_type]["monthly_totals"].get(
+                            month_key, 0
+                        )
+                        + amount
+                    )
 
         # Calculate grand totals including monthly
         grand_total_count = sum(data["total_count"] for data in organized_data.values())
@@ -174,7 +184,10 @@ class NeedsLevelReportView(TemplateView):
 
         for data in organized_data.values():
             for month_key, amount in data["monthly_totals"].items():
-                grand_monthly_totals[month_key] += amount
+                # Use defensive programming to avoid KeyError
+                grand_monthly_totals[month_key] = (
+                    grand_monthly_totals.get(month_key, 0) + amount
+                )
 
         # Sort category types for consistent display
         category_type_order = [
