@@ -45,6 +45,7 @@ from transactions.views.pattern_management import (
 from transactions.views.api import (
     SubcategoriesAPIView,
     TransactionSuggestionsAPIView,
+    PayoreeDefaultsAPIView,
     SimilarTransactionsAPIView,
     ExcludeSimilarTransactionAPIView,
 )
@@ -181,6 +182,11 @@ urlpatterns = [
         "api/suggestions/<int:transaction_id>/",
         TransactionSuggestionsAPIView.as_view(),
         name="api_suggestions",
+    ),
+    path(
+        "api/payoree-defaults/<int:payoree_id>/",
+        PayoreeDefaultsAPIView.as_view(),
+        name="api_payoree_defaults",
     ),
     path(
         "api/similar/<int:transaction_id>/",

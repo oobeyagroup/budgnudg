@@ -136,7 +136,22 @@ class ResolveTransactionView(View):
         new_subcategory_name = request.POST.get('new_subcategory', '').strip()
         
         if payoree_id:
-            transaction.payoree = Payoree.objects.get(id=payoree_id)
+            payoree = Payoree.objects.get(id=payoree_id)
+            transaction.payoree = payoree
+            
+            # Auto-apply payoree defaults if category/subcategory are not being explicitly set
+            # Only apply if user didn't provide category/subcategory values
+            if not category_id and not new_category_name and payoree.default_category:
+                transaction.category = payoree.default_category
+                logger.info(f"Auto-applied default category from payoree: {payoree.default_category.name}")
+                
+                # Also apply subcategory default if available and matches the category
+                if (not subcategory_id and not new_subcategory_name and 
+                    payoree.default_subcategory and 
+                    payoree.default_subcategory.parent == payoree.default_category):
+                    transaction.subcategory = payoree.default_subcategory
+                    logger.info(f"Auto-applied default subcategory from payoree: {payoree.default_subcategory.name}")
+        
         
         # Handle category creation/selection
         if category_id == '__new__' and new_category_name:

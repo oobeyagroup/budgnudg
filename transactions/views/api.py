@@ -6,7 +6,7 @@ from django.views import View
 from django.shortcuts import get_object_or_404
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
-from transactions.models import Category, Transaction, ExcludedSimilarTransaction
+from transactions.models import Category, Transaction, ExcludedSimilarTransaction, Payoree
 from transactions.utils import trace
 import json
 import logging
@@ -100,6 +100,42 @@ class TransactionSuggestionsAPIView(View):
             return JsonResponse({
                 'success': False,
                 'error': 'Failed to get AI suggestions'
+            }, status=500)
+
+
+class PayoreeDefaultsAPIView(View):
+    """API endpoint to get default category and subcategory for a payoree"""
+    
+    @method_decorator(trace)
+    def get(self, request, payoree_id):
+        try:
+            payoree = get_object_or_404(Payoree, id=payoree_id)
+            
+            data = {
+                'success': True,
+                'payoree': {
+                    'id': payoree.id,
+                    'name': payoree.name
+                },
+                'defaults': {
+                    'category': {
+                        'id': payoree.default_category.id,
+                        'name': payoree.default_category.name
+                    } if payoree.default_category else None,
+                    'subcategory': {
+                        'id': payoree.default_subcategory.id,
+                        'name': payoree.default_subcategory.name
+                    } if payoree.default_subcategory else None
+                }
+            }
+            
+            return JsonResponse(data)
+            
+        except Exception as e:
+            logger.error(f"Error getting payoree defaults for payoree {payoree_id}: {e}")
+            return JsonResponse({
+                'success': False,
+                'error': 'Failed to get payoree defaults'
             }, status=500)
 
 
