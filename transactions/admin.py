@@ -26,6 +26,7 @@ from ingest.models import ScannedCheck  # wherever your model lives
 class TransactionAdmin(admin.ModelAdmin):
     list_display = [
         "bank_account",
+        "sheet_account",
         "date",
         "description",
         "amount",

@@ -195,8 +195,8 @@
                                         <strong class="text-capitalize">{{ category_type }}</strong>
                                     </td>
                                     <td class="amount-cell text-end">
-                                        <span class="fw-semibold currency {% if grand_total_amount >= 0 %}currency-positive {% elif grand_total_amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">
-                                            ${{ type_data.total_amount|floatformat:2|intcomma|intcomma }}
+                                        <span class="fw-semibold currency {% if type_data.total_amount >= 0 %}currency-positive {% elif type_data.total_amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">
+                                            {{ type_data.total_amount|floatformat:2|intcomma|intcomma }}
                                         </span>
                                     </td>
                                     <td class="count-cell text-center">{{ type_data.total_count }}</td>
@@ -237,8 +237,8 @@
                                                 {% with amount=category_data.monthly_totals|lookup:month_key %}
                                                 <td class="monthly-column text-end">
                                                     {% if amount != 0 %}
-                                                        <span class="currency {% if category_data.total_amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
-                                                            ${{ amount|floatformat:2|intcomma }}
+                                                        <span class="currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                                                            {{ amount|floatformat:2|intcomma }}
                                                         </span>
                                                     {% else %}
                                                         <span class="text-muted fst-italic">-</span>
@@ -274,7 +274,7 @@
                                                     <td class="monthly-column text-end">
                                                         {% if amount != 0 %}
                                                             <span class="currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
-                                                                ${{ amount|floatformat:2|intcomma }}
+                                                                {{ amount|floatformat:2|intcomma }}
                                                             </span>
                                                         {% else %}
                                                             <span class="text-muted fst-italic">-</span>
@@ -309,7 +309,7 @@
                                                         <td class="monthly-column text-end">
                                                             {% if transaction_month == month_key %}
                                                                 <span class="currency {% if transaction.amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
-                                                                    ${{ transaction.amount|floatformat:0|intcomma }}
+                                                                    {{ transaction.amount|floatformat:0|intcomma }}
                                                                 </span>
                                                             {% else %}
                                                                 <span class="text-muted fst-italic">-</span>

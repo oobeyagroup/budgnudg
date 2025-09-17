@@ -24,13 +24,13 @@ class CollapsibleTransactionListView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
-        # Get all transactions with related data, filtered to last 12 months
-        # Calculate the date range for the last 12 months
+        # Get all transactions with related data, filtered to last 13 months
+        # Calculate the date range for the last 13 months
         today = date.today()
         start_date = (
             date(today.year - 1, today.month, 1)
             if today.month > 1
-            else date(today.year - 1, 12, 1)
+            else date(today.year - 1, 13, 1)
         )
 
         transactions = (
@@ -39,10 +39,10 @@ class CollapsibleTransactionListView(TemplateView):
             .order_by("-date", "description")
         )
 
-        # Generate list of last 12 months including current month
+        # Generate list of last 13 months including current month
         today = date.today()
         months = []
-        for i in range(12):
+        for i in range(13):
             # Calculate month and year going back from current date
             year = today.year
             month = today.month - i
@@ -170,8 +170,8 @@ class CollapsibleTransactionListView(TemplateView):
                     # Add to category totals
                     category_data["total_count"] += subcategory_count
                     category_data["total_amount"] += subcategory_total
-                    logger.debug(f"Category_data: {category_data}")
-                    logger.debug(f"Monthly Totals: {monthly_totals}")
+                    # logger.debug(f"Category_data: {category_data}")
+                    # logger.debug(f"Monthly Totals: {monthly_totals}")
                     for month_key, amount in monthly_totals.items():
                         category_data["monthly_totals"][month_key] = (
                             category_data["monthly_totals"].get(month_key, 0) + amount

@@ -1106,15 +1106,13 @@ def suggest_payoree(description: str) -> str | None:
     try:
         all_payorees = Payoree.objects.all()
         description_upper = (description or "").upper()
-        logger.debug(
-            f"Suggest_payoree: checking {all_payorees.count()} payorees; desc='{description_upper[:80]}'"
-        )
+        # logger.debug(f"Suggest_payoree: checking {all_payorees.count()} payorees; desc='{description_upper[:80]}'"
 
         # Check for exact name matches
         for payoree in all_payorees:
-            logger.debug(f"Suggest_payoree: testing payoree='{payoree.name}'")
+            # logger.debug(f"Suggest_payoree: testing payoree='{payoree.name}'")
             if payoree.name.upper() in description_upper:
-                logger.debug(f"Suggest_payoree: exact match found: {payoree.name}")
+                # logger.debug(f"Suggest_payoree: exact match found: {payoree.name}")
                 return payoree.name
 
         # PRIORITY 4: Fuzzy matching as fallback
@@ -1127,9 +1125,8 @@ def suggest_payoree(description: str) -> str | None:
             if score > best_score and score >= 70:  # 70% similarity threshold
                 best_score = score
                 best_match = payoree.name
-        logger.debug(
-            f"Suggest_payoree: best fuzzy match={best_match} score={best_score}"
-        )
+        # logger.debug(f"Suggest_payoree: best fuzzy match={best_match} score={best_score}"
+
         return best_match
 
     except Exception as e:
