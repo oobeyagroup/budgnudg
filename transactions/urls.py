@@ -9,9 +9,6 @@ from transactions.views.needs_level_report import NeedsLevelReportView
 from transactions.views.dashboard import DashboardView
 from transactions.views.payorees import PayoreesListView, PayoreeEditView
 from transactions.views.categorize import CategorizeTransactionView
-
-# Legacy uncategorized view import - replaced with filters on transaction list
-# from transactions.views.uncategorized import UncategorizedTransactionsView
 from transactions.views.categories import CategoriesListView
 from transactions.views.payoree_report import PayoreeReportView
 from transactions.views.set_field import SetTransactionFieldView
@@ -147,8 +144,6 @@ urlpatterns = [
     ),
     # Transaction edit
     path("edit/<int:pk>/", TransactionEditView.as_view(), name="edit_transaction"),
-    # Legacy uncategorized view - replaced with filters on transaction list
-    # path("uncategorized/", UncategorizedTransactionsView.as_view(), name="uncategorized_transactions"),
     path(
         "set/<int:transaction_id>/<str:field>/<int:value_id>/",
         SetTransactionFieldView.as_view(),
@@ -239,12 +234,4 @@ urlpatterns = [
     path("patterns/api/rename/", rename_pattern, name="rename_pattern"),
     path("patterns/api/test-extraction/", test_extraction, name="test_extraction"),
     path("patterns/api/search/", search_patterns, name="search_patterns"),
-    # Learning Patterns Management - Commented out until views are implemented
-    # path("learning-patterns/", LearningPatternsView.as_view(), name="learning_patterns"),
-    # path("learning-patterns/export/", ExportLearningDataView.as_view(), name="export_learning_data"),
-    # path("learning-patterns/import/", ImportLearningDataView.as_view(), name="import_learning_data"),
-    # path("learning-patterns/delete-subcat/<int:learned_id>/", DeleteLearnedSubcatView.as_view(), name="delete_learned_subcat"),
-    # path("learning-patterns/delete-payoree/<int:learned_id>/", DeleteLearnedPayoreeView.as_view(), name="delete_learned_payoree"),
-    # path("learning-patterns/clear-subcats/", ClearAllLearnedSubcatsView.as_view(), name="clear_all_learned_subcats"),
-    # path("learning-patterns/clear-payorees/", ClearAllLearnedPayoreesView.as_view(), name="clear_all_learned_payorees"),
 ]
