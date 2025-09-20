@@ -70,3 +70,5 @@ backup*.json
 reports/
 /data/*
 /media/*
+budgnudg/data/history_accounts.json
+scripts/fix_history_bank_accounts.py
