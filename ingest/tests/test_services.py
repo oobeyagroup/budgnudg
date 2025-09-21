@@ -407,7 +407,7 @@ class TestCommitService:
             norm_description="Test Transaction",
             suggestions={
                 "subcategory": "NonExistentCategory",  # This won't resolve
-                "payoree": "NonExistentPayoree",
+                "payoree": "NonExistentPayoree",  # This will be created as new
             },
         )
 
@@ -417,11 +417,12 @@ class TestCommitService:
         assert len(imported) == 1
         assert imported[0] == 0  # Row index 0 was imported
 
-        # Check transaction was created without unresolved FKs
+        # Check transaction was created with appropriate resolution behavior
         transaction = Transaction.objects.first()
         assert transaction is not None
-        assert transaction.subcategory is None
-        assert transaction.payoree is None
+        assert transaction.subcategory is None  # Category didn't resolve
+        assert transaction.payoree is not None  # Payoree was created
+        assert transaction.payoree.name == "NonExistentPayoree"  # New payoree created
         assert transaction.description == "Test Transaction"
 
     def test_commit_batch_tracks_transaction_ids(self):

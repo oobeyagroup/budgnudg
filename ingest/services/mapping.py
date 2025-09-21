@@ -15,6 +15,7 @@ from transactions.models import Transaction, Category, Payoree
 from transactions.services.helpers import (
     is_duplicate,
 )  # your existing duplicate checker
+from transactions.services.import_conversion import ImportRowData, converter
 from transactions.utils import trace
 
 logger = logging.getLogger(__name__)
@@ -338,17 +339,10 @@ def commit_batch(
 ) -> Tuple[List[int], List[int], List[int]]:
     """
     Persist non-duplicate rows as Transactions.
-    Uses per-row savepoints so a single bad row doesn't poison the whole transaction.
+    Uses clean ImportRowConverter service to handle ImportRow → Transaction conversion.
     Returns (imported_row_indices, duplicate_row_indices, skipped_row_indices)
     """
     imported, duplicates, skipped = [], [], []
-
-    # Cache allowed concrete fields to avoid passing stray keys to the model
-    allowed_fields = {
-        f.name
-        for f in Transaction._meta.get_fields()
-        if getattr(f, "concrete", False) and not f.auto_created and not f.many_to_many
-    }
 
     # Look up or create FinancialAccount instance by name BEFORE entering atomic block
     logger.debug("DEBUG: Looking for FinancialAccount with name: '%s'", bank_account)
@@ -416,187 +410,40 @@ def commit_batch(
                 duplicates.append(row.row_index)
                 continue
 
-            # Build transaction payload from normalized + parsed
-            parsed = row.parsed or {}
-
-            data = {
-                "date": row.norm_date,
-                "amount": -row.norm_amount if reverse_amounts else row.norm_amount,
-                "description": row.norm_description
-                or (parsed.get("description") or ""),
-                "bank_account": bank_account_instance,
-                "source": getattr(batch, "filename", "") or f"batch:{batch.pk}",
-            }
-
-            # Resolve FK suggestions with error tracking
-            sugg = row.suggestions or parsed.get("_suggestions") or {}
-            categorization_errors = []
-
-            # Debug logging for commit resolution
-            logger.debug(
-                "DEBUG COMMIT: Row %s suggestions dict: %s",
-                getattr(row, "row_index", "unknown"),
-                sugg,
+            # Create ImportRowData for clean conversion interface
+            import_data = ImportRowData(
+                row_index=row.row_index,
+                date=row.norm_date,
+                amount=row.norm_amount,
+                description=row.norm_description or (row.parsed or {}).get("description", ""),
+                parsed_data=row.parsed or {},
+                suggestions=row.suggestions or {},
+                bank_account=bank_account_instance,
+                source_filename=getattr(batch, "filename", "") or f"batch:{batch.pk}",
             )
 
-            # Priority 1: CSV Category field (from parsed data) - this takes precedence
-            csv_category_name = parsed.get(
-                "subcategory"
-            )  # Note: CSV 'Category' maps to 'subcategory' field in profile
-            logger.debug(
-                "DEBUG COMMIT: CSV category from parsed data: '%s'", csv_category_name
+            # Use the clean conversion service
+            result = converter.convert_import_row_to_transaction(
+                import_data, reverse_amounts=reverse_amounts
             )
 
-            # Priority 2: AI-suggested subcategory (from suggestions) - fallback if no CSV category
-            ai_sub_name = sugg.get("subcategory")
-            logger.debug(
-                "DEBUG COMMIT: AI suggested subcategory name: '%s'", ai_sub_name
-            )
-
-            # Safe category lookup with error tracking
-            # With new model structure: assign both category and subcategory
-            category_obj = None
-            subcategory_obj = None
-
-            suggested_category_name = None
-            if csv_category_name:
-                suggested_category_name = csv_category_name
-                logger.debug(
-                    "DEBUG COMMIT: Using CSV category: '%s'", csv_category_name
-                )
-            elif ai_sub_name:
-                suggested_category_name = ai_sub_name
-                logger.debug("DEBUG COMMIT: Using AI suggestion: '%s'", ai_sub_name)
-
-            if suggested_category_name:
-                from transactions.categorization import safe_category_lookup
-
-                suggested_obj, error_code = safe_category_lookup(
-                    suggested_category_name, "CSV" if csv_category_name else "AI"
-                )
-
-                if error_code:
-                    categorization_errors.append(error_code)
-                    logger.warning(
-                        "Category lookup failed: %s -> %s",
-                        suggested_category_name,
-                        error_code,
-                    )
-                elif suggested_obj:
-                    # Assign category and subcategory based on hierarchy
-                    if suggested_obj.parent:
-                        # It's a subcategory -> category = parent, subcategory = suggested
-                        category_obj = suggested_obj.parent
-                        subcategory_obj = suggested_obj
-                        logger.debug(
-                            "DEBUG COMMIT: Assigned category=%s, subcategory=%s",
-                            category_obj.name,
-                            subcategory_obj.name,
-                        )
-                    else:
-                        # It's a top-level category -> category = suggested, no subcategory
-                        category_obj = suggested_obj
-                        subcategory_obj = None
-                        logger.debug(
-                            "DEBUG COMMIT: Assigned category=%s (top-level)",
-                            category_obj.name,
-                        )
+            if result.success:
+                # Update ImportRow with successful transaction
+                row.committed_txn_id = result.transaction.pk
+                row.save(update_fields=["committed_txn_id"])
+                imported.append(row.row_index)
             else:
-                # No suggestion available
-                categorization_errors.append("AI_NO_SUBCATEGORY_SUGGESTION")
-                logger.debug(
-                    "No category suggestion available for row %s",
-                    getattr(row, "row_index", "unknown"),
-                )
-
-            if category_obj:
-                data["category"] = category_obj
-            if subcategory_obj:
-                data["subcategory"] = subcategory_obj
-
-            # Safe payoree lookup with error tracking
-            payoree_obj = None
-            pyo_name = sugg.get("payoree")
-            logger.debug("DEBUG COMMIT: Extracted payoree name: '%s'", pyo_name)
-            if pyo_name:
-                from transactions.categorization import safe_payoree_lookup
-
-                payoree_obj, error_code = safe_payoree_lookup(pyo_name, "AI")
-                if error_code:
-                    categorization_errors.append(error_code)
-                    logger.warning(
-                        "Payoree lookup failed: %s -> %s", pyo_name, error_code
-                    )
-                elif not payoree_obj:
-                    # Create new payoree if lookup succeeded but no object found
-                    try:
-                        payoree_obj = Payoree.objects.create(name=pyo_name)
-                        logger.debug("Created new payoree: %s", payoree_obj)
-                    except Exception as e:
-                        categorization_errors.append("DATABASE_ERROR")
-                        logger.error("Failed to create payoree %s: %s", pyo_name, e)
-
-            if payoree_obj:
-                data["payoree"] = payoree_obj
-
-            # Add categorization error if any occurred
-            if categorization_errors:
-                # Use the first/most significant error
-                data["categorization_error"] = categorization_errors[0]
-                logger.debug(
-                    "DEBUG COMMIT: Adding categorization error: %s",
-                    categorization_errors[0],
-                )
-
-            # Strip non-model keys (but include categorization_error)
-            sanitized = {k: v for k, v in data.items() if k in allowed_fields}
-
-            # Debug final data being sent to create
-            logger.debug("DEBUG COMMIT: Full data dict: %s", data)
-            logger.debug("DEBUG COMMIT: Sanitized data for create: %s", sanitized)
-            logger.debug(
-                "DEBUG COMMIT: Has subcategory in sanitized: %s",
-                "subcategory" in sanitized,
-            )
-            logger.debug(
-                "DEBUG COMMIT: Has categorization_error in sanitized: %s",
-                "categorization_error" in sanitized,
-            )
-            logger.debug(
-                "DEBUG COMMIT: Subcategory value: %s", sanitized.get("subcategory")
-            )
-            logger.debug(
-                "DEBUG COMMIT: Categorization error: %s",
-                sanitized.get("categorization_error"),
-            )
-
-            if not data["date"] or data["amount"] is None:
+                # Handle conversion failure
                 errs = list(row.errors or [])
-                errs.append("commit: missing required date/amount")
-                row.errors = errs
-                row.save(update_fields=["errors"])
-                skipped.append(row.row_index)
-                continue
-
-            try:
-                with dbtx.atomic():  # savepoint per row
-                    obj = Transaction.objects.create(**sanitized)
-                    row.committed_txn_id = obj.pk
-                    row.save(update_fields=["committed_txn_id"])
-                    imported.append(row.row_index)
-            except Exception:
-                # capture and persist row-level error; do not break the loop
-                errs = list(row.errors or [])
-                errs.append("commit: failed to create Transaction (see logs)")
+                errs.extend(result.errors)
                 row.errors = errs
                 row.save(update_fields=["errors"])
                 skipped.append(row.row_index)
                 logger.warning(
-                    "Commit failed for row %s in batch %s (payload=%s)",
+                    "Conversion failed for row %s in batch %s: %s",
                     row.row_index,
                     batch.pk,
-                    sanitized,
-                    exc_info=True,
+                    result.errors,
                 )
 
         # finalize status
