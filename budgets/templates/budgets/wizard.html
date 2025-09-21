@@ -214,7 +214,7 @@ async function generateDraft() {
     document.getElementById('loading-spinner').style.display = 'block';
     
     try {
-        const response = await fetch('{% url "budgets:api_generate_draft" %}', {
+        const response = await fetch('{% url "budgets:api_suggest" %}', {
             method: 'POST',
             body: formData,
             headers: {
@@ -346,7 +346,7 @@ async function commitBudget() {
     document.getElementById('loading-spinner').style.display = 'block';
     
     try {
-        const response = await fetch('{% url "budgets:api_commit_budget" %}', {
+        const response = await fetch('{% url "budgets:api_commit" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
