@@ -6,7 +6,7 @@ import logging
 from typing import Iterable, Iterator, Any, Dict
 from decimal import Decimal, InvalidOperation
 import datetime as dt
-from transactions.utils import trace
+from commons.utils import trace
 
 logger = logging.getLogger(__name__)
 

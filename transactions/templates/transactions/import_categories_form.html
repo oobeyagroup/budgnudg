@@ -1,6 +1,0 @@
-{% extends "base.html" %}
-
-{% block content %}
-  {% url 'categories_list' as cancel_url %}
-  {% include "transactions/_import_form_base.html" with heading="Import Categories" description="Upload a CSV with headers 'Category' and optional 'SubCategory'" %}
-{% endblock %}

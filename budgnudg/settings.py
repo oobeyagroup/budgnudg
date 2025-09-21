@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.humanize",
     "widget_tweaks",
+    "commons",
     "ingest",
     "transactions.apps.TransactionsConfig",
 ]

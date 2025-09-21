@@ -4,6 +4,6 @@
 {% block content %}
   {% url 'transactions:payorees_list' as cancel_url %}
   {% with desc="Upload a CSV with a header named 'Name'." %}
-    {% include "transactions/_import_form_base.html" with heading="Import Payorees" description=desc cancel_url=cancel_url %}
+    {% include "transactions/partials/_import_form_base.html" with heading="Import Payorees" description=desc cancel_url=cancel_url %}
   {% endwith %}
 {% endblock %}

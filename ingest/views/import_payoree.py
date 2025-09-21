@@ -2,15 +2,15 @@ from django.views import View
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.utils.decorators import method_decorator
-from transactions.utils import trace
+from commons.utils import trace
 from django.urls import reverse
 from transactions.forms import PayoreeImportForm
 from transactions.services.payorees import import_payorees_from_text
-from transactions.services.helpers import read_uploaded_text
+from commons.services.file_processing import read_uploaded_text
 
 
 class ImportPayoreeView(View):
-    template_name = "transactions/import_payoree_form.html"
+    template_name = "ingest/import_payoree_form.html"
 
     @method_decorator(trace)
     def dispatch(self, request, *args, **kwargs):

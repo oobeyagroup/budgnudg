@@ -1,4 +1,4 @@
-# transactions/views/import_categories.py
+# ingest/views/import_categories.py
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.shortcuts import render, redirect
@@ -6,13 +6,13 @@ from django.contrib import messages
 from django.urls import reverse
 
 from transactions.forms import CategoryImportForm
-from transactions.services.helpers import read_uploaded_text
+from commons.services.file_processing import read_uploaded_text
 from transactions.services.categories import import_categories_from_text
-from transactions.utils import trace  # your function decorator
+from commons.utils import trace  # your function decorator
 
 
 class ImportCategoriesView(View):
-    template_name = "transactions/import_categories_form.html"
+    template_name = "ingest/import_categories_form.html"
 
     @method_decorator(trace)
     def get(self, request):

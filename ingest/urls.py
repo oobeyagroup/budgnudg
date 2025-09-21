@@ -3,6 +3,8 @@ from ingest.views import views as v
 from .views.views import check_upload, ScannedCheckListView
 from ingest.views import match_check as mc
 from .views.match_check import match_check
+from .views.import_categories import ImportCategoriesView
+from .views.import_payoree import ImportPayoreeView
 
 app_name = "ingest"
 
@@ -35,4 +37,7 @@ urlpatterns = [
     path("checks/", ScannedCheckListView.as_view(), name="scannedcheck_list"),
     path("checks/txn/<int:pk>/edit/", v.txn_edit_partial, name="txn_edit_partial"),
     path("checks/txn/cancel/", v.txn_edit_cancel, name="txn_edit_cancel"),
+    # Data Import Views
+    path("import/categories/", ImportCategoriesView.as_view(), name="import_categories"),
+    path("import/payoree/", ImportPayoreeView.as_view(), name="import_payoree"),
 ]

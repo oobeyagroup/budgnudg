@@ -2,7 +2,6 @@
 from django.urls import path
 
 # CBVs (import from submodules directly)
-from transactions.views.import_categories import ImportCategoriesView
 from transactions.views.transactions_list import TransactionListView
 from transactions.views.collapsible_list import CollapsibleTransactionListView
 from transactions.views.needs_level_report import NeedsLevelReportView
@@ -20,7 +19,6 @@ from transactions.views.reports import (
     ReportIncomeStatementView,
     UpcomingReportView,
 )
-from transactions.views.import_payoree import ImportPayoreeView
 from transactions.views.category_training import (
     CategoryTrainingUploadView,
     CategoryTrainingAnalyzeView,
@@ -89,10 +87,6 @@ urlpatterns = [
         "categorize/<int:pk>/",
         CategorizeTransactionView.as_view(),
         name="categorize_transaction",
-    ),
-    # NEW: categories import (CBV)
-    path(
-        "import/categories/", ImportCategoriesView.as_view(), name="import_categories"
     ),
     # Category Training System
     path(
@@ -166,7 +160,6 @@ urlpatterns = [
         name="report_income_statement",
     ),
     path("report_upcoming/", UpcomingReportView.as_view(), name="report_upcoming"),
-    path("import/payoree/", ImportPayoreeView.as_view(), name="import_payoree"),
     # API Endpoints
     path(
         "api/subcategories/<int:category_id>/",

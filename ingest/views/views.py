@@ -5,7 +5,7 @@ from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db import transaction as dbtx
-from transactions.utils import trace
+from commons.utils import trace
 from transactions.models import Transaction, Payoree, Category
 from ingest.models import ImportBatch, FinancialAccount, ScannedCheck
 from ingest.forms import UploadCSVForm, CheckUploadForm, TransactionQuickEditForm
@@ -518,7 +518,7 @@ class UploadCSVForProfileView(FormView):
         try:
             import csv
             import io
-            from transactions.utils import read_uploaded_file
+            from commons.utils import read_uploaded_file
 
             # Read the file content (handles BOM automatically with utf-8-sig)
             file_content = read_uploaded_file(csv_file)
