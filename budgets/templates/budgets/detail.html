@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ budget }} - Budget Details - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1>
+                        {% if budget.category %}
+                            {{ budget.category.name }}
+                            {% if budget.subcategory %}
+                                <small class="text-muted">→ {{ budget.subcategory.name }}</small>
+                            {% endif %}
+                        {% elif budget.payoree %}
+                            {{ budget.payoree.name }}
+                        {% else %}
+                            {{ budget.get_needs_level_display }} Budget
+                        {% endif %}
+                    </h1>
+                    <p class="text-muted">
+                        {{ budget.start_date|date:"F Y" }} - {{ budget.end_date|date:"F Y" }}
+                        <span class="badge bg-{% if budget.is_active %}success{% else %}secondary{% endif %} ms-2">
+                            {% if budget.is_active %}Active{% else %}Inactive{% endif %}
+                        </span>
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'budgets:list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Budgets
+                    </a>
+                    <button class="btn btn-primary" onclick="editBudget()">
+                        <i class="fas fa-edit"></i> Edit Budget
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>${{ budget.amount|floatformat:2 }}</h4>
+                            <p class="mb-0">Budget Amount</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>${{ budget.get_current_spent|floatformat:2 }}</h4>
+                            <p class="mb-0">Total Spent</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-credit-card fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            {% with remaining=budget.get_remaining_amount %}
+                <div class="card bg-{% if remaining < 0 %}danger{% else %}success{% endif %} text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>
+                                    {% if remaining < 0 %}
+                                        -${{ remaining|floatformat:2|slice:"1:" }}
+                                    {% else %}
+                                        ${{ remaining|floatformat:2 }}
+                                    {% endif %}
+                                </h4>
+                                <p class="mb-0">
+                                    {% if remaining < 0 %}Over Budget{% else %}Remaining{% endif %}
+                                </p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-{% if remaining < 0 %}exclamation-triangle{% else %}check-circle{% endif %} fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endwith %}
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>{{ budget.get_spent_percentage|floatformat:1 }}%</h4>
+                            <p class="mb-0">Budget Used</p>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chart-pie fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Monthly breakdown -->
+    {% if budget_periods %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Monthly Breakdown</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Period</th>
+                                        <th>Budget Amount</th>
+                                        <th>Actual Spent</th>
+                                        <th>Variance</th>
+                                        <th>Progress</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for period in budget_periods %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ period.period_year }}-{{ period.period_month|stringformat:"02d" }}</strong>
+                                                <br>
+                                                <small class="text-muted">
+                                                    {{ period.period_year }}-{{ period.period_month|stringformat:"02d" }}-01|date:"F Y" 
+                                                </small>
+                                            </td>
+                                            <td>${{ period.get_period_budget_amount|floatformat:2 }}</td>
+                                            <td>${{ period.actual_spent|floatformat:2 }}</td>
+                                            <td class="{% if period.get_variance < 0 %}text-danger{% else %}text-success{% endif %}">
+                                                {% with variance=period.get_variance %}
+                                                    {% if variance < 0 %}
+                                                        -${{ variance|floatformat:2|slice:"1:" }}
+                                                    {% else %}
+                                                        ${{ variance|floatformat:2 }}
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </td>
+                                            <td>
+                                                {% with percentage=period.get_spent_percentage %}
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="progress flex-grow-1 me-2" style="height: 8px;">
+                                                            <div class="progress-bar {% if percentage > 100 %}bg-danger{% elif percentage > 80 %}bg-warning{% else %}bg-success{% endif %}" 
+                                                                 role="progressbar" 
+                                                                 style="width: {% if percentage > 100 %}100{% else %}{{ percentage }}{% endif %}%">
+                                                            </div>
+                                                        </div>
+                                                        <small class="text-nowrap">{{ percentage|floatformat:1 }}%</small>
+                                                    </div>
+                                                {% endwith %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- Recent transactions (if applicable) -->
+    {% if recent_transactions %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Recent Transactions</h5>
+                        <a href="{% url 'transactions:list' %}?budget={{ budget.pk }}" class="btn btn-sm btn-outline-primary">
+                            View All
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                        <th>Amount</th>
+                                        <th>Category</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in recent_transactions %}
+                                        <tr>
+                                            <td>{{ transaction.transaction_date|date:"M d, Y" }}</td>
+                                            <td>
+                                                <strong>{{ transaction.description }}</strong>
+                                                {% if transaction.payoree %}
+                                                    <br><small class="text-muted">{{ transaction.payoree.name }}</small>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end">${{ transaction.amount|floatformat:2 }}</td>
+                                            <td>
+                                                {% if transaction.category %}
+                                                    <span class="badge bg-light text-dark">{{ transaction.category.name }}</span>
+                                                    {% if transaction.subcategory %}
+                                                        <br><small class="text-muted">{{ transaction.subcategory.name }}</small>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="text-muted">Uncategorized</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Edit budget modal placeholder -->
+<div class="modal fade" id="editBudgetModal" tabindex="-1" aria-labelledby="editBudgetModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editBudgetModalLabel">Edit Budget</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editBudgetForm">
+                    <div class="mb-3">
+                        <label for="budgetAmount" class="form-label">Budget Amount</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="budgetAmount" 
+                                   value="{{ budget.amount }}" step="0.01" min="0" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="budgetDescription" class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" id="budgetDescription" rows="3">{{ budget.description|default:'' }}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveBudgetChanges()">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function editBudget() {
+    const modal = new bootstrap.Modal(document.getElementById('editBudgetModal'));
+    modal.show();
+}
+
+async function saveBudgetChanges() {
+    const amount = document.getElementById('budgetAmount').value;
+    const description = document.getElementById('budgetDescription').value;
+    
+    try {
+        const response = await fetch(`{% url 'budgets:detail' budget.pk %}update/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                amount: parseFloat(amount),
+                description: description
+            })
+        });
+        
+        if (response.ok) {
+            location.reload();
+        } else {
+            alert('Failed to update budget. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error updating budget:', error);
+        alert('Failed to update budget. Please try again.');
+    }
+}
+</script>
+
+{% csrf_token %}
+{% endblock %}

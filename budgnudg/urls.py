@@ -25,6 +25,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("transactions/", include("transactions.urls", namespace="transactions")),
     path("ingest/", include("ingest.urls", namespace="ingest")),
+    path("budgets/", include("budgets.urls", namespace="budgets")),
         # 
 ]
 

@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "commons",
     "ingest",
     "transactions.apps.TransactionsConfig",
+    "budgets",
 ]
 
 # Add devtools app only in DEBUG mode
