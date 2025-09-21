@@ -11,10 +11,12 @@ logger = logging.getLogger(__name__)
 
 def trace(func):
     """Decorator for tracing function calls in debug mode."""
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         logger.debug("TRACE: Called %s.%s", func.__module__, func.__qualname__)
         return func(*args, **kwargs)
+
     return wrapper
 
 
@@ -27,7 +29,7 @@ def normalize_description(desc):
 
     if not desc:
         return ""
-    
+
     # Remove 11-digit numbers and WEB ID numbers
     cleaned = re.sub(r"\b\d{11}\b", "", desc)
     cleaned = re.sub(r"WEB ID[:]? \d+", "", cleaned, flags=re.IGNORECASE)
@@ -38,7 +40,7 @@ def parse_date(value):
     """Parse date from common formats used in CSV imports."""
     if not value:
         return None
-        
+
     date_formats = ["%Y-%m-%d", "%m/%d/%Y", "%d-%m-%Y", "%d/%m/%Y"]
     for fmt in date_formats:
         try:

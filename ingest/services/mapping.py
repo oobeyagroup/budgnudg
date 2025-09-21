@@ -415,7 +415,8 @@ def commit_batch(
                 row_index=row.row_index,
                 date=row.norm_date,
                 amount=row.norm_amount,
-                description=row.norm_description or (row.parsed or {}).get("description", ""),
+                description=row.norm_description
+                or (row.parsed or {}).get("description", ""),
                 parsed_data=row.parsed or {},
                 suggestions=row.suggestions or {},
                 bank_account=bank_account_instance,

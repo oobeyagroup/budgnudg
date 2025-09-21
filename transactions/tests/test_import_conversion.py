@@ -1,11 +1,16 @@
 """
 Test for the import conversion service that provides clean ImportRow → Transaction conversion.
 """
+
 import pytest
 from decimal import Decimal
 from datetime import date
 
-from transactions.services.import_conversion import ImportRowData, ImportRowConverter, converter
+from transactions.services.import_conversion import (
+    ImportRowData,
+    ImportRowConverter,
+    converter,
+)
 from transactions.models import Transaction, Category, Payoree
 from ingest.models import FinancialAccount
 
@@ -20,9 +25,13 @@ class TestImportRowConverter:
         # Create a test bank account
         bank_account = FinancialAccount.objects.create(
             name="test_bank",
-            column_map={"Date": "date", "Amount": "amount", "Description": "description"}
+            column_map={
+                "Date": "date",
+                "Amount": "amount",
+                "Description": "description",
+            },
         )
-        
+
         # Create import data
         import_data = ImportRowData(
             row_index=1,
@@ -30,7 +39,7 @@ class TestImportRowConverter:
             amount=Decimal("100.50"),
             description="Test transaction",
             bank_account=bank_account,
-            source_filename="test.csv"
+            source_filename="test.csv",
         )
 
         # Convert to transaction
@@ -54,15 +63,19 @@ class TestImportRowConverter:
         """Test conversion with reversed amounts."""
         bank_account = FinancialAccount.objects.create(
             name="test_bank",
-            column_map={"Date": "date", "Amount": "amount", "Description": "description"}
+            column_map={
+                "Date": "date",
+                "Amount": "amount",
+                "Description": "description",
+            },
         )
-        
+
         import_data = ImportRowData(
             row_index=1,
             date=date(2024, 1, 15),
             amount=Decimal("100.50"),
             description="Test transaction",
-            bank_account=bank_account
+            bank_account=bank_account,
         )
 
         # Convert with reversed amounts
@@ -77,22 +90,26 @@ class TestImportRowConverter:
         """Test conversion with AI category suggestions."""
         bank_account = FinancialAccount.objects.create(
             name="test_bank",
-            column_map={"Date": "date", "Amount": "amount", "Description": "description"}
+            column_map={
+                "Date": "date",
+                "Amount": "amount",
+                "Description": "description",
+            },
         )
-        
+
         # Create test categories
         parent_category = Category.objects.create(name="Food & Dining", type="expense")
         subcategory = Category.objects.create(
             name="Restaurants", type="expense", parent=parent_category
         )
-        
+
         import_data = ImportRowData(
             row_index=1,
             date=date(2024, 1, 15),
             amount=Decimal("25.00"),
             description="Restaurant meal",
             suggestions={"subcategory": "Restaurants"},
-            bank_account=bank_account
+            bank_account=bank_account,
         )
 
         result = converter.convert_import_row_to_transaction(import_data)
@@ -106,16 +123,20 @@ class TestImportRowConverter:
         """Test conversion with AI payoree suggestions."""
         bank_account = FinancialAccount.objects.create(
             name="test_bank",
-            column_map={"Date": "date", "Amount": "amount", "Description": "description"}
+            column_map={
+                "Date": "date",
+                "Amount": "amount",
+                "Description": "description",
+            },
         )
-        
+
         import_data = ImportRowData(
             row_index=1,
             date=date(2024, 1, 15),
             amount=Decimal("50.00"),
             description="Gas station purchase",
             suggestions={"payoree": "Shell Gas Station"},
-            bank_account=bank_account
+            bank_account=bank_account,
         )
 
         result = converter.convert_import_row_to_transaction(import_data)
@@ -131,7 +152,7 @@ class TestImportRowConverter:
             row_index=1,
             date=None,  # Missing required date
             amount=Decimal("100.00"),
-            description="Test transaction"
+            description="Test transaction",
         )
 
         result = converter.convert_import_row_to_transaction(import_data)
@@ -145,16 +166,20 @@ class TestImportRowConverter:
         """Test that conversion handles category lookup errors gracefully."""
         bank_account = FinancialAccount.objects.create(
             name="test_bank",
-            column_map={"Date": "date", "Amount": "amount", "Description": "description"}
+            column_map={
+                "Date": "date",
+                "Amount": "amount",
+                "Description": "description",
+            },
         )
-        
+
         import_data = ImportRowData(
             row_index=1,
             date=date(2024, 1, 15),
             amount=Decimal("25.00"),
             description="Unknown category transaction",
             suggestions={"subcategory": "NonexistentCategory"},
-            bank_account=bank_account
+            bank_account=bank_account,
         )
 
         result = converter.convert_import_row_to_transaction(import_data)

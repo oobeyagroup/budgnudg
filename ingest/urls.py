@@ -38,6 +38,8 @@ urlpatterns = [
     path("checks/txn/<int:pk>/edit/", v.txn_edit_partial, name="txn_edit_partial"),
     path("checks/txn/cancel/", v.txn_edit_cancel, name="txn_edit_cancel"),
     # Data Import Views
-    path("import/categories/", ImportCategoriesView.as_view(), name="import_categories"),
+    path(
+        "import/categories/", ImportCategoriesView.as_view(), name="import_categories"
+    ),
     path("import/payoree/", ImportPayoreeView.as_view(), name="import_payoree"),
 ]

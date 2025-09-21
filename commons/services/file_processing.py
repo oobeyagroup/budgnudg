@@ -57,7 +57,7 @@ def iter_csv(file_or_text) -> Iterable[Dict[str, Any]]:
         return
 
     reader = csv.DictReader(StringIO(text))
-    
+
     # Clean headers
     if reader.fieldnames:
         reader.fieldnames = [h.strip() for h in reader.fieldnames if h]
@@ -66,7 +66,7 @@ def iter_csv(file_or_text) -> Iterable[Dict[str, Any]]:
         # Skip empty rows
         if not any(v.strip() for v in row.values() if v):
             continue
-            
+
         # Strip all values
         clean_row = {k.strip(): v.strip() if v else v for k, v in row.items()}
         yield clean_row

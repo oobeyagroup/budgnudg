@@ -1,9 +1,55 @@
-# Dual Import Systems Refactor - COMPLETED ✅
+# Import System Architecture - COMPLETED & ENHANCED ✅
 
 ## Overview
-Successfully completed the critical refactor to eliminate the dual import systems in BudgNudg. The legacy session-based import system has been completely removed, and the application now uses exclusively the modern ingest app for all import functionality.
+Successfully completed the critical refactor to eliminate dual import systems and further enhanced the architecture with clean boundaries and shared utilities. The application now uses a modern, well-architected import system with clear separation of concerns.
 
-## What Was Removed
+## Recent Enhancements (2025)
+
+### 1. **Commons App Creation** ✅
+Created shared `commons/` app to eliminate code duplication:
+- ✅ `commons/utils.py` - Shared utilities (`trace`, `normalize_description`, `parse_date`)
+- ✅ `commons/services/file_processing.py` - Shared CSV processing utilities
+- ✅ Eliminated duplicate utility functions across apps
+
+### 2. **Clean Import Conversion Interface** ✅
+Implemented clean boundary between ingest staging and transaction creation:
+- ✅ `transactions/services/import_conversion.py` - Clean conversion service
+- ✅ `ImportRowData` class - Clean data interface without model dependencies  
+- ✅ `TransactionConversionResult` class - Standardized result handling
+- ✅ `ImportRowConverter` service - Encapsulated conversion logic
+- ✅ Refactored `ingest/services/mapping.py` to use clean interface
+
+### 3. **Enhanced Testing Coverage** ✅
+- ✅ `transactions/tests/test_import_conversion.py` - Comprehensive conversion tests
+- ✅ Updated existing tests to reflect new behavior
+- ✅ All ingest and transaction tests passing
+
+## Current Architecture
+
+### **Three-App Structure**
+```
+commons/          # Shared utilities and services
+├── utils.py      # trace(), normalize_description(), parse_date()
+└── services/
+    └── file_processing.py  # CSV processing utilities
+
+ingest/           # Data ingestion and staging
+├── models.py     # ImportBatch, ImportRow, FinancialAccount
+├── services/     # CSV processing and mapping logic
+└── views/        # Upload, preview, commit flows
+
+transactions/     # Business logic and data models
+├── models.py     # Transaction, Category, Payoree
+├── services/     # Business logic including import conversion
+└── views/        # Transaction management and resolution
+```
+
+### **Clean Boundaries**
+- **Commons**: Shared utilities used by multiple apps
+- **Ingest**: Handles CSV upload, parsing, and staging (ImportRow)
+- **Transactions**: Handles business logic and final Transaction creation
+
+## What Was Removed (Historical)
 
 ### 1. Legacy Import Files (5 files deleted)
 - ✅ `transactions/legacy_import_views.py` (69 lines) - FBV import flow

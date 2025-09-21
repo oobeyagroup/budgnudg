@@ -1,103 +1,67 @@
-# Unused Code Assessment & Cleanup Recommendations
+# Unused Code Assessment & Cleanup - STATUS UPDATED
 
 ## Overview
 This assessment identifies code that is no longer used in the BudgNudg Django application and can be safely removed to reduce technical debt and improve maintainability.
 
-## 🗑️ **IMMEDIATE REMOVAL CANDIDATES**
+**STATUS**: Many of the items identified in this assessment have been **COMPLETED** as part of recent refactoring work. This document has been updated to reflect current status.
 
-### 1. **Legacy Import System (HIGHEST PRIORITY)**
-**Impact**: ~500+ lines of unused code across multiple files
+## ✅ **COMPLETED CLEANUP** 
 
-#### Files to DELETE:
+### 1. **Legacy Import System - COMPLETED**
+**Impact**: ~500+ lines of unused code removed
+
+#### Files REMOVED:
+- ✅ `transactions/legacy_import_views.py` - **REMOVED**
+- ✅ `transactions/views/import_flow.py` - **REMOVED** 
+- ✅ `transactions/views/mixins.py` - **REMOVED**
+- ✅ `transactions/views/uncategorized.py` - **REMOVED**
+
+#### Status:
+- **URLs Cleaned**: Legacy imports removed from `transactions/urls.py`
+- **Modern System**: The `ingest/` app now provides all import functionality
+- **Architecture**: Clean separation between `ingest/` (staging) and `transactions/` (business logic)
+
+### 2. **Commons App Created - NEW**
+**Impact**: Improved code organization and reduced duplication
+
+#### New Structure:
+- ✅ `commons/` app created for shared utilities
+- ✅ `commons/utils.py` - Shared utilities (`trace`, `normalize_description`, `parse_date`, etc.)
+- ✅ `commons/services/file_processing.py` - Shared CSV processing utilities
+- ✅ Duplicate utility functions consolidated
+
+### 3. **Clean Import Conversion Interface - COMPLETED**
+**Impact**: Improved app boundaries and maintainability
+
+#### New Services:
+- ✅ `transactions/services/import_conversion.py` - Clean ImportRow → Transaction conversion
+- ✅ `ImportRowData` and `TransactionConversionResult` classes for clean interfaces
+- ✅ `ingest/services/mapping.py` refactored to use new conversion service
+- ✅ Comprehensive test coverage for conversion logic
+
+## 🔄 **REMAINING CLEANUP OPPORTUNITIES**
+
+### 1. **Duplicate Utility Functions (LOW PRIORITY)**
+**Impact**: Minor duplication between apps
+
+Some utility functions may still exist in both `commons/utils.py` and `transactions/utils.py`:
+- `trace()` decorator
+- `normalize_description()` 
+- `parse_date()`
+- `read_uploaded_file()`
+
+**Recommendation**: Audit and consolidate to use `commons.utils` versions
+
+### 2. **Legacy Template References (LOW PRIORITY)**
+**Impact**: ~5-10 lines of cleanup
+
+Check for any remaining references to removed templates:
 ```bash
-# Legacy function-based import views (69 lines)
-transactions/legacy_import_views.py
-
-# Duplicate session-based import logic (100+ lines) 
-transactions/services/import_flow.py
-
-# Session management utilities (149 lines)
-transactions/views/mixins.py
-
-# Class-based views duplicating legacy functionality (146 lines)
-transactions/views/import_flow.py
-```
-
-#### Evidence of Non-Usage:
-- **URLs**: Legacy imports are commented out in `transactions/urls.py` but still imported
-- **Modern Replacement**: The `ingest/` app provides superior model-based import functionality
-- **No Active References**: grep shows only URL imports and internal references
-
-#### Related Cleanup:
-```python
-# Update transactions/urls.py - remove these imports:
-from transactions.views.import_flow import (
-    ImportUploadView,        # UNUSED
-    ImportPreviewView,       # UNUSED  
-    ReviewTransactionView,   # UNUSED
-    ImportConfirmView,       # UNUSED
-)
-
-# Remove these URL patterns (already commented):
-# path("import/transactions/", legacy.import_transactions_upload, name="import_transactions_upload"),
-# path("import/transactions/preview/", legacy.import_transactions_preview, name="import_transactions_preview"),
-```
-
-### 2. **Uncategorized View (MEDIUM PRIORITY)**
-**Impact**: ~30 lines of unused code
-
-#### File to DELETE:
-```bash
-transactions/views/uncategorized.py
-```
-
-#### Evidence:
-- **URL**: Commented out in `transactions/urls.py`:
-  ```python
-  # path("uncategorized/", UncategorizedTransactionsView.as_view(), name="uncategorized_transactions"),
-  ```
-- **Replacement**: Functionality merged into main transaction list with filters
-- **Template**: `transactions/templates/transactions/uncategorized_list.html` also unused
-
-### 3. **Legacy Mapping System (HIGH PRIORITY)**
-**Impact**: ~200+ lines of duplicate functionality
-
-#### Files to DELETE:
-```bash
-transactions/services/mapping.py  # 186 lines of JSON-based mapping
-```
-
-#### Evidence:
-- **Duplication**: `ingest/services/mapping.py` (416 lines) provides superior database-backed mapping
-- **Modern Alternative**: `ingest.models.FinancialAccount` replaces JSON configuration files
-- **References**: Only used by legacy import system (which is also being removed)
-
-#### Utility Function Cleanup:
-```python
-# In transactions/utils.py - remove:
-def load_mapping_profiles():  # Uses CSV_MAPPINGS_FILE
-    """JSON-based mapping profiles - replaced by ingest.models.FinancialAccount"""
-```
-
-### 4. **Duplicate Service Functions (MEDIUM PRIORITY)**
-**Impact**: ~100 lines of duplicate functionality
-
-#### Functions to REMOVE from `transactions/services/mapping.py`:
-```python
-# Duplicate functions (modern versions exist in ingest/services/):
-def map_file_for_profile()       # Replaced by ingest mapping
-def map_csv_text_to_transactions()   # Replaced by ingest staging  
-def map_csv_rows_to_transactions()   # Replaced by ingest mapping
-def map_csv_file_to_transactions()   # Replaced by ingest pipeline
-```
-
-## 📊 **TEMPLATE CLEANUP**
-
-### Unused Templates to DELETE:
-```bash
-# Legacy import templates (no longer referenced)
+# May still exist (needs verification):
 transactions/templates/transactions/import_form.html
 transactions/templates/transactions/import_transaction_preview.html
+transactions/templates/transactions/uncategorized_list.html
+```
 transactions/templates/transactions/review_transaction.html
 
 # Uncategorized view template
