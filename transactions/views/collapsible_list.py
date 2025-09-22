@@ -267,13 +267,15 @@ class CollapsibleTransactionListView(TemplateView):
         return super().get(request, *args, **kwargs)
 
     def export_csv(self, request):
-        """Export budget report data as CSV"""
+        """Export transaction report data as CSV"""
         # Get the same data as the template view
         context = self.get_context_data()
 
         # Create CSV response
         response = HttpResponse(content_type="text/csv")
-        response["Content-Disposition"] = 'attachment; filename="budget_report.csv"'
+        response["Content-Disposition"] = (
+            'attachment; filename="transaction_report.csv"'
+        )
 
         writer = csv.writer(response)
 

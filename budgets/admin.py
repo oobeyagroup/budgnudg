@@ -91,8 +91,10 @@ class BudgetAdmin(admin.ModelAdmin):
             color = "red"
             sign = ""
 
+        # Format the variance as a string first to avoid SafeString issues
+        variance_str = f"{variance:.2f}"
         return format_html(
-            '<span style="color: {};">{}{:.2f}</span>', color, sign, variance
+            '<span style="color: {};">{}{}</span>', color, sign, variance_str
         )
 
     variance_display.short_description = "Variance"
@@ -159,6 +161,8 @@ class BudgetPeriodAdmin(admin.ModelAdmin):
     def variance_display(self, obj):
         """Display variance with color coding."""
         variance = obj.get_variance_vs_baseline()
+        if variance is None:
+            return "—"
 
         if variance > 0:
             color = "green"
@@ -167,8 +171,10 @@ class BudgetPeriodAdmin(admin.ModelAdmin):
             color = "red"
             sign = ""
 
+        # Format the variance as a string first to avoid SafeString issues
+        variance_str = f"{variance:.2f}"
         return format_html(
-            '<span style="color: {};">{}{:.2f}</span>', color, sign, variance
+            '<span style="color: {};">{}{}</span>', color, sign, variance_str
         )
 
     variance_display.short_description = "Variance vs Baseline"

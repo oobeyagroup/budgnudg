@@ -3,7 +3,7 @@
 {% block title %}Create Budget - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">
             <h1>Budget Wizard</h1>
@@ -22,6 +22,7 @@
                         </div>
                         <div class="card-body">
                             <form id="config-form">
+                                {% csrf_token %}
                                 <div class="row">
                                     <div class="col-md-6">
                                         <label for="target-months" class="form-label">Budget Duration</label>
@@ -72,6 +73,14 @@
                                     <button type="button" class="btn btn-primary" onclick="generateDraft()">
                                         <i class="fas fa-magic"></i> Generate Budget Draft
                                     </button>
+                                    
+                                    <!-- Fallback: Test API via direct link -->
+                                    <div class="mt-2">
+                                        <a href="{% url 'budgets:api_baseline' %}?target_months=3&method=median&starting_year=2025&starting_month=10" 
+                                           target="_blank" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-external-link-alt"></i> Test API Direct
+                                        </a>
+                                    </div>
                                 </div>
                             </form>
                         </div>
@@ -170,6 +179,9 @@ let budgetDraft = null;
 
 // Set default dates
 document.addEventListener('DOMContentLoaded', function() {
+    // Ensure config step is visible on page load
+    showStep('config');
+    
     const now = new Date();
     const currentYear = now.getFullYear();
     const yearSelect = document.getElementById('starting-year');
@@ -189,14 +201,28 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function showStep(step) {
+    console.log('showStep called with:', step);
+    
     // Hide all steps
     document.querySelectorAll('.step-section').forEach(el => el.style.display = 'none');
     document.getElementById('loading-spinner').style.display = 'none';
     document.getElementById('error-display').style.display = 'none';
     
     // Show target step
-    document.getElementById('step-' + step).style.display = 'block';
-    currentStep = step;
+    const targetStep = document.getElementById('step-' + step);
+    if (targetStep) {
+        targetStep.style.display = 'block';
+        currentStep = step;
+        console.log('Showing step:', step);
+    } else {
+        console.error('Step not found:', 'step-' + step);
+        // Fallback to config step if target not found
+        const configStep = document.getElementById('step-config');
+        if (configStep) {
+            configStep.style.display = 'block';
+            currentStep = 'config';
+        }
+    }
 }
 
 function showError(message) {
@@ -206,27 +232,51 @@ function showError(message) {
 }
 
 async function generateDraft() {
+    console.log('generateDraft() function called');
     const form = document.getElementById('config-form');
     const formData = new FormData(form);
+    
+    // Build query string from form data
+    const params = new URLSearchParams();
+    for (const [key, value] of formData.entries()) {
+        if (key !== 'csrfmiddlewaretoken') {  // Skip CSRF token for GET request
+            params.append(key, value);
+        }
+    }
+    console.log('Query parameters:', params.toString());
+    
+    const apiUrl = '{% url "budgets:api_baseline" %}';
+    console.log('API URL:', apiUrl);
     
     // Show loading
     showStep('loading');
     document.getElementById('loading-spinner').style.display = 'block';
     
     try {
-        const response = await fetch('{% url "budgets:api_suggest" %}', {
-            method: 'POST',
-            body: formData,
-            headers: {
-                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-            }
+        const fullUrl = apiUrl + '?' + params.toString();
+        console.log('Full URL:', fullUrl);
+        
+        const response = await fetch(fullUrl, {
+            method: 'GET'
         });
+        
+        console.log('Response status:', response.status);
         
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         
-        budgetDraft = await response.json();
+        const responseData = await response.json();
+        console.log('Response data:', responseData);
+        
+        budgetDraft = responseData;
+        
+        // The response includes a 'draft' property
+        if (budgetDraft.success && budgetDraft.draft) {
+            budgetDraft = budgetDraft.draft;  // Extract the actual draft data
+            console.log('Extracted draft data:', budgetDraft);
+        }
+        
         populateReview();
         showStep('review');
         
@@ -239,32 +289,41 @@ async function generateDraft() {
 function populateReview() {
     if (!budgetDraft) return;
     
+    console.log('Populating review with budget data:', budgetDraft);
+    
     // Populate summary
     const summary = budgetDraft.summary;
+    
+    // Convert string values to numbers
+    const totalSuggested = parseFloat(summary.total_suggested) || 0;
+    const totalBaseline = parseFloat(summary.total_baseline) || 0;
+    const totalVariance = parseFloat(summary.total_variance) || 0;
+    const itemCount = parseInt(summary.item_count) || 0;
+    
     document.getElementById('budget-summary').innerHTML = `
         <div class="col-md-3">
             <div class="text-center">
-                <h4 class="text-primary">$${summary.total_suggested.toFixed(2)}</h4>
+                <h4 class="text-primary">$${totalSuggested.toFixed(2)}</h4>
                 <small class="text-muted">Total Budget</small>
             </div>
         </div>
         <div class="col-md-3">
             <div class="text-center">
-                <h4 class="text-info">$${summary.total_baseline.toFixed(2)}</h4>
+                <h4 class="text-info">$${totalBaseline.toFixed(2)}</h4>
                 <small class="text-muted">Historical Average</small>
             </div>
         </div>
         <div class="col-md-3">
             <div class="text-center">
-                <h4 class="${summary.total_variance >= 0 ? 'text-success' : 'text-danger'}">
-                    ${summary.total_variance >= 0 ? '+' : ''}$${summary.total_variance.toFixed(2)}
+                <h4 class="${totalVariance >= 0 ? 'text-success' : 'text-danger'}">
+                    ${totalVariance >= 0 ? '+' : ''}$${totalVariance.toFixed(2)}
                 </h4>
                 <small class="text-muted">Variance</small>
             </div>
         </div>
         <div class="col-md-3">
             <div class="text-center">
-                <h4 class="text-secondary">${summary.item_count}</h4>
+                <h4 class="text-secondary">${itemCount}</h4>
                 <small class="text-muted">Budget Items</small>
             </div>
         </div>
@@ -272,32 +331,34 @@ function populateReview() {
     
     // Populate table
     const tbody = document.querySelector('#budget-items-table tbody');
-    tbody.innerHTML = budgetDraft.budget_items.map(item => `
-        <tr>
-            <td>${item.category_name || '-'}</td>
-            <td>${item.subcategory_name || '-'}</td>
-            <td>${item.payoree_name || '-'}</td>
-            <td>
-                <span class="badge bg-${getNeedsLevelColor(item.needs_level)}">
-                    ${item.needs_level || '-'}
-                </span>
-            </td>
-            <td>$${item.baseline_amount.toFixed(2)}</td>
-            <td>
-                <input type="number" class="form-control form-control-sm" 
-                       value="${item.suggested_amount}" step="0.01" min="0"
-                       onchange="updateItemAmount(${item.id}, this.value)">
-            </td>
-            <td class="${item.suggested_amount - item.baseline_amount >= 0 ? 'text-success' : 'text-danger'}">
-                ${item.suggested_amount - item.baseline_amount >= 0 ? '+' : ''}$${(item.suggested_amount - item.baseline_amount).toFixed(2)}
-            </td>
-            <td>
-                <button class="btn btn-outline-danger btn-sm" onclick="removeItem(${item.id})">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    if (tbody && budgetDraft.budget_items) {
+        tbody.innerHTML = budgetDraft.budget_items.map((item, index) => `
+            <tr>
+                <td>${item.category_name || '-'}</td>
+                <td>${item.subcategory_name || '-'}</td>
+                <td>${item.payoree_name || '-'}</td>
+                <td>
+                    <span class="badge bg-${getNeedsLevelColor(item.needs_level)}">
+                        ${item.needs_level || '-'}
+                    </span>
+                </td>
+                <td>$${parseFloat(item.baseline_amount || 0).toFixed(2)}</td>
+                <td>
+                    <input type="number" class="form-control form-control-sm" 
+                           value="${parseFloat(item.suggested_amount || 0)}" step="0.01" min="0"
+                           onchange="updateItemAmount(${index}, this.value)">
+                </td>
+                <td class="${(parseFloat(item.suggested_amount || 0) - parseFloat(item.baseline_amount || 0)) >= 0 ? 'text-success' : 'text-danger'}">
+                    ${(parseFloat(item.suggested_amount || 0) - parseFloat(item.baseline_amount || 0)) >= 0 ? '+' : ''}$${(parseFloat(item.suggested_amount || 0) - parseFloat(item.baseline_amount || 0)).toFixed(2)}
+                </td>
+                <td>
+                    <button class="btn btn-outline-danger btn-sm" onclick="removeItem(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    }
 }
 
 function getNeedsLevelColor(needsLevel) {
@@ -342,17 +403,28 @@ function recalculateSummary() {
 async function commitBudget() {
     if (!budgetDraft) return;
     
+    console.log('Committing budget with data:', budgetDraft);
+    
     // Show loading
     document.getElementById('loading-spinner').style.display = 'block';
     
     try {
+        // Transform budgetDraft into the format expected by the API
+        const commitData = {
+            budget_items: budgetDraft.budget_items || [],
+            target_periods: budgetDraft.periods || [],
+            overwrite_existing: true
+        };
+        
+        console.log('Sending commit data:', commitData);
+        
         const response = await fetch('{% url "budgets:api_commit" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
             },
-            body: JSON.stringify(budgetDraft)
+            body: JSON.stringify(commitData)
         });
         
         if (!response.ok) {
@@ -360,6 +432,7 @@ async function commitBudget() {
         }
         
         const result = await response.json();
+        console.log('Commit result:', result);
         
         // Redirect to budget list
         window.location.href = '{% url "budgets:list" %}';
@@ -370,6 +443,4 @@ async function commitBudget() {
     }
 }
 </script>
-
-{% csrf_token %}
 {% endblock %}

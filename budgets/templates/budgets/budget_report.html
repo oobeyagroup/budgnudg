@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+{% load humanize %}
+{% load custom_filters %}
+
+{% block title %}Budget Report - Monthly Analysis{% endblock %}
+
+{% block extra_css %}
+<style>
+    .collapsible-header {
+        cursor: pointer;
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 10px 15px;
+        margin: 2px 0;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+        user-select: none;
+    }
+
+    .collapsible-header:hover {
+        background-color: #e9ecef;
+    }
+
+    .collapsible-header.active {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+
+    .collapsible-content {
+        display: none;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 4px 4px;
+        background-color: #fff;
+    }
+
+    .collapsible-header.active + .collapsible-content {
+        display: block;
+    }
+
+    .category-total {
+        font-weight: bold;
+        background-color: #f1f3f4;
+    }
+
+    .expense {
+        color: #dc3545;
+    }
+
+    .income {
+        color: #28a745;
+    }
+
+    .needs-level-critical {
+        border-left: 4px solid #dc3545;
+    }
+
+    .needs-level-core {
+        border-left: 4px solid #fd7e14;
+    }
+
+    .needs-level-lifestyle {
+        border-left: 4px solid #20c997;
+    }
+
+    .needs-level-discretionary {
+        border-left: 4px solid #6f42c1;
+    }
+
+    .needs-level-luxury {
+        border-left: 4px solid #e83e8c;
+    }
+
+    .needs-level-deferred {
+        border-left: 4px solid #6c757d;
+    }
+
+    .badge-needs-critical {
+        background-color: #dc3545 !important;
+        color: white;
+    }
+
+    .badge-needs-core {
+        background-color: #fd7e14 !important;
+        color: white;
+    }
+
+    .badge-needs-lifestyle {
+        background-color: #20c997 !important;
+        color: white;
+    }
+
+    .badge-needs-discretionary {
+        background-color: #6f42c1 !important;
+        color: white;
+    }
+
+    .badge-needs-luxury {
+        background-color: #e83e8c !important;
+        color: white;
+    }
+
+    .badge-needs-deferred {
+        background-color: #6c757d !important;
+        color: white;
+    }
+
+    .ai-suggested {
+        background-color: #f8f9ff;
+    }
+
+    .variance-positive {
+        color: #28a745;
+        font-weight: bold;
+    }
+
+    .variance-negative {
+        color: #dc3545;
+        font-weight: bold;
+    }
+
+    @media print {
+        .btn, .filter-section {
+            display: none;
+        }
+        .collapsible-content {
+            display: block !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2 class="mb-0">
+                        <i class="fas fa-chart-bar text-primary me-2"></i>
+                        Budget Report - Monthly Analysis
+                    </h2>
+                    <p class="text-muted mb-0">
+                        <small>
+                            <i class="fas fa-calendar-alt me-1"></i>
+                            Showing actual budget records by month
+                        </small>
+                    </p>
+                </div>
+                <div>
+                    <a href="{% url 'budgets:wizard' %}" class="btn btn-success btn-sm">
+                        <i class="fas fa-plus me-1"></i>Create Budget
+                    </a>
+                    <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-print me-1"></i>Print
+                    </button>
+                </div>
+            </div>
+
+            {% if not periods %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    No budget periods found. <a href="{% url 'budgets:wizard' %}">Create your first budget</a> to get started.
+                </div>
+            {% endif %}
+
+            <!-- Budget Report Table -->
+            {% for period in periods %}
+                {% with data=budget_data|get_item:period %}
+                <div class="collapsible-header" onclick="toggleCollapsible(this)">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas fa-chevron-right transition-icon me-2"></i>
+                            <strong>{{ period }}</strong>
+                            <span class="badge bg-secondary ms-2">{{ data.total_count }} budget items</span>
+                        </div>
+                        <div class="text-end">
+                            <div>
+                                <strong class="text-success">${{ period.total_budgeted|default:0|floatformat:2 }}</strong>
+                                budgeted
+                            </div>
+                            {% if period.baseline_total %}
+                            <small class="text-muted">
+                                vs ${{ period.baseline_total|floatformat:2 }} baseline
+                                {% with variance=period.get_variance_vs_baseline %}
+                                    {% if variance > 0 %}
+                                        <span class="variance-positive">(+${{ variance|floatformat:2 }})</span>
+                                    {% elif variance < 0 %}
+                                        <span class="variance-negative">(${{ variance|floatformat:2|slice:"1:" }})</span>
+                                    {% endif %}
+                                {% endwith %}
+                            </small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="collapsible-content">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Category / Subcategory / Payoree</th>
+                                    <th>Needs Level</th>
+                                    <th class="text-end">Amount</th>
+                                    <th class="text-end">Baseline</th>
+                                    <th class="text-end">Variance</th>
+                                    <th class="text-center">AI</th>
+                                    <th>Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for category_name, budgets in data.categorized_budgets.items %}
+                                    <!-- Category Header -->
+                                    <tr class="category-total">
+                                        <td colspan="7">
+                                            <strong>{{ category_name }}</strong>
+                                            <span class="badge bg-light text-dark ms-2">{{ budgets|length }} items</span>
+                                        </td>
+                                    </tr>
+                                    
+                                    <!-- Budget Items -->
+                                    {% for budget in budgets %}
+                                    <tr class="needs-level-{{ budget.needs_level|default:'core' }} {% if budget.is_ai_suggested %}ai-suggested{% endif %}">
+                                        <td class="ps-3">
+                                            {% if budget.subcategory %}
+                                                <small class="text-muted">{{ budget.subcategory.name }}</small>
+                                                {% if budget.payoree %}
+                                                    <br><span class="ps-3">{{ budget.payoree.name }}</span>
+                                                {% endif %}
+                                            {% elif budget.payoree %}
+                                                {{ budget.payoree.name }}
+                                            {% else %}
+                                                <em>General</em>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if budget.needs_level %}
+                                                <span class="badge badge-needs-{{ budget.needs_level }}">
+                                                    {{ budget.get_needs_level_display }}
+                                                </span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <strong>${{ budget.amount|floatformat:2 }}</strong>
+                                        </td>
+                                        <td class="text-end text-muted">
+                                            {% if budget.baseline_amount %}
+                                                ${{ budget.baseline_amount|floatformat:2 }}
+                                            {% else %}
+                                                —
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            {% with variance=budget.get_variance_vs_baseline %}
+                                                {% if variance %}
+                                                    {% if variance > 0 %}
+                                                        <span class="variance-positive">+${{ variance|floatformat:2 }}</span>
+                                                    {% else %}
+                                                        <span class="variance-negative">${{ variance|floatformat:2 }}</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    —
+                                                {% endif %}
+                                            {% endwith %}
+                                        </td>
+                                        <td class="text-center">
+                                            {% if budget.is_ai_suggested %}
+                                                <i class="fas fa-robot text-primary" title="AI Suggested"></i>
+                                            {% else %}
+                                                <i class="fas fa-user text-secondary" title="User Created"></i>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if budget.user_note %}
+                                                <small class="text-muted">{{ budget.user_note|truncatechars:50 }}</small>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted py-3">
+                                            No budget items found for this period
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endwith %}
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleCollapsible(element) {
+    const isActive = element.classList.contains('active');
+    
+    // Close all other collapsibles
+    document.querySelectorAll('.collapsible-header.active').forEach(header => {
+        header.classList.remove('active');
+        const icon = header.querySelector('.transition-icon');
+        if (icon) {
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-right');
+        }
+    });
+    
+    // Toggle current collapsible
+    if (!isActive) {
+        element.classList.add('active');
+        const icon = element.querySelector('.transition-icon');
+        if (icon) {
+            icon.classList.remove('fa-chevron-right');
+            icon.classList.add('fa-chevron-down');
+        }
+    }
+}
+
+// Auto-open first section if available
+document.addEventListener('DOMContentLoaded', function() {
+    const firstHeader = document.querySelector('.collapsible-header');
+    if (firstHeader) {
+        toggleCollapsible(firstHeader);
+    }
+});
+</script>
+{% endblock %}

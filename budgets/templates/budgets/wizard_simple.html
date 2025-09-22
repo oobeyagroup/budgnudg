@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Budget - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1>Budget Wizard</h1>
+            <p class="text-muted">Create a budget based on your historical spending patterns</p>
+        </div>
+    </div>
+    
+    <div id="budget-wizard">
+        <!-- Step 1: Configuration -->
+        <div class="step-section" id="step-config" style="display: block;">
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Configuration</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="config-form">
+                                {% csrf_token %}
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="target-months" class="form-label">Budget Duration</label>
+                                        <select id="target-months" name="target_months" class="form-select">
+                                            <option value="1">1 month</option>
+                                            <option value="3" selected>3 months</option>
+                                            <option value="6">6 months</option>
+                                            <option value="12">12 months</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="calculation-method" class="form-label">Calculation Method</label>
+                                        <select id="calculation-method" name="method" class="form-select">
+                                            <option value="median" selected>Median (typical spending)</option>
+                                            <option value="mean">Average (all spending)</option>
+                                            <option value="max">Maximum (high spending)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-3">
+                                    <div class="col-md-6">
+                                        <label for="starting-year" class="form-label">Starting Year</label>
+                                        <select id="starting-year" name="starting_year" class="form-select">
+                                            <option value="2025" selected>2025</option>
+                                            <option value="2026">2026</option>
+                                            <option value="2027">2027</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="starting-month" class="form-label">Starting Month</label>
+                                        <select id="starting-month" name="starting_month" class="form-select">
+                                            <option value="1">January</option>
+                                            <option value="2">February</option>
+                                            <option value="3">March</option>
+                                            <option value="4">April</option>
+                                            <option value="5">May</option>
+                                            <option value="6">June</option>
+                                            <option value="7">July</option>
+                                            <option value="8">August</option>
+                                            <option value="9">September</option>
+                                            <option value="10" selected>October</option>
+                                            <option value="11">November</option>
+                                            <option value="12">December</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-4">
+                                    <button type="button" class="btn btn-primary">
+                                        <i class="fas fa-magic"></i> Generate Budget Draft
+                                    </button>
+                                    
+                                    <!-- Direct API Test Link -->
+                                    <div class="mt-2">
+                                        <a href="{% url 'budgets:api_baseline' %}?target_months=3&method=median&starting_year=2025&starting_month=10" 
+                                           target="_blank" class="btn btn-outline-secondary btn-sm">
+                                            <i class="fas fa-external-link-alt"></i> Test API Direct
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

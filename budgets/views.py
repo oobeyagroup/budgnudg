@@ -51,29 +51,25 @@ class BudgetDetailView(DetailView):
 
 @method_decorator(trace, name="dispatch")
 class BudgetWizardView(TemplateView):
-    """Budget creation wizard."""
+    """Budget wizard interface for creating new budgets."""
 
     template_name = "budgets/wizard.html"
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-
-        # Initialize wizard with default settings
+    @trace
+    def get(self, request):
+        # Initialize the budget wizard
         wizard = BudgetWizard()
-        draft = wizard.generate_budget_draft()
-
-        context.update(
-            {
-                "draft": draft,
-                "methods": [
-                    ("median", "Median (Recommended)"),
-                    ("avg6", "Last 6 Month Average"),
-                    ("trimmed_mean", "Trimmed Mean"),
-                ],
-            }
+        # Pre-generate draft for better UX (optional)
+        wizard.generate_budget_draft(
+            target_months=3, method="median", starting_year=2025, starting_month=10
         )
+        return self.render_to_response({})
 
-        return context
+
+class BudgetWizardSimpleView(TemplateView):
+    """Simple budget wizard for testing."""
+
+    template_name = "budgets/wizard_simple.html"
 
 
 @method_decorator(trace, name="dispatch")
@@ -134,8 +130,16 @@ class BudgetCommitAPIView(View):
         """Commit budget items to database."""
         try:
             import json
+            import logging
+
+            logger = logging.getLogger(__name__)
 
             data = json.loads(request.body)
+
+            # Log the received data for debugging
+            logger.info(f"Received commit data: {data}")
+            logger.info(f"Budget items count: {len(data.get('budget_items', []))}")
+            logger.info(f"Target periods count: {len(data.get('target_periods', []))}")
 
             wizard = BudgetWizard()
             result = wizard.commit_budget_draft(
@@ -144,9 +148,15 @@ class BudgetCommitAPIView(View):
                 overwrite_existing=data.get("overwrite_existing", True),
             )
 
+            logger.info(f"Commit result: {result}")
+
             return JsonResponse({"success": True, "result": result})
 
         except Exception as e:
+            import logging
+
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in commit_budget_draft: {e}")
             return JsonResponse({"success": False, "error": str(e)}, status=500)
 
 
@@ -165,5 +175,53 @@ class BudgetVsActualView(TemplateView):
         # For now, just pass the periods
         # TODO: Add actual vs budget comparison logic
         context["periods"] = periods
+
+        return context
+
+
+@method_decorator(trace, name="dispatch")
+class BudgetReportView(TemplateView):
+    """Budget Report showing actual budget records with monthly analysis."""
+
+    template_name = "budgets/budget_report.html"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        # Get all budget periods ordered by most recent first
+        periods = BudgetPeriod.objects.all().order_by("-year", "-month")
+
+        # Get budget data grouped by period
+        budget_data = {}
+        for period in periods:
+            budgets = (
+                Budget.objects.filter(year=period.year, month=period.month)
+                .select_related("category", "subcategory", "payoree")
+                .order_by("category__name", "subcategory__name", "payoree__name")
+            )
+
+            # Group budgets by category for better organization
+            categorized_budgets = {}
+            for budget in budgets:
+                category_name = (
+                    budget.category.name if budget.category else "Uncategorized"
+                )
+                if category_name not in categorized_budgets:
+                    categorized_budgets[category_name] = []
+                categorized_budgets[category_name].append(budget)
+
+            budget_data[period] = {
+                "period": period,
+                "budgets": budgets,
+                "categorized_budgets": categorized_budgets,
+                "total_count": budgets.count(),
+            }
+
+        context.update(
+            {
+                "periods": periods,
+                "budget_data": budget_data,
+            }
+        )
 
         return context
