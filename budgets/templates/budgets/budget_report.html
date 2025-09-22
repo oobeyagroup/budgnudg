@@ -1,344 +1,423 @@
 {% extends "base.html" %}
+{% load static %}
+{% load dict_extras %}
 {% load humanize %}
-{% load custom_filters %}
 
-{% block title %}Budget Report - Monthly Analysis{% endblock %}
+{% block title %}Budget Report - Monthly{% endblock %}
 
 {% block extra_css %}
 <style>
-    .collapsible-header {
-        cursor: pointer;
-        background-color: #f8f9fa;
-        border: 1px solid #dee2e6;
-        padding: 10px 15px;
-        margin: 2px 0;
-        border-radius: 4px;
-        transition: background-color 0.2s ease;
-        user-select: none;
+    .category-type-row {
+        background: none;
+        color: white;
+        font-weight: bold;
     }
-
-    .collapsible-header:hover {
+    
+    .category-row {
+        background: none;
+        color: white;
+        font-weight: 600;
+    }
+    
+    .subcategory-row {
+        background: none;
+        color: white;
+        font-weight: 500;
+    }
+    
+    .transaction-row {
+        background-color: #f8f9fa;
+    }
+    
+    .transaction-row:hover {
         background-color: #e9ecef;
     }
-
-    .collapsible-header.active {
-        background-color: #007bff;
-        color: white;
-        border-color: #007bff;
+    
+    .collapsible-header {
+        cursor: pointer;
+        transition: background-color 0.2s ease;
     }
-
-    .collapsible-content {
-        display: none;
-        border: 1px solid #dee2e6;
-        border-top: none;
-        border-radius: 0 0 4px 4px;
-        background-color: #fff;
+    
+    .collapsible-header:hover {
+        opacity: 0.9;
     }
-
-    .collapsible-header.active + .collapsible-content {
-        display: block;
+    
+    .collapse-icon {
+        transition: transform 0.3s ease;
     }
-
-    .category-total {
-        font-weight: bold;
-        background-color: #f1f3f4;
+    
+    .collapsed .collapse-icon {
+        transform: rotate(-90deg);
     }
-
-    .expense {
-        color: #dc3545;
+    
+    .sticky-header {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
-
-    .income {
-        color: #28a745;
+    
+    .horizontal-scroll {
+        overflow-x: auto;
+        white-space: nowrap;
     }
-
-    .needs-level-critical {
-        border-left: 4px solid #dc3545;
+    
+    .month-header {
+        text-orientation: mixed;
+        font-weight: 600;
+        padding: 0.5rem 0.25rem;    
+        min-width: 80px;
     }
-
-    .needs-level-core {
-        border-left: 4px solid #fd7e14;
+    
+    .description-cell {
+        min-width: 250px;
+        max-width: 300px;
+        position: sticky;
+        left: 0;
+        background: inherit;
+        z-index: 5;
     }
-
-    .needs-level-lifestyle {
-        border-left: 4px solid #20c997;
+    
+    .amount-cell {
+        min-width: 100px;
+        position: sticky;
+        left: 250px;
+        background: inherit;
+        z-index: 4;
     }
-
-    .needs-level-discretionary {
-        border-left: 4px solid #6f42c1;
+    
+    .count-cell {
+        min-width: 80px;
+        position: sticky;
+        left: 350px;
+        background: inherit;
+        z-index: 3;
     }
-
-    .needs-level-luxury {
-        border-left: 4px solid #e83e8c;
+    
+    .monthly-column {
+        min-width: 80px;
+        text-align: right;
+        white-space: nowrap;
     }
-
-    .needs-level-deferred {
-        border-left: 4px solid #6c757d;
-    }
-
-    .badge-needs-critical {
-        background-color: #dc3545 !important;
-        color: white;
-    }
-
-    .badge-needs-core {
-        background-color: #fd7e14 !important;
-        color: white;
-    }
-
-    .badge-needs-lifestyle {
-        background-color: #20c997 !important;
-        color: white;
-    }
-
-    .badge-needs-discretionary {
-        background-color: #6f42c1 !important;
-        color: white;
-    }
-
-    .badge-needs-luxury {
-        background-color: #e83e8c !important;
-        color: white;
-    }
-
-    .badge-needs-deferred {
-        background-color: #6c757d !important;
-        color: white;
-    }
-
-    .ai-suggested {
-        background-color: #f8f9ff;
-    }
-
-    .variance-positive {
-        color: #28a745;
-        font-weight: bold;
-    }
-
-    .variance-negative {
-        color: #dc3545;
-        font-weight: bold;
-    }
-
-    @media print {
-        .btn, .filter-section {
-            display: none;
+    
+    @media (max-width: 768px) {
+        .month-header {
+            min-width: 60px;
+            min-height: 80px;
         }
-        .collapsible-content {
-            display: block !important;
+        
+        .description-cell {
+            min-width: 200px;
+        }
+        
+        .amount-cell {
+            left: 200px;
+        }
+        
+        .count-cell {
+            left: 300px;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
         <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex justify-content-between align-items-center flex-wrap">
                 <div>
-                    <h2 class="mb-0">
-                        <i class="fas fa-chart-bar text-primary me-2"></i>
-                        Budget Report - Monthly Analysis
+                    <h2 class="mb-1">
+                        <i class="fas fa-chart-line me-2 text-primary"></i>
+                        Budget Report - Monthly 
                     </h2>
                     <p class="text-muted mb-0">
-                        <small>
-                            <i class="fas fa-calendar-alt me-1"></i>
-                            Showing actual budget records by month
-                        </small>
+                        THIS SHOULD DESCRIBE THE BUDGET BEING SHOWN
                     </p>
                 </div>
-                <div>
-                    <a href="{% url 'budgets:wizard' %}" class="btn btn-success btn-sm">
-                        <i class="fas fa-plus me-1"></i>Create Budget
-                    </a>
-                    <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
-                        <i class="fas fa-print me-1"></i>Print
-                    </button>
+                <div class="text-end">
+                    <div class="d-flex align-items-center gap-3 flex-wrap">
+                        <div class="text-muted">
+                            <strong>{{ total_transactions }}</strong> budget{{ total_transactions|pluralize }}
+                        </div>
+                        <div class="text-muted">
+                            Total: <span class="currency {% if grand_total_amount >= 0 %}currency-positive{% elif grand_total_amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">{{ grand_total_amount|floatformat:2|intcomma }}</span>
+                        </div>
+                        <div>
+                            <a href="?format=csv" class="btn btn-success btn-sm me-2">
+                                <i class="fas fa-download me-1"></i>Export CSV
+                            </a>
+                            <button class="btn btn-outline-primary btn-sm me-2" onclick="expandAll()">
+                                <i class="fas fa-expand-arrows-alt me-1"></i>Expand All
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="collapseAll()">
+                                <i class="fas fa-compress-arrows-alt me-1"></i>Collapse All
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            {% if not periods %}
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    No budget periods found. <a href="{% url 'budgets:wizard' %}">Create your first budget</a> to get started.
-                </div>
-            {% endif %}
-
-            <!-- Budget Report Table -->
-            {% for period in periods %}
-                {% with data=budget_data|get_item:period %}
-                <div class="collapsible-header" onclick="toggleCollapsible(this)">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <i class="fas fa-chevron-right transition-icon me-2"></i>
-                            <strong>{{ period }}</strong>
-                            <span class="badge bg-secondary ms-2">{{ data.total_count }} budget items</span>
-                        </div>
-                        <div class="text-end">
-                            <div>
-                                <strong class="text-success">${{ period.total_budgeted|default:0|floatformat:2 }}</strong>
-                                budgeted
-                            </div>
-                            {% if period.baseline_total %}
-                            <small class="text-muted">
-                                vs ${{ period.baseline_total|floatformat:2 }} baseline
-                                {% with variance=period.get_variance_vs_baseline %}
-                                    {% if variance > 0 %}
-                                        <span class="variance-positive">(+${{ variance|floatformat:2 }})</span>
-                                    {% elif variance < 0 %}
-                                        <span class="variance-negative">(${{ variance|floatformat:2|slice:"1:" }})</span>
-                                    {% endif %}
-                                {% endwith %}
-                            </small>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-
-                <div class="collapsible-content">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-hover mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Payoree</th>
-                                    <th>Needs Level</th>
-                                    <th class="text-end">Amount</th>
-                                    <th class="text-end">Baseline</th>
-                                    <th class="text-end">Variance</th>
-                                    <th class="text-center">AI</th>
-                                    <th>Notes</th>
+    <!-- Transaction Report Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="horizontal-scroll border rounded">
+                <table class="table table-sm table-bordered table-hover small mb-0">
+                    <!-- Table Header -->
+                    <thead class="sticky-header table-dark">
+                        <tr>
+                            <th class="description-cell">Category / Description</th>
+                            <th class="amount-cell text-end">Total</th>
+                            <th class="count-cell text-center">Count</th>
+                            {% for month in months %}
+                            <th class="monthly-column">
+                                <div class="month-header small">{{ month.name }}</div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category_type in category_type_order %}
+                            {% if category_type in organized_data %}
+                                {% with type_data=organized_data|lookup:category_type %}
+                                <!-- Category Type Row -->
+                                <tr class="category-type-row collapsible-header" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#type-{{ category_type }}" 
+                                    aria-expanded="true">
+                                    <td class="description-cell">
+                                        <i class="fas fa-chevron-down collapse-icon me-2"></i>
+                                        <i class="fas fa-folder me-2"></i>
+                                        <strong class="text-capitalize">{{ category_type }}</strong>
+                                    </td>
+                                    <td class="amount-cell text-end">
+                                        <span class="fw-semibold currency {% if type_data.total_amount >= 0 %}currency-positive {% elif type_data.total_amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">
+                                            {{ type_data.total_amount|floatformat:2|intcomma|intcomma }}
+                                        </span>
+                                    </td>
+                                    <td class="count-cell text-center">{{ type_data.total_count }}</td>
+                                    {% for month in months %}
+                                        {% with month_key=month.date|date:"Y-m" %}
+                                            {% with amount=type_data.monthly_totals|lookup:month_key %}
+                                            <td class="monthly-column text-end">
+                                                {% if amount != 0 %}
+                                                    <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ amount|floatformat:2|intcomma }}</span>
+                                                {% else %}
+                                                    <span class="text-muted fst-italic">-</span>
+                                                {% endif %}
+                                            </td>
+                                            {% endwith %}
+                                        {% endwith %}
+                                    {% endfor %}
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {% for category_name, subcategories in data.categorized_budgets.items %}
-                                    <!-- Category Header -->
-                                    <tr class="category-total">
-                                        <td colspan="7">
-                                            <strong>{{ category_name }}</strong>
-                                            <span class="badge bg-light text-dark ms-2">
-                                                {% for subcat_name, subcat_budgets in subcategories.items %}{{ subcat_budgets|length }}{% if not forloop.last %} + {% endif %}{% endfor %} items
-                                            </span>
+                                
+                                <!-- Category Type Content -->
+                                <tbody class="collapse show" id="type-{{ category_type }}">
+                                    {% for category_name, category_data in type_data.categories.items %}
+                                    <!-- Category Row -->
+                                    <tr class="category-row collapsible-header" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#category-{{ category_type }}-{{ forloop.counter }}" 
+                                        aria-expanded="false">
+                                        <td class="description-cell ps-4">
+                                            <i class="fas fa-chevron-down collapse-icon me-2"></i>
+                                            <i class="fas fa-tag me-2"></i>
+                                            {{ category_name }}
                                         </td>
+                                        <td class="amount-cell text-end">
+                                            <span class="currency {% if category_data.total_amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ category_data.total_amount|floatformat:2|intcomma }}</span>
+                                        </td>
+                                        <td class="count-cell text-center">{{ category_data.total_count }}</td>
+                                        {% for month in months %}
+                                            {% with month_key=month.date|date:"Y-m" %}
+                                                {% with amount=category_data.monthly_totals|lookup:month_key %}
+                                                <td class="monthly-column text-end">
+                                                    {% if amount != 0 %}
+                                                        <span class="currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                                                            {{ amount|floatformat:2|intcomma }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted fst-italic">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                {% endwith %}
+                                            {% endwith %}
+                                        {% endfor %}
                                     </tr>
                                     
-                                    <!-- Subcategory Groups -->
-                                    {% for subcategory_name, budgets in subcategories.items %}
-                                        {% if subcategories|length > 1 or subcategory_name != "General" %}
-                                        <!-- Subcategory Header (only if multiple subcategories or not General) -->
-                                        <tr class="table-secondary">
-                                            <td colspan="7" class="ps-4">
-                                                <em>{{ subcategory_name }}</em>
-                                                <span class="badge bg-secondary ms-2">{{ budgets|length }} items</span>
+                                    <!-- Category Content (Subcategories) -->
+                                    {% for subcategory_name, subcategory_data in category_data.subcategories.items %}
+                                        <!-- Subcategory Row -->
+                                        <tr class="subcategory-row collapsible-header collapse" 
+                                            id="category-{{ category_type }}-{{ forloop.parentloop.counter }}"
+                                            data-bs-toggle="collapse" 
+                                            data-bs-target="#subcategory-{{ category_type }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" 
+                                            aria-expanded="false">
+                                            <td class="description-cell ps-5">
+                                                <i class="fas fa-chevron-down collapse-icon me-2"></i>
+                                                <i class="fas fa-tags me-2"></i>
+                                                {{ subcategory_name }}
                                             </td>
-                                        </tr>
-                                        {% endif %}
-                                        
-                                        <!-- Budget Items in Subcategory -->
-                                        {% for budget in budgets %}
-                                        <tr class="needs-level-{{ budget.needs_level|default:'core' }} {% if budget.is_ai_suggested %}ai-suggested{% endif %}">
-                                            <td class="ps-5">
-                                                {% if budget.payoree %}
-                                                    {{ budget.payoree.name }}
-                                                {% else %}
-                                                    <em>General</em>
-                                                {% endif %}
+                                            <td class="amount-cell text-end">
+                                                <span class="{% if subcategory_data.total_amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
+                                                    ${{ subcategory_data.total_amount|floatformat:2|intcomma|intcomma }}
+                                                </span>
                                             </td>
-                                            <td>
-                                                {% if budget.needs_level %}
-                                                    <span class="badge badge-needs-{{ budget.needs_level }}">
-                                                        {{ budget.get_needs_level_display }}
-                                                    </span>
-                                                {% endif %}
-                                            </td>
-                                            <td class="text-end">
-                                                <strong>${{ budget.amount|floatformat:2 }}</strong>
-                                            </td>
-                                            <td class="text-end text-muted">
-                                                {% if budget.baseline_amount %}
-                                                    ${{ budget.baseline_amount|floatformat:2 }}
-                                                {% else %}
-                                                    —
-                                                {% endif %}
-                                            </td>
-                                            <td class="text-end">
-                                                {% with variance=budget.get_variance_vs_baseline %}
-                                                    {% if variance %}
-                                                        {% if variance > 0 %}
-                                                            <span class="variance-positive">+${{ variance|floatformat:2 }}</span>
+                                            <td class="count-cell text-center">{{ subcategory_data.count }}</td>
+                                            {% for month in months %}
+                                                {% with month_key=month.date|date:"Y-m" %}
+                                                    {% with amount=subcategory_data.monthly_totals|lookup:month_key %}
+                                                    <td class="monthly-column text-end">
+                                                        {% if amount != 0 %}
+                                                            <span class="currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                                                                {{ amount|floatformat:2|intcomma }}
+                                                            </span>
                                                         {% else %}
-                                                            <span class="variance-negative">${{ variance|floatformat:2 }}</span>
+                                                            <span class="text-muted fst-italic">-</span>
                                                         {% endif %}
-                                                    {% else %}
-                                                        —
-                                                    {% endif %}
+                                                    </td>
+                                                    {% endwith %}
                                                 {% endwith %}
-                                            </td>
-                                            <td class="text-center">
-                                                {% if budget.is_ai_suggested %}
-                                                    <i class="fas fa-robot text-primary" title="AI Suggested"></i>
-                                                {% else %}
-                                                    <i class="fas fa-user text-secondary" title="User Created"></i>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                {% if budget.user_note %}
-                                                    <small class="text-muted">{{ budget.user_note|truncatechars:50 }}</small>
-                                                {% endif %}
-                                            </td>
+                                            {% endfor %}
                                         </tr>
+                                        
+                                        <!-- Budget Items List (collapsed by default) -->
+                                        {% for budget_data in subcategory_data.budgets %}
+                                            {% with budget=budget_data.budget %}
+                                            <tr class="budget-row collapse" id="subcategory-{{ category_type }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}">
+                                                <td class="description-cell ps-5">
+                                                    {% if budget.payoree %}
+                                                        <strong>{{ budget.payoree.name }}</strong>
+                                                    {% else %}
+                                                        <em class="text-muted">General Budget</em>
+                                                    {% endif %}
+                                                    {% if budget.user_note %}
+                                                        <small class="text-muted d-block">{{ budget.user_note|truncatechars:30 }}</small>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="amount-cell text-end">
+                                                    <span class="currency currency-positive">
+                                                        ${{ budget.amount|floatformat:0|intcomma }}
+                                                    </span>
+                                                </td>
+                                                <td class="count-cell text-center">
+                                                    {% if budget.needs_level %}
+                                                        <span class="badge badge-{{ budget.needs_level }}" style="font-size: 0.6rem;">
+                                                            {{ budget.get_needs_level_display|truncatechars:4 }}
+                                                        </span>
+                                                    {% endif %}
+                                                </td>
+                                                {% for month in months %}
+                                                    {% with month_key=month.date|date:"Y-m" %}
+                                                        <td class="monthly-column text-end">
+                                                            {% if month_key in budget_data.months %}
+                                                                <span class="currency currency-positive">
+                                                                    ${{ budget.amount|floatformat:0|intcomma }}
+                                                                </span>
+                                                            {% else %}
+                                                                <span class="text-muted">-</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    {% endwith %}
+                                                {% endfor %}
+                                                <td class="action-cell text-center">
+                                                    {% if budget.is_ai_suggested %}
+                                                        <i class="fas fa-robot text-primary" title="AI Suggested"></i>
+                                                    {% else %}
+                                                        <i class="fas fa-user text-secondary" title="User Created"></i>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endwith %}
                                         {% endfor %}
                                     {% endfor %}
-                                {% empty %}
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted py-3">
-                                            No budget items found for this period
-                                        </td>
-                                    </tr>
                                 {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                {% endwith %}
-            {% endfor %}
+                                </tbody>
+                                {% endwith %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        <!-- Grand Total Row -->
+                        <tr class="table-dark fw-bold">
+                            <td class="description-cell"><strong>GRAND TOTAL</strong></td>
+                            <td class="amount-cell text-end">
+                                <strong class="{% if grand_total_amount >= 0 %}text-success-subtle{% else %}text-danger-subtle{% endif %}">
+                                    ${{ grand_total_amount|floatformat:2|intcomma|intcomma }}
+                                </strong>
+                            </td>
+                            <td class="count-cell text-center"><strong>{{ grand_total_count }}</strong></td>
+                            {% for month in months %}
+                                {% with month_key=month.date|date:"Y-m" %}
+                                    {% with amount=grand_monthly_totals|lookup:month_key %}
+                                    <td class="monthly-column text-end">
+                                        <strong>
+                                            {% if amount != 0 %}
+                                                <span class="{% if amount >= 0 %}text-success-subtle{% else %}text-danger-subtle{% endif %}">
+                                                    ${{ amount|floatformat:2|intcomma }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </strong>
+                                    </td>
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endfor %}
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block extra_js %}
 <script>
-function toggleCollapsible(element) {
-    const isActive = element.classList.contains('active');
-    
-    // Close all other collapsibles
-    document.querySelectorAll('.collapsible-header.active').forEach(header => {
-        header.classList.remove('active');
-        const icon = header.querySelector('.transition-icon');
-        if (icon) {
-            icon.classList.remove('fa-chevron-down');
-            icon.classList.add('fa-chevron-right');
+function expandAll() {
+    document.querySelectorAll('.collapse').forEach(element => {
+        if (!element.classList.contains('show')) {
+            const bsCollapse = new bootstrap.Collapse(element, {toggle: false});
+            bsCollapse.show();
         }
     });
     
-    // Toggle current collapsible
-    if (!isActive) {
-        element.classList.add('active');
-        const icon = element.querySelector('.transition-icon');
-        if (icon) {
-            icon.classList.remove('fa-chevron-right');
-            icon.classList.add('fa-chevron-down');
-        }
-    }
+    // Update all chevron icons
+    document.querySelectorAll('.collapse-icon').forEach(icon => {
+        icon.closest('tr').classList.remove('collapsed');
+    });
 }
 
-// Auto-open first section if available
+function collapseAll() {
+    document.querySelectorAll('.collapse.show').forEach(element => {
+        const bsCollapse = new bootstrap.Collapse(element, {toggle: false});
+        bsCollapse.hide();
+    });
+    
+    // Update all chevron icons
+    document.querySelectorAll('.collapse-icon').forEach(icon => {
+        icon.closest('tr').classList.add('collapsed');
+    });
+}
+
+// Handle collapse icon rotation
 document.addEventListener('DOMContentLoaded', function() {
-    const firstHeader = document.querySelector('.collapsible-header');
-    if (firstHeader) {
-        toggleCollapsible(firstHeader);
-    }
+    document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(element => {
+        element.addEventListener('click', function() {
+            const icon = this.querySelector('.collapse-icon');
+            if (icon) {
+                // Toggle collapsed class on the row
+                this.classList.toggle('collapsed');
+            }
+        });
+        
+        // Initialize as collapsed for categories and subcategories
+        if (!element.closest('tr').classList.contains('category-type-row')) {
+            element.classList.add('collapsed');
+        }
+    });
 });
 </script>
 {% endblock %}

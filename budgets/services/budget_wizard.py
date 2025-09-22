@@ -42,12 +42,12 @@ class BudgetWizard:
         starting_month: Optional[int] = None,
     ) -> Dict[str, Any]:
         """
-        Generate initial budget draft based on historical data.
+        Generate initial budget draft based on historical data with month-specific calculations.
 
         Returns dict with:
-        - budget_items: List of suggested budget entries
+        - budget_items: List of suggested budget entries (combined from all months)
+        - periods: List of target periods with month-specific data
         - summary: Aggregate statistics
-        - period_info: Details about target periods
         """
         # Determine starting period
         if not starting_year or not starting_month:
@@ -57,32 +57,59 @@ class BudgetWizard:
             starting_year = next_month.year
             starting_month = next_month.month
 
-        # Get baseline suggestions
-        suggestions = self.baseline_calculator.get_category_suggestions(
-            target_months=target_months, method=method
-        )
-
-        # Generate target periods
+        # Generate target periods with month-specific suggestions
         periods = []
+        all_suggestions_by_month = {}
         current_date = date(starting_year, starting_month, 1)
+
         for i in range(target_months):
             period_date = add_months(current_date, i)
+            period_key = f"{period_date.year}_{period_date.month}"
+
+            # Get month-specific baseline suggestions
+            month_suggestions = (
+                self.baseline_calculator.get_month_specific_category_suggestions(
+                    target_month=period_date.month,
+                    target_year=period_date.year,
+                    method=method,
+                )
+            )
+
+            all_suggestions_by_month[period_key] = month_suggestions
+
             periods.append(
                 {
                     "year": period_date.year,
                     "month": period_date.month,
                     "display": period_date.strftime("%B %Y"),
+                    "suggestions": month_suggestions,
+                    "period_key": period_key,
                 }
             )
 
-        # Calculate summary statistics
-        total_baseline = sum(item["baseline_amount"] for item in suggestions)
-        total_suggested = sum(item["suggested_amount"] for item in suggestions)
+        # For backward compatibility, also provide a combined list
+        # Use the first month's suggestions as the base template
+        first_period_suggestions = (
+            list(all_suggestions_by_month.values())[0]
+            if all_suggestions_by_month
+            else []
+        )
+
+        # Calculate combined summary statistics
+        total_baseline = 0
+        total_suggested = 0
+        for month_suggestions in all_suggestions_by_month.values():
+            total_baseline += sum(item["baseline_amount"] for item in month_suggestions)
+            total_suggested += sum(
+                item["suggested_amount"] for item in month_suggestions
+            )
+
         total_variance = total_suggested - total_baseline
 
         return {
-            "budget_items": suggestions,
+            "budget_items": first_period_suggestions,  # For backward compatibility
             "periods": periods,
+            "suggestions_by_month": all_suggestions_by_month,
             "summary": {
                 "total_baseline": total_baseline,
                 "total_suggested": total_suggested,
@@ -92,91 +119,8 @@ class BudgetWizard:
                     if total_baseline
                     else 0
                 ),
-                "item_count": len(suggestions),
-            },
-            "method_used": method,
-        }
-
-
-from typing import Dict, List, Any, Optional
-from decimal import Decimal
-from datetime import date, timedelta
-from calendar import monthrange
-
-from django.db import transaction
-from django.utils import timezone
-
-from .baseline_calculator import BaselineCalculator
-from ..models import Budget, BudgetPeriod
-from transactions.utils import trace
-
-
-class BudgetWizard:
-    """Orchestrates the budget creation wizard flow."""
-
-    def __init__(self, baseline_calculator: Optional[BaselineCalculator] = None):
-        self.baseline_calculator = baseline_calculator or BaselineCalculator()
-
-    @trace
-    def generate_budget_draft(
-        self,
-        target_months: int = 3,
-        method: str = "median",
-        starting_year: Optional[int] = None,
-        starting_month: Optional[int] = None,
-    ) -> Dict[str, Any]:
-        """
-        Generate initial budget draft based on historical data.
-
-        Returns dict with:
-        - budget_items: List of suggested budget entries
-        - summary: Aggregate statistics
-        - period_info: Details about target periods
-        """
-        # Determine starting period
-        if not starting_year or not starting_month:
-            today = date.today()
-            # Start with next month by default
-            next_month = add_months(today, 1)
-            starting_year = next_month.year
-            starting_month = next_month.month
-
-        # Get baseline suggestions
-        suggestions = self.baseline_calculator.get_category_suggestions(
-            target_months=target_months, method=method
-        )
-
-        # Generate target periods
-        periods = []
-        current_date = date(starting_year, starting_month, 1)
-        for i in range(target_months):
-            period_date = add_months(current_date, i)
-            periods.append(
-                {
-                    "year": period_date.year,
-                    "month": period_date.month,
-                    "display": period_date.strftime("%B %Y"),
-                }
-            )
-
-        # Calculate summary statistics
-        total_baseline = sum(item["baseline_amount"] for item in suggestions)
-        total_suggested = sum(item["suggested_amount"] for item in suggestions)
-        total_variance = total_suggested - total_baseline
-
-        return {
-            "budget_items": suggestions,
-            "periods": periods,
-            "summary": {
-                "total_baseline": total_baseline,
-                "total_suggested": total_suggested,
-                "total_variance": total_variance,
-                "variance_percentage": (
-                    float((total_variance / total_baseline * 100))
-                    if total_baseline
-                    else 0
-                ),
-                "item_count": len(suggestions),
+                "item_count": len(first_period_suggestions),
+                "total_periods": target_months,
             },
             "method_used": method,
         }
@@ -275,14 +219,22 @@ class BudgetWizard:
     @trace
     def commit_budget_draft(
         self,
-        budget_items: List[Dict],
-        target_periods: List[Dict],
+        budget_items: List[Dict] = None,
+        target_periods: List[Dict] = None,
+        suggestions_by_month: Optional[Dict[str, List[Dict]]] = None,
         overwrite_existing: bool = True,
     ) -> Dict[str, Any]:
         """
         Commit budget items to database for specified periods.
 
         Creates Budget and BudgetPeriod records, with optional overwrite of existing.
+        Now supports month-specific suggestions for improved accuracy.
+
+        Args:
+            budget_items: Legacy format - list of budget items (for backward compatibility)
+            target_periods: List of period dictionaries with year/month
+            suggestions_by_month: Dict mapping period keys to month-specific suggestions
+            overwrite_existing: Whether to overwrite existing budget records
         """
         created_budgets = []
         updated_budgets = []
@@ -291,6 +243,7 @@ class BudgetWizard:
         with transaction.atomic():
             for period in target_periods:
                 year, month = period["year"], period["month"]
+                period_key = f"{year}_{month}"
 
                 # Create or get budget period
                 budget_period, period_created = BudgetPeriod.objects.get_or_create(
@@ -302,8 +255,16 @@ class BudgetWizard:
                 if period_created:
                     created_periods.append(budget_period)
 
+                # Determine which budget items to use for this period
+                if suggestions_by_month and period_key in suggestions_by_month:
+                    # Use month-specific suggestions
+                    period_items = suggestions_by_month[period_key]
+                else:
+                    # Fall back to generic budget items (backward compatibility)
+                    period_items = budget_items or []
+
                 # Process budget items for this period
-                for item in budget_items:
+                for item in period_items:
                     budget_data = {
                         "year": year,
                         "month": month,

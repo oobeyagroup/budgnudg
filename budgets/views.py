@@ -5,6 +5,7 @@ from django.http import JsonResponse
 from django.contrib import messages
 from django.utils.decorators import method_decorator
 from django.db import transaction
+from django.db.models import Q
 from django.urls import reverse
 
 from transactions.utils import trace
@@ -184,56 +185,237 @@ class BudgetVsActualView(TemplateView):
 
 @method_decorator(trace, name="dispatch")
 class BudgetReportView(TemplateView):
-    """Budget Report showing actual budget records with monthly analysis."""
+    """Budget Report showing actual budget records with monthly analysis - mirrors Transaction Report structure."""
 
     template_name = "budgets/budget_report.html"
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        from collections import defaultdict
+        from datetime import date
+        import calendar
 
-        # Get all budget periods ordered by most recent first
-        periods = BudgetPeriod.objects.all().order_by("-year", "-month")
+        # For budget reports, we look FORWARD (budgets are for future months)
+        # Generate list of next 12 months starting from current month
+        today = date.today()
 
-        # Get budget data grouped by period
-        budget_data = {}
-        for period in periods:
-            budgets = (
-                Budget.objects.filter(year=period.year, month=period.month)
-                .select_related("category", "subcategory", "payoree")
-                .order_by("category__name", "subcategory__name", "payoree__name")
+        months = []
+        for i in range(12):
+            # Calculate month and year going forward from current date
+            year = today.year
+            month = today.month + i
+
+            # Handle year rollover
+            while month > 12:
+                month -= 12
+                year += 1
+
+            month_date = date(year, month, 1)
+            months.append(
+                {
+                    "date": month_date,
+                    "name": month_date.strftime("%b %Y"),
+                    "short_name": month_date.strftime("%b"),
+                    "year": month_date.year,
+                    "month": month_date.month,
+                }
             )
 
-            # Group budgets by category and subcategory for better organization
-            categorized_budgets = {}
-            for budget in budgets:
-                category_name = (
-                    budget.category.name if budget.category else "Uncategorized"
-                )
-                subcategory_name = (
-                    budget.subcategory.name if budget.subcategory else "General"
-                )
+        # Get all budgets in the date range with related data
+        # Use the months list to determine the exact date range to avoid KeyErrors
+        month_filters = []
+        for month_info in months:
+            month_filters.append(Q(year=month_info["year"], month=month_info["month"]))
 
-                # Initialize category if it doesn't exist
-                if category_name not in categorized_budgets:
-                    categorized_budgets[category_name] = {}
+        if month_filters:
+            # Combine all month filters with OR
+            from functools import reduce
 
-                # Initialize subcategory if it doesn't exist
-                if subcategory_name not in categorized_budgets[category_name]:
-                    categorized_budgets[category_name][subcategory_name] = []
+            combined_filter = reduce(lambda q1, q2: q1 | q2, month_filters)
+            budgets = (
+                Budget.objects.select_related("category", "subcategory", "payoree")
+                .filter(combined_filter)
+                .order_by("-year", "-month", "category__name", "subcategory__name")
+            )
+        else:
+            budgets = Budget.objects.none()
 
-                categorized_budgets[category_name][subcategory_name].append(budget)
+        # Group budgets by category type, category, subcategory, and month
+        # Same structure as transaction report
+        grouped_data = defaultdict(
+            lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+        )
 
-            budget_data[period] = {
-                "period": period,
-                "budgets": budgets,
-                "categorized_budgets": categorized_budgets,
-                "total_count": budgets.count(),
+        for budget in budgets:
+            # Determine category type
+            if budget.category:
+                category_type = budget.category.type
+                category_name = budget.category.name
+                category_obj = budget.category
+            else:
+                category_type = "uncategorized"
+                category_name = "Uncategorized"
+                category_obj = None
+
+            # Determine subcategory
+            if budget.subcategory:
+                subcategory_name = budget.subcategory.name
+                subcategory_obj = budget.subcategory
+            else:
+                subcategory_name = "No Subcategory"
+                subcategory_obj = None
+
+            # Determine month key
+            month_key = f"{budget.year}-{budget.month:02d}"
+
+            # Group the budget
+            grouped_data[category_type][category_name][subcategory_name][
+                month_key
+            ].append(
+                {
+                    "budget": budget,
+                    "category_obj": category_obj,
+                    "subcategory_obj": subcategory_obj,
+                }
+            )
+
+        # Convert to regular dict and calculate counts and monthly totals
+        # Same structure as transaction report
+        organized_data = {}
+        for category_type, categories in grouped_data.items():
+            organized_data[category_type] = {
+                "categories": {},
+                "total_count": 0,
+                "total_amount": 0,
+                "monthly_totals": {
+                    month["date"].strftime("%Y-%m"): 0 for month in months
+                },
             }
+
+            for category_name, subcategories in categories.items():
+                category_data = {
+                    "subcategories": {},
+                    "total_count": 0,
+                    "total_amount": 0,
+                    "category_obj": None,
+                    "monthly_totals": {
+                        month["date"].strftime("%Y-%m"): 0 for month in months
+                    },
+                }
+
+                for subcategory_name, monthly_budgets in subcategories.items():
+                    subcategory_total = 0
+                    subcategory_count = 0
+                    monthly_totals = {
+                        month["date"].strftime("%Y-%m"): 0 for month in months
+                    }
+                    all_budgets = []
+
+                    # Process each month for this subcategory
+                    for month_key, budget_data in monthly_budgets.items():
+                        month_total = sum(
+                            float(b["budget"].amount) for b in budget_data
+                        )
+                        month_count = len(budget_data)
+
+                        # Use defensive programming to avoid KeyError
+                        monthly_totals[month_key] = (
+                            monthly_totals.get(month_key, 0) + month_total
+                        )
+                        subcategory_total += month_total
+                        subcategory_count += month_count
+                        all_budgets.extend(budget_data)
+
+                    category_data["subcategories"][subcategory_name] = {
+                        "budgets": all_budgets,  # 'budgets' instead of 'transactions'
+                        "count": subcategory_count,
+                        "total_amount": subcategory_total,
+                        "monthly_totals": monthly_totals,
+                        "subcategory_obj": (
+                            all_budgets[0]["subcategory_obj"] if all_budgets else None
+                        ),
+                    }
+
+                    # Set category object from first budget
+                    if not category_data["category_obj"] and all_budgets:
+                        category_data["category_obj"] = all_budgets[0]["category_obj"]
+
+                    # Add to category totals
+                    category_data["total_count"] += subcategory_count
+                    category_data["total_amount"] += subcategory_total
+                    for month_key, amount in monthly_totals.items():
+                        category_data["monthly_totals"][month_key] = (
+                            category_data["monthly_totals"].get(month_key, 0) + amount
+                        )
+
+                organized_data[category_type]["categories"][
+                    category_name
+                ] = category_data
+                organized_data[category_type]["total_count"] += category_data[
+                    "total_count"
+                ]
+                organized_data[category_type]["total_amount"] += category_data[
+                    "total_amount"
+                ]
+
+                # Add to category type monthly totals
+                for month_key, amount in category_data["monthly_totals"].items():
+                    organized_data[category_type]["monthly_totals"][month_key] = (
+                        organized_data[category_type]["monthly_totals"].get(
+                            month_key, 0
+                        )
+                        + amount
+                    )
+
+        # Calculate grand totals including monthly
+        grand_total_count = sum(data["total_count"] for data in organized_data.values())
+        grand_total_amount = sum(
+            data["total_amount"] for data in organized_data.values()
+        )
+        grand_monthly_totals = {month["date"].strftime("%Y-%m"): 0 for month in months}
+
+        for data in organized_data.values():
+            for month_key, amount in data["monthly_totals"].items():
+                if month_key in grand_monthly_totals:
+                    grand_monthly_totals[month_key] += amount
+
+        # Define category type display order (same as transaction report)
+        category_type_order = [
+            "income",
+            "expense",
+            "transfer",
+            "asset",
+            "liability",
+            "equity",
+            "uncategorized",
+        ]
+
+        # Calculate categories count
+        categories_count = sum(
+            len(data["categories"]) for data in organized_data.values()
+        )
+
+        # Get date range info
+        start_date = months[0]["date"] if months else None
+        end_date = months[-1]["date"] if months else None
 
         context.update(
             {
-                "periods": periods,
-                "budget_data": budget_data,
+                "organized_data": organized_data,  # Transaction Report compatibility
+                "category_type_order": category_type_order,
+                "months": months,
+                "grand_total_count": grand_total_count,
+                "grand_total_amount": grand_total_amount,
+                "grand_monthly_totals": grand_monthly_totals,
+                "total_transactions": grand_total_count,  # Alias for budget count
+                # Legacy budget report context (keeping for compatibility)
+                "budget_hierarchy": organized_data,
+                "categories_count": categories_count,
+                "start_date": start_date,
+                "end_date": end_date,
+                "filter_applied": bool(
+                    self.request.GET.get("category") or self.request.GET.get("search")
+                ),
             }
         )
 

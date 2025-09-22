@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load static %}
+{% load dict_extras %}
+{% load humanize %}
+
+{% block title %}Budget Report - Monthly Analysis{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h1>Budget Report - Monthly Analysis</h1>
+    
+    <!-- Test that basic template variables work -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Budget Amount</h5>
+                    <h3 class="text-primary">
+                        ${{ grand_total_amount|floatformat:2|intcomma }}
+                    </h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Budget Items</h5>
+                    <h3 class="text-info">{{ grand_total_count }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Simple table structure -->
+    <div class="card">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="min-width: 300px;">Budget Category</th>
+                            <th class="text-end">Amount</th>
+                            <th class="text-center">Count</th>
+                            {% for month in months %}
+                                <th class="text-end">{{ month.date|date:"M Y" }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for category_type in category_type_order %}
+                            {% with type_data=budget_hierarchy|lookup:category_type %}
+                            {% if type_data %}
+                            <tr class="table-secondary">
+                                <td><strong>{{ category_type|title }}</strong></td>
+                                <td class="text-end">
+                                    <strong>${{ type_data.total_amount|floatformat:2|intcomma }}</strong>
+                                </td>
+                                <td class="text-center">{{ type_data.count }}</td>
+                                {% for month in months %}
+                                    {% with month_key=month.date|date:"Y-m" %}
+                                        {% with amount=type_data.monthly_totals|lookup:month_key %}
+                                        <td class="text-end">
+                                            {% if amount != 0 %}
+                                                ${{ amount|floatformat:2|intcomma }}
+                                            {% else %}
+                                                -
+                                            {% endif %}
+                                        </td>
+                                        {% endwith %}
+                                    {% endwith %}
+                                {% endfor %}
+                            </tr>
+                            {% endif %}
+                            {% endwith %}
+                        {% endfor %}
+                        
+                        <!-- Grand Total -->
+                        {% if grand_total_count > 0 %}
+                        <tr class="table-dark fw-bold">
+                            <td><strong>GRAND TOTAL</strong></td>
+                            <td class="text-end">
+                                <strong>${{ grand_total_amount|floatformat:2|intcomma }}</strong>
+                            </td>
+                            <td class="text-center">{{ grand_total_count }}</td>
+                            {% for month in months %}
+                                {% with month_key=month.date|date:"Y-m" %}
+                                    {% with amount=grand_monthly_totals|lookup:month_key %}
+                                    <td class="text-end">
+                                        {% if amount != 0 %}
+                                            <strong>${{ amount|floatformat:2|intcomma }}</strong>
+                                        {% else %}
+                                            <strong>-</strong>
+                                        {% endif %}
+                                    </td>
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endfor %}
+                        </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
