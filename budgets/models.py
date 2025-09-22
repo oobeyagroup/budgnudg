@@ -151,6 +151,46 @@ class Budget(models.Model):
             return None
         return ((self.amount - self.baseline_amount) / self.baseline_amount) * 100
 
+    def get_current_spent(self):
+        """Get current amount spent for this budget (placeholder for future integration)."""
+        # TODO: Integrate with transaction system to calculate actual spending
+        return Decimal("0.00")
+
+    def get_spent_percentage(self):
+        """Get percentage of budget spent."""
+        if self.amount == 0:
+            return 0
+        spent = self.get_current_spent()
+        return (spent / self.amount) * 100
+
+    def get_remaining_amount(self):
+        """Get remaining budget amount."""
+        return self.amount - self.get_current_spent()
+
+    @property
+    def start_date(self):
+        """Budget period start date."""
+        from datetime import datetime
+
+        return datetime(self.year, self.month, 1).date()
+
+    @property
+    def end_date(self):
+        """Budget period end date."""
+        from datetime import datetime, date
+        import calendar
+
+        last_day = calendar.monthrange(self.year, self.month)[1]
+        return date(self.year, self.month, last_day)
+
+    @property
+    def is_active(self):
+        """Check if budget is for current or future period."""
+        from datetime import date
+
+        today = date.today()
+        return self.start_date <= today <= self.end_date or self.start_date > today
+
     @property
     def scope_key(self):
         """Generate a unique key for this budget's scope."""

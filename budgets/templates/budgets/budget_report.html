@@ -201,7 +201,7 @@
                         <table class="table table-sm table-hover mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Category / Subcategory / Payoree</th>
+                                    <th>Payoree</th>
                                     <th>Needs Level</th>
                                     <th class="text-end">Amount</th>
                                     <th class="text-end">Baseline</th>
@@ -211,73 +211,83 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                {% for category_name, budgets in data.categorized_budgets.items %}
+                                {% for category_name, subcategories in data.categorized_budgets.items %}
                                     <!-- Category Header -->
                                     <tr class="category-total">
                                         <td colspan="7">
                                             <strong>{{ category_name }}</strong>
-                                            <span class="badge bg-light text-dark ms-2">{{ budgets|length }} items</span>
+                                            <span class="badge bg-light text-dark ms-2">
+                                                {% for subcat_name, subcat_budgets in subcategories.items %}{{ subcat_budgets|length }}{% if not forloop.last %} + {% endif %}{% endfor %} items
+                                            </span>
                                         </td>
                                     </tr>
                                     
-                                    <!-- Budget Items -->
-                                    {% for budget in budgets %}
-                                    <tr class="needs-level-{{ budget.needs_level|default:'core' }} {% if budget.is_ai_suggested %}ai-suggested{% endif %}">
-                                        <td class="ps-3">
-                                            {% if budget.subcategory %}
-                                                <small class="text-muted">{{ budget.subcategory.name }}</small>
+                                    <!-- Subcategory Groups -->
+                                    {% for subcategory_name, budgets in subcategories.items %}
+                                        {% if subcategories|length > 1 or subcategory_name != "General" %}
+                                        <!-- Subcategory Header (only if multiple subcategories or not General) -->
+                                        <tr class="table-secondary">
+                                            <td colspan="7" class="ps-4">
+                                                <em>{{ subcategory_name }}</em>
+                                                <span class="badge bg-secondary ms-2">{{ budgets|length }} items</span>
+                                            </td>
+                                        </tr>
+                                        {% endif %}
+                                        
+                                        <!-- Budget Items in Subcategory -->
+                                        {% for budget in budgets %}
+                                        <tr class="needs-level-{{ budget.needs_level|default:'core' }} {% if budget.is_ai_suggested %}ai-suggested{% endif %}">
+                                            <td class="ps-5">
                                                 {% if budget.payoree %}
-                                                    <br><span class="ps-3">{{ budget.payoree.name }}</span>
+                                                    {{ budget.payoree.name }}
+                                                {% else %}
+                                                    <em>General</em>
                                                 {% endif %}
-                                            {% elif budget.payoree %}
-                                                {{ budget.payoree.name }}
-                                            {% else %}
-                                                <em>General</em>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if budget.needs_level %}
-                                                <span class="badge badge-needs-{{ budget.needs_level }}">
-                                                    {{ budget.get_needs_level_display }}
-                                                </span>
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-end">
-                                            <strong>${{ budget.amount|floatformat:2 }}</strong>
-                                        </td>
-                                        <td class="text-end text-muted">
-                                            {% if budget.baseline_amount %}
-                                                ${{ budget.baseline_amount|floatformat:2 }}
-                                            {% else %}
-                                                —
-                                            {% endif %}
-                                        </td>
-                                        <td class="text-end">
-                                            {% with variance=budget.get_variance_vs_baseline %}
-                                                {% if variance %}
-                                                    {% if variance > 0 %}
-                                                        <span class="variance-positive">+${{ variance|floatformat:2 }}</span>
-                                                    {% else %}
-                                                        <span class="variance-negative">${{ variance|floatformat:2 }}</span>
-                                                    {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if budget.needs_level %}
+                                                    <span class="badge badge-needs-{{ budget.needs_level }}">
+                                                        {{ budget.get_needs_level_display }}
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td class="text-end">
+                                                <strong>${{ budget.amount|floatformat:2 }}</strong>
+                                            </td>
+                                            <td class="text-end text-muted">
+                                                {% if budget.baseline_amount %}
+                                                    ${{ budget.baseline_amount|floatformat:2 }}
                                                 {% else %}
                                                     —
                                                 {% endif %}
-                                            {% endwith %}
-                                        </td>
-                                        <td class="text-center">
-                                            {% if budget.is_ai_suggested %}
-                                                <i class="fas fa-robot text-primary" title="AI Suggested"></i>
-                                            {% else %}
-                                                <i class="fas fa-user text-secondary" title="User Created"></i>
-                                            {% endif %}
-                                        </td>
-                                        <td>
-                                            {% if budget.user_note %}
-                                                <small class="text-muted">{{ budget.user_note|truncatechars:50 }}</small>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
+                                            </td>
+                                            <td class="text-end">
+                                                {% with variance=budget.get_variance_vs_baseline %}
+                                                    {% if variance %}
+                                                        {% if variance > 0 %}
+                                                            <span class="variance-positive">+${{ variance|floatformat:2 }}</span>
+                                                        {% else %}
+                                                            <span class="variance-negative">${{ variance|floatformat:2 }}</span>
+                                                        {% endif %}
+                                                    {% else %}
+                                                        —
+                                                    {% endif %}
+                                                {% endwith %}
+                                            </td>
+                                            <td class="text-center">
+                                                {% if budget.is_ai_suggested %}
+                                                    <i class="fas fa-robot text-primary" title="AI Suggested"></i>
+                                                {% else %}
+                                                    <i class="fas fa-user text-secondary" title="User Created"></i>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if budget.user_note %}
+                                                    <small class="text-muted">{{ budget.user_note|truncatechars:50 }}</small>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
                                     {% endfor %}
                                 {% empty %}
                                     <tr>

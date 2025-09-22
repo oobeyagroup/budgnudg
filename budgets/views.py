@@ -14,14 +14,17 @@ from .services.budget_wizard import BudgetWizard
 
 
 class BudgetListView(ListView):
-    """List all budget periods."""
+    """List all budgets."""
 
-    model = BudgetPeriod
+    model = Budget
     template_name = "budgets/budget_list.html"
-    context_object_name = "periods"
+    context_object_name = "budgets"
+    paginate_by = 20
 
     def get_queryset(self):
-        return BudgetPeriod.objects.all().order_by("-year", "-month")
+        return Budget.objects.select_related(
+            "category", "subcategory", "payoree"
+        ).order_by("-year", "-month", "category__name", "subcategory__name")
 
 
 class BudgetDetailView(DetailView):
@@ -200,15 +203,25 @@ class BudgetReportView(TemplateView):
                 .order_by("category__name", "subcategory__name", "payoree__name")
             )
 
-            # Group budgets by category for better organization
+            # Group budgets by category and subcategory for better organization
             categorized_budgets = {}
             for budget in budgets:
                 category_name = (
                     budget.category.name if budget.category else "Uncategorized"
                 )
+                subcategory_name = (
+                    budget.subcategory.name if budget.subcategory else "General"
+                )
+
+                # Initialize category if it doesn't exist
                 if category_name not in categorized_budgets:
-                    categorized_budgets[category_name] = []
-                categorized_budgets[category_name].append(budget)
+                    categorized_budgets[category_name] = {}
+
+                # Initialize subcategory if it doesn't exist
+                if subcategory_name not in categorized_budgets[category_name]:
+                    categorized_budgets[category_name][subcategory_name] = []
+
+                categorized_budgets[category_name][subcategory_name].append(budget)
 
             budget_data[period] = {
                 "period": period,
