@@ -215,7 +215,7 @@ class BaselineCalculator:
             )
 
             month_key = (txn.date.year, txn.date.month)
-            monthly_data[scope_key][month_key].append(abs(float(txn.amount)))
+            monthly_data[scope_key][month_key].append(float(txn.amount))
 
         # Calculate monthly totals and then baseline for each scope (same as original method)
         baselines = {}
@@ -266,7 +266,7 @@ class BaselineCalculator:
             )
 
             month_key = (txn.date.year, txn.date.month)
-            monthly_data[scope_key][month_key].append(abs(float(txn.amount)))
+            monthly_data[scope_key][month_key].append(float(txn.amount))
 
         # Calculate monthly totals and then baseline for each scope
         baselines = {}
