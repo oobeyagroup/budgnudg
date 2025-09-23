@@ -100,6 +100,37 @@
         text-align: right;
         white-space: nowrap;
     }
+
+    /* Budget-specific styles */
+    .budget-row:hover {
+        background-color: #f8f9fa;
+    }
+
+    .amount-positive, .currency-positive {
+        color: #198754;
+        font-weight: 600;
+    }
+    
+    .amount-negative, .currency-negative {
+        color: #dc3545;
+        font-weight: 600;
+    }
+
+    .currency-zero {
+        color: #6c757d;
+        font-weight: 600;
+    }
+
+    /* Needs level badge styles */
+    .badge-essential { background-color: #dc3545 !important; color: white; }
+    .badge-important { background-color: #fd7e14 !important; color: white; }
+    .badge-nice { background-color: #20c997 !important; color: white; }
+    .badge-luxury { background-color: #6f42c1 !important; color: white; }
+    .badge-deferred { background-color: #6c757d !important; color: white; }
+    .badge-critical { background-color: #dc3545 !important; color: white; }
+    .badge-core { background-color: #fd7e14 !important; color: white; }
+    .badge-lifestyle { background-color: #20c997 !important; color: white; }
+    .badge-discretionary { background-color: #6f42c1 !important; color: white; }
     
     @media (max-width: 768px) {
         .month-header {
