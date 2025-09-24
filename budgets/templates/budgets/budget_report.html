@@ -171,7 +171,7 @@
                 <div class="text-end">
                     <div class="d-flex align-items-center gap-3 flex-wrap">
                         <div class="text-muted">
-                            <strong>{{ total_transactions }}</strong> budget{{ total_transactions|pluralize }}
+                            <strong>{{ total_transactions }}</strong> allocation{{ total_transactions|pluralize }}
                         </div>
                         <div class="text-muted">
                             Total: <span class="currency {% if grand_total_amount >= 0 %}currency-positive{% elif grand_total_amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">{{ grand_total_amount|floatformat:2|intcomma }}</span>
@@ -316,24 +316,22 @@
                                             {% endfor %}
                                         </tr>
                                         
-                                        <!-- Budget Items List (collapsed by default) -->
+                                        <!-- Budget Line Items (collapsed by default) -->
                                         {% for budget_data in subcategory_data.budgets %}
                                             {% with budget=budget_data.budget %}
                                             <tr class="budget-row collapse" id="subcategory-{{ category_type }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}">
                                                 <td class="description-cell ps-5">
                                                     {% if budget.payoree %}
-                                                        <strong>{{ budget.payoree.name }}</strong>
+                                                        <strong>XXXXX{{ budget.payoree.name }}</strong>
                                                     {% else %}
-                                                        <em class="text-muted">General Budget</em>
+                                                        <em class="text-muted">General Allocation</em>
                                                     {% endif %}
                                                     {% if budget.user_note %}
                                                         <small class="text-muted d-block">{{ budget.user_note|truncatechars:30 }}</small>
                                                     {% endif %}
                                                 </td>
                                                 <td class="amount-cell text-end">
-                                                    <span class="currency currency-positive">
-                                                        ${{ budget.amount|floatformat:0|intcomma }}
-                                                    </span>
+                                                             <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ budget.amount|floatformat:2|intcomma }}</span>
                                                 </td>
                                                 <td class="count-cell text-center">
                                                     {% if budget.needs_level %}
@@ -346,9 +344,7 @@
                                                     {% with month_key=month.date|date:"Y-m" %}
                                                         <td class="monthly-column text-end">
                                                             {% if month_key in budget_data.months %}
-                                                                <span class="currency currency-positive">
-                                                                    ${{ budget.amount|floatformat:0|intcomma }}
-                                                                </span>
+                                                            <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ budget.amount|floatformat:2|intcomma }}</span>
                                                             {% else %}
                                                                 <span class="text-muted">-</span>
                                                             {% endif %}

@@ -6,8 +6,8 @@
 <div class="container-fluid py-4">
     <div class="row">
         <div class="col-12">
-            <h1>Budget Wizard</h1>
-            <p class="text-muted">Create a budget based on your historical spending patterns</p>
+            <h1>Budget Allocation Wizard</h1>
+            <p class="text-muted">Create budget allocations based on your historical spending patterns</p>
         </div>
     </div>
     
@@ -25,7 +25,7 @@
                                 {% csrf_token %}
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <label for="target-months" class="form-label">Budget Duration</label>
+                                        <label for="target-months" class="form-label">Allocation Duration</label>
                                         <select id="target-months" name="target_months" class="form-select">
                                             <option value="1">1 month</option>
                                             <option value="3" selected>3 months</option>
@@ -73,7 +73,7 @@
                                 
                                 <div class="mt-4">
                                     <button type="button" class="btn btn-primary">
-                                        <i class="fas fa-magic"></i> Generate Budget Draft
+                                        <i class="fas fa-magic"></i> Generate Allocation Draft
                                     </button>
                                     
                                     <!-- Direct API Test Link -->
