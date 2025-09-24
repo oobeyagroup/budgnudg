@@ -9,23 +9,29 @@ from django.db.models import Q
 from django.urls import reverse
 
 from transactions.utils import trace
-from .models import Budget, BudgetPeriod
+from .models import BudgetPlan, BudgetAllocation, BudgetPeriod
 from .services.baseline_calculator import BaselineCalculator
 from .services.budget_wizard import BudgetWizard
 
 
 class BudgetListView(ListView):
-    """List all budgets."""
+    """List all budget allocations."""
 
-    model = Budget
+    model = BudgetAllocation
     template_name = "budgets/budget_list.html"
     context_object_name = "budgets"
     paginate_by = 20
 
     def get_queryset(self):
-        return Budget.objects.select_related(
-            "category", "subcategory", "payoree"
-        ).order_by("-year", "-month", "category__name", "subcategory__name")
+        return BudgetAllocation.objects.select_related(
+            "budget_plan", "category", "subcategory", "payoree"
+        ).order_by(
+            "-budget_plan__year",
+            "-budget_plan__month",
+            "budget_plan__name",
+            "category__name",
+            "subcategory__name",
+        )
 
 
 class BudgetDetailView(DetailView):
@@ -44,10 +50,12 @@ class BudgetDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         period = self.get_object()
 
-        # Get budgets for this period
-        budgets = Budget.objects.filter(
-            year=period.year, month=period.month
-        ).select_related("category", "subcategory", "payoree", "recurring_series")
+        # Get budget allocations for this period
+        budgets = BudgetAllocation.objects.filter(
+            budget_plan__year=period.year, budget_plan__month=period.month
+        ).select_related(
+            "budget_plan", "category", "subcategory", "payoree", "recurring_series"
+        )
 
         context["budgets"] = budgets
         return context
@@ -221,11 +229,16 @@ class BudgetReportView(TemplateView):
                 }
             )
 
-        # Get all budgets in the date range with related data
+        # Get all budget allocations in the date range with related data
         # Use the months list to determine the exact date range to avoid KeyErrors
         month_filters = []
         for month_info in months:
-            month_filters.append(Q(year=month_info["year"], month=month_info["month"]))
+            month_filters.append(
+                Q(
+                    budget_plan__year=month_info["year"],
+                    budget_plan__month=month_info["month"],
+                )
+            )
 
         if month_filters:
             # Combine all month filters with OR
@@ -233,12 +246,20 @@ class BudgetReportView(TemplateView):
 
             combined_filter = reduce(lambda q1, q2: q1 | q2, month_filters)
             budgets = (
-                Budget.objects.select_related("category", "subcategory", "payoree")
+                BudgetAllocation.objects.select_related(
+                    "budget_plan", "category", "subcategory", "payoree"
+                )
                 .filter(combined_filter)
-                .order_by("-year", "-month", "category__name", "subcategory__name")
+                .order_by(
+                    "-budget_plan__year",
+                    "-budget_plan__month",
+                    "budget_plan__name",
+                    "category__name",
+                    "subcategory__name",
+                )
             )
         else:
-            budgets = Budget.objects.none()
+            budgets = BudgetAllocation.objects.none()
 
         # Group budgets by category type, category, subcategory, and month
         # Same structure as transaction report
@@ -266,7 +287,7 @@ class BudgetReportView(TemplateView):
                 subcategory_obj = None
 
             # Determine month key
-            month_key = f"{budget.year}-{budget.month:02d}"
+            month_key = f"{budget.budget_plan.year}-{budget.budget_plan.month:02d}"
 
             # Group the budget
             grouped_data[category_type][category_name][subcategory_name][

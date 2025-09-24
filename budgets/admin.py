@@ -1,15 +1,52 @@
 from django.contrib import admin
 from django.db.models import Sum
 from django.utils.html import format_html
-from .models import Budget, BudgetPeriod
+from .models import BudgetPlan, BudgetAllocation, BudgetPeriod
 
 
-@admin.register(Budget)
-class BudgetAdmin(admin.ModelAdmin):
-    """Admin interface for Budget model."""
+@admin.register(BudgetPlan)
+class BudgetPlanAdmin(admin.ModelAdmin):
+    """Admin interface for BudgetPlan model."""
 
     list_display = [
+        "name",
         "period_display",
+        "is_active",
+        "allocation_count",
+        "total_amount",
+        "created_at",
+    ]
+    list_filter = ["year", "month", "is_active"]
+    search_fields = ["name"]
+    ordering = ["-year", "-month", "name"]
+    readonly_fields = ["created_at", "updated_at"]
+
+    def period_display(self, obj):
+        """Display period in readable format."""
+        return obj.period_display
+
+    period_display.short_description = "Period"
+
+    def allocation_count(self, obj):
+        """Display count of allocations in this plan."""
+        return obj.budgetallocation_set.count()
+
+    allocation_count.short_description = "Allocations"
+
+    def total_amount(self, obj):
+        """Display total allocated amount."""
+        total = obj.budgetallocation_set.aggregate(total=Sum("amount"))["total"] or 0
+        return f"${total:,.2f}"
+
+    total_amount.short_description = "Total Allocated"
+
+
+@admin.register(BudgetAllocation)
+class BudgetAllocationAdmin(admin.ModelAdmin):
+    """Admin interface for BudgetAllocation model."""
+
+    list_display = [
+        "budget_plan",
         "scope_display",
         "amount",
         "baseline_amount",
@@ -20,8 +57,8 @@ class BudgetAdmin(admin.ModelAdmin):
     ]
 
     list_filter = [
-        "year",
-        "month",
+        "budget_plan__year",
+        "budget_plan__month",
         "needs_level",
         "is_ai_suggested",
         "category",
@@ -29,22 +66,32 @@ class BudgetAdmin(admin.ModelAdmin):
     ]
 
     search_fields = [
+        "budget_plan__name",
         "category__name",
         "subcategory__name",
         "payoree__name",
         "user_note",
     ]
 
-    ordering = ["-year", "-month", "category__name"]
+    ordering = [
+        "-budget_plan__year",
+        "-budget_plan__month",
+        "budget_plan__name",
+        "category__name",
+    ]
 
     readonly_fields = ["created_at", "updated_at"]
 
     fieldsets = (
         (
-            "Budget Scope",
+            "Budget Plan",
+            {"fields": ("budget_plan",)},
+        ),
+        (
+            "Allocation Scope",
             {"fields": ("category", "subcategory", "payoree", "needs_level")},
         ),
-        ("Period & Amount", {"fields": ("year", "month", "amount", "baseline_amount")}),
+        ("Amount Details", {"fields": ("amount", "baseline_amount")}),
         ("AI & Integration", {"fields": ("is_ai_suggested", "recurring_series")}),
         (
             "Notes & Metadata",

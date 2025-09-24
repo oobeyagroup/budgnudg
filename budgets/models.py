@@ -2,10 +2,54 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from decimal import Decimal
+from datetime import datetime
 
 
-class Budget(models.Model):
-    """Monthly budget allocation for categories, subcategories, payorees, or needs levels."""
+# Temporary alias for compatibility during migration
+Budget = None  # Will be set after BudgetAllocation is defined
+
+
+class BudgetPlan(models.Model):
+    """Overall budget plan (lean, normal, splurge) for a specific time period."""
+
+    name = models.CharField(
+        max_length=50, help_text="Budget plan name (e.g., 'Lean', 'Normal', 'Splurge')"
+    )
+    year = models.PositiveIntegerField()
+    month = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(12)]
+    )
+    is_active = models.BooleanField(
+        default=False, help_text="Whether this plan is currently active"
+    )
+    description = models.TextField(
+        blank=True, help_text="Optional description of this budget plan"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = [("name", "year", "month")]
+        ordering = ["-year", "-month", "name"]
+        indexes = [
+            models.Index(fields=["year", "month"]),
+            models.Index(fields=["is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.name} - {self.year}-{self.month:02d}"
+
+
+class BudgetAllocation(models.Model):
+    """Individual spending allocation within a budget plan for categories, subcategories, payorees, or needs levels."""
+
+    # Link to budget plan
+    budget_plan = models.ForeignKey(
+        BudgetPlan,
+        on_delete=models.CASCADE,
+        related_name="allocations",
+        help_text="Budget plan this allocation belongs to",
+    )
 
     # Scope - following existing precedence: category > subcategory > payoree
     category = models.ForeignKey(
@@ -14,23 +58,23 @@ class Budget(models.Model):
         blank=True,
         on_delete=models.CASCADE,
         limit_choices_to={"parent__isnull": True},  # Top-level categories only
-        help_text="Budget applies to this category",
+        help_text="Allocation applies to this category",
     )
     subcategory = models.ForeignKey(
         "transactions.Category",
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        related_name="subcategory_budgets",
+        related_name="subcategory_allocations",
         limit_choices_to={"parent__isnull": False},  # Subcategories only
-        help_text="Budget applies to this subcategory",
+        help_text="Allocation applies to this subcategory",
     )
     payoree = models.ForeignKey(
         "transactions.Payoree",
         null=True,
         blank=True,
         on_delete=models.CASCADE,
-        help_text="Budget applies to this payoree",
+        help_text="Allocation applies to this payoree",
     )
 
     # Needs level integration with existing Transaction model system
@@ -46,25 +90,19 @@ class Budget(models.Model):
         ],
         null=True,
         blank=True,
-        help_text="Budget applies to this needs level",
+        help_text="Allocation applies to this needs level",
     )
 
-    # Time period - monthly granularity as specified
-    year = models.PositiveIntegerField()
-    month = models.PositiveSmallIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(12)]
-    )
-
-    # Budget amount
+    # Budget allocation amount
     amount = models.DecimalField(
         max_digits=12,
         decimal_places=2,
-        help_text="Monthly budget amount (positive for income, negative for expenses)",
+        help_text="Allocation amount (positive for income, negative for expenses)",
     )
 
     # AI/ML suggestion tracking
     is_ai_suggested = models.BooleanField(
-        default=False, help_text="True if this budget was auto-populated by AI"
+        default=False, help_text="True if this allocation was auto-populated by AI"
     )
     baseline_amount = models.DecimalField(
         max_digits=12,
@@ -89,17 +127,31 @@ class Budget(models.Model):
     )
 
     class Meta:
-        # Ensure one budget per scope per month
+        # Ensure one allocation per scope per budget plan
         unique_together = [
-            ("year", "month", "category", "subcategory", "payoree", "needs_level")
+            ("budget_plan", "category", "subcategory", "payoree", "needs_level")
         ]
-        ordering = ["-year", "-month", "category__name"]
+        ordering = ["budget_plan", "category__name"]
         indexes = [
-            models.Index(fields=["year", "month"]),
+            models.Index(fields=["budget_plan"]),
             models.Index(fields=["category"]),
-            models.Index(fields=["needs_level"]),
-            models.Index(fields=["recurring_series"]),
+            models.Index(fields=["subcategory"]),
+            models.Index(fields=["payoree"]),
         ]
+
+    def __str__(self):
+        scope_parts = []
+        if self.category:
+            scope_parts.append(self.category.name)
+        if self.subcategory:
+            scope_parts.append(f"→ {self.subcategory.name}")
+        if self.payoree:
+            scope_parts.append(f"({self.payoree.name})")
+        if self.needs_level:
+            scope_parts.append(f"[{self.get_needs_level_display()}]")
+
+        scope = " ".join(scope_parts) if scope_parts else "General Allocation"
+        return f"{self.budget_plan.name}: {scope} - ${self.amount}"
 
     def clean(self):
         """Validate that subcategory belongs to category if both are specified."""
@@ -117,19 +169,15 @@ class Budget(models.Model):
                 "At least one scope field (category, subcategory, payoree, or needs_level) must be specified"
             )
 
-    def __str__(self):
-        scope_parts = []
-        if self.category:
-            scope_parts.append(self.category.name)
-        if self.subcategory:
-            scope_parts.append(f"→ {self.subcategory.name}")
-        if self.payoree:
-            scope_parts.append(f"({self.payoree.name})")
-        if self.needs_level:
-            scope_parts.append(f"[{self.needs_level.title()}]")
+    @property
+    def year(self):
+        """Get year from budget plan."""
+        return self.budget_plan.year
 
-        scope = " ".join(scope_parts) if scope_parts else "General"
-        return f"{scope} - {self.month:02d}/{self.year}: ${self.amount}"
+    @property
+    def month(self):
+        """Get month from budget plan."""
+        return self.budget_plan.month
 
     @property
     def period_display(self):
@@ -151,19 +199,19 @@ class Budget(models.Model):
         return ((self.amount - self.baseline_amount) / self.baseline_amount) * 100
 
     def get_current_spent(self):
-        """Get current amount spent for this budget (placeholder for future integration)."""
+        """Get current amount spent for this allocation (placeholder for future integration)."""
         # TODO: Integrate with transaction system to calculate actual spending
         return Decimal("0.00")
 
     def get_spent_percentage(self):
-        """Get percentage of budget spent."""
+        """Get percentage of allocation spent."""
         if self.amount == 0:
             return 0
         spent = self.get_current_spent()
-        return (spent / self.amount) * 100
+        return (spent / abs(self.amount)) * 100
 
     def get_remaining_amount(self):
-        """Get remaining budget amount."""
+        """Get remaining allocation amount."""
         return self.amount - self.get_current_spent()
 
     @property
@@ -184,15 +232,12 @@ class Budget(models.Model):
 
     @property
     def is_active(self):
-        """Check if budget is for current or future period."""
-        from datetime import date
-
-        today = date.today()
-        return self.start_date <= today <= self.end_date or self.start_date > today
+        """Check if allocation is for current or future period."""
+        return self.budget_plan.is_active
 
     @property
     def scope_key(self):
-        """Generate a unique key for this budget's scope."""
+        """Generate a unique key for this allocation's scope."""
         return (
             self.category_id or 0,
             self.subcategory_id or 0,
@@ -201,8 +246,9 @@ class Budget(models.Model):
         )
 
 
+# Legacy model - keeping for backwards compatibility, but may be deprecated
 class BudgetPeriod(models.Model):
-    """Represents a complete budget period (e.g., 2024-03) with aggregate info."""
+    """Legacy: Represents a complete budget period (e.g., 2024-03) with aggregate info."""
 
     year = models.PositiveIntegerField()
     month = models.PositiveSmallIntegerField(
@@ -252,14 +298,24 @@ class BudgetPeriod(models.Model):
         """Calculate total variance from baseline."""
         return self.total_budgeted - self.baseline_total
 
-    def get_budget_count(self):
-        """Get number of budget items in this period."""
-        return Budget.objects.filter(year=self.year, month=self.month).count()
+    def get_allocation_count(self):
+        """Get number of budget allocations in this period."""
+        return BudgetAllocation.objects.filter(
+            budget_plan__year=self.year, budget_plan__month=self.month
+        ).count()
 
     def update_totals(self):
-        """Recalculate aggregate totals from Budget items."""
-        budgets = Budget.objects.filter(year=self.year, month=self.month)
+        """Recalculate aggregate totals from BudgetAllocation items."""
+        allocations = BudgetAllocation.objects.filter(
+            budget_plan__year=self.year, budget_plan__month=self.month
+        )
 
-        self.total_budgeted = sum(b.amount for b in budgets)
-        self.baseline_total = sum(b.baseline_amount or Decimal("0.00") for b in budgets)
+        self.total_budgeted = sum(a.amount for a in allocations)
+        self.baseline_total = sum(
+            a.baseline_amount or Decimal("0.00") for a in allocations
+        )
         self.save(update_fields=["total_budgeted", "baseline_total", "updated_at"])
+
+
+# Compatibility alias for existing code during migration
+Budget = BudgetAllocation

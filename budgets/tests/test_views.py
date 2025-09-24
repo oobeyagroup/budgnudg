@@ -6,13 +6,12 @@ Covers all budget-related views including wizard, list, detail, and API endpoint
 
 import json
 from decimal import Decimal
-from datetime import date
 from unittest.mock import patch, MagicMock
 
 from django.test import TestCase, Client
 from django.urls import reverse
 
-from budgets.models import Budget, BudgetPeriod
+from budgets.models import BudgetPlan, BudgetAllocation
 from transactions.models import Category, Payoree
 
 
@@ -25,21 +24,19 @@ class BudgetViewsTest(TestCase):
         self.category = Category.objects.create(name="Groceries", type="expense")
         self.payoree = Payoree.objects.create(name="Whole Foods")
 
-        # Create test budget
-        self.budget = Budget.objects.create(
+        # Create test budget plan and allocation
+        self.budget_plan = BudgetPlan.objects.create(
+            name="Test Budget",
+            year=2025,
+            month=10,
+            is_active=True,
+        )
+        
+        self.budget_allocation = BudgetAllocation.objects.create(
+            budget_plan=self.budget_plan,
             category=self.category,
             amount=Decimal("600.00"),
-            start_date=date(2025, 10, 1),
-            end_date=date(2025, 12, 31),
-            needs_level="Need",
-        )
-
-        # Create budget period
-        self.budget_period = BudgetPeriod.objects.create(
-            budget=self.budget,
-            period_year=2025,
-            period_month=10,
-            actual_spent=Decimal("150.00"),
+            needs_level="critical",
         )
 
     def test_budget_list_view(self):
@@ -54,28 +51,26 @@ class BudgetViewsTest(TestCase):
 
     def test_budget_list_view_empty(self):
         """Test budget list view with no budgets."""
-        Budget.objects.all().delete()
+        BudgetPlan.objects.all().delete()
 
         url = reverse("budgets:list")
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "No Budgets Yet")
-        self.assertContains(response, "Create Your First Budget")
+        self.assertContains(response, "No Budget Plans Yet")
 
     def test_budget_detail_view(self):
         """Test budget detail view."""
-        url = reverse("budgets:detail", kwargs={"pk": self.budget.pk})
+        url = reverse("budgets:detail", kwargs={"year": 2025, "month": 10})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Groceries")
         self.assertContains(response, "$600.00")
-        self.assertContains(response, "$150.00")  # Spent amount
 
     def test_budget_detail_view_not_found(self):
         """Test budget detail view with non-existent budget."""
-        url = reverse("budgets:detail", kwargs={"pk": 99999})
+        url = reverse("budgets:detail", kwargs={"year": 2099, "month": 12})
         response = self.client.get(url)
 
         self.assertEqual(response.status_code, 404)
@@ -134,7 +129,7 @@ class BudgetAPIViewsTest(TestCase):
             "method_used": "median",
         }
 
-        url = reverse("budgets:api_generate_draft")
+        url = reverse("budgets:api_suggest")  # Use correct URL name
         response = self.client.post(
             url,
             {
@@ -160,7 +155,7 @@ class BudgetAPIViewsTest(TestCase):
 
     def test_api_generate_draft_invalid_method(self):
         """Test API endpoint with invalid data."""
-        url = reverse("budgets:api_generate_draft")
+        url = reverse("budgets:api_suggest")  # Use correct URL name
         response = self.client.post(
             url, {"target_months": "invalid", "method": "median"}  # Invalid data
         )
@@ -172,7 +167,7 @@ class BudgetAPIViewsTest(TestCase):
         # Create client without CSRF
         client = Client(enforce_csrf_checks=True)
 
-        url = reverse("budgets:api_generate_draft")
+        url = reverse("budgets:api_suggest")  # Use correct URL name
         response = client.post(url, {"target_months": 3, "method": "median"})
 
         self.assertEqual(response.status_code, 403)
@@ -204,7 +199,7 @@ class BudgetAPIViewsTest(TestCase):
             ],
         }
 
-        url = reverse("budgets:api_commit_budget")
+        url = reverse("budgets:api_commit")  # Use correct URL name
         response = self.client.post(
             url, json.dumps(draft_data), content_type="application/json"
         )
@@ -221,7 +216,7 @@ class BudgetAPIViewsTest(TestCase):
 
     def test_api_commit_budget_invalid_json(self):
         """Test API endpoint with invalid JSON."""
-        url = reverse("budgets:api_commit_budget")
+        url = reverse("budgets:api_commit")  # Use correct URL name
         response = self.client.post(
             url, "invalid json", content_type="application/json"
         )
@@ -282,13 +277,18 @@ class BudgetViewIntegrationTest(TestCase):
         self.assertEqual(response.status_code, 200)
 
         # Step 2: Generate draft (would normally be AJAX)
-        # For testing, we'll create a budget directly
-        budget = Budget.objects.create(
+        # For testing, we'll create a budget plan and allocation directly
+        budget_plan = BudgetPlan.objects.create(
+            name="Test Budget",
+            year=2025,
+            month=10,
+            is_active=True,
+        )
+        budget_allocation = BudgetAllocation.objects.create(
+            budget_plan=budget_plan,
             category=self.category,
             amount=Decimal("400.00"),
-            start_date=date(2025, 10, 1),
-            end_date=date(2025, 12, 31),
-            needs_level="Need",
+            needs_level="critical",
         )
 
         # Step 3: View budget in list
@@ -299,7 +299,7 @@ class BudgetViewIntegrationTest(TestCase):
         self.assertContains(response, "$400.00")
 
         # Step 4: View budget details
-        detail_url = reverse("budgets:detail", kwargs={"pk": budget.pk})
+        detail_url = reverse("budgets:detail", kwargs={"year": 2025, "month": 10})
         response = self.client.get(detail_url)
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Groceries")
@@ -307,15 +307,20 @@ class BudgetViewIntegrationTest(TestCase):
 
     def test_budget_list_pagination(self):
         """Test budget list pagination."""
-        # Create multiple budgets
+        # Create multiple budget plans and allocations
         for i in range(15):
             category = Category.objects.create(name=f"Category {i}", type="expense")
-            Budget.objects.create(
+            budget_plan = BudgetPlan.objects.create(
+                name=f"Budget {i}",
+                year=2025,
+                month=(i % 12) + 1,  # Vary the month
+                is_active=True,
+            )
+            BudgetAllocation.objects.create(
+                budget_plan=budget_plan,
                 category=category,
                 amount=Decimal(f"{100 + i}.00"),
-                start_date=date(2025, 10, 1),
-                end_date=date(2025, 12, 31),
-                needs_level="Need",
+                needs_level="critical",
             )
 
         # Test first page
@@ -323,8 +328,8 @@ class BudgetViewIntegrationTest(TestCase):
         response = self.client.get(list_url)
         self.assertEqual(response.status_code, 200)
 
-        # Should have pagination if more than 10 budgets
-        if Budget.objects.count() > 10:
+        # Should have pagination if more than 10 budget plans
+        if BudgetPlan.objects.count() > 10:
             self.assertContains(response, "pagination")
 
 
@@ -336,12 +341,18 @@ class BudgetViewPermissionsTest(TestCase):
         self.client = Client()
         self.category = Category.objects.create(name="Groceries", type="expense")
 
-        self.budget = Budget.objects.create(
+        self.budget_plan = BudgetPlan.objects.create(
+            name="Test Budget",
+            year=2025,
+            month=10,
+            is_active=True,
+        )
+        
+        self.budget_allocation = BudgetAllocation.objects.create(
+            budget_plan=self.budget_plan,
             category=self.category,
             amount=Decimal("400.00"),
-            start_date=date(2025, 10, 1),
-            end_date=date(2025, 12, 31),
-            needs_level="Need",
+            needs_level="critical",
         )
 
     def test_budget_views_no_auth_required(self):
@@ -352,7 +363,7 @@ class BudgetViewPermissionsTest(TestCase):
         self.assertEqual(response.status_code, 200)
 
         # Detail view
-        detail_url = reverse("budgets:detail", kwargs={"pk": self.budget.pk})
+        detail_url = reverse("budgets:detail", kwargs={"year": 2025, "month": 10})
         response = self.client.get(detail_url)
         self.assertEqual(response.status_code, 200)
 
@@ -367,12 +378,12 @@ class BudgetViewPermissionsTest(TestCase):
         client = Client(enforce_csrf_checks=True)
 
         # Test generate draft API
-        url = reverse("budgets:api_generate_draft")
+        url = reverse("budgets:api_suggest")  # Use correct URL name
         response = client.post(url, {"target_months": 3, "method": "median"})
         self.assertEqual(response.status_code, 403)
 
         # Test commit budget API
-        url = reverse("budgets:api_commit_budget")
+        url = reverse("budgets:api_commit")  # Use correct URL name
         response = client.post(
             url, '{"budget_items": []}', content_type="application/json"
         )

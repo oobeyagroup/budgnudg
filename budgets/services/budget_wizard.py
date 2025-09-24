@@ -14,7 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .baseline_calculator import BaselineCalculator
-from ..models import Budget, BudgetPeriod
+from ..models import BudgetPlan, BudgetAllocation, BudgetPeriod
 from transactions.utils import trace
 
 
@@ -245,15 +245,26 @@ class BudgetWizard:
                 year, month = period["year"], period["month"]
                 period_key = f"{year}_{month}"
 
-                # Create or get budget period
+                # Create or get budget plan for this period (default to "Normal" plan)
+                budget_plan, plan_created = BudgetPlan.objects.get_or_create(
+                    name="Normal Budget",  # Default plan name
+                    year=year,
+                    month=month,
+                    defaults={
+                        "is_active": True,
+                        "description": "Generated via Budget Wizard",
+                    },
+                )
+
+                if plan_created:
+                    created_periods.append(budget_plan)
+
+                # Create legacy BudgetPeriod for backward compatibility
                 budget_period, period_created = BudgetPeriod.objects.get_or_create(
                     year=year,
                     month=month,
                     defaults={"notes": f"Created via Budget Wizard"},
                 )
-
-                if period_created:
-                    created_periods.append(budget_period)
 
                 # Determine which budget items to use for this period
                 if suggestions_by_month and period_key in suggestions_by_month:
@@ -265,9 +276,8 @@ class BudgetWizard:
 
                 # Process budget items for this period
                 for item in period_items:
-                    budget_data = {
-                        "year": year,
-                        "month": month,
+                    allocation_data = {
+                        "budget_plan": budget_plan,
                         "category_id": item.get("category_id"),
                         "subcategory_id": item.get("subcategory_id"),
                         "payoree_id": item.get("payoree_id"),
@@ -280,33 +290,36 @@ class BudgetWizard:
                     }
 
                     # Remove None values to avoid unique constraint issues
-                    budget_data = {
-                        k: v for k, v in budget_data.items() if v is not None
+                    allocation_data = {
+                        k: v for k, v in allocation_data.items() if v is not None
                     }
 
                     if overwrite_existing:
-                        # Update or create
-                        budget, budget_created = Budget.objects.update_or_create(
-                            year=year,
-                            month=month,
-                            category_id=budget_data.get("category_id"),
-                            subcategory_id=budget_data.get("subcategory_id"),
-                            payoree_id=budget_data.get("payoree_id"),
-                            needs_level=budget_data.get("needs_level"),
-                            defaults=budget_data,
+                        # Update or create budget allocation
+                        allocation, allocation_created = (
+                            BudgetAllocation.objects.update_or_create(
+                                budget_plan=budget_plan,
+                                category_id=allocation_data.get("category_id"),
+                                subcategory_id=allocation_data.get("subcategory_id"),
+                                payoree_id=allocation_data.get("payoree_id"),
+                                needs_level=allocation_data.get("needs_level"),
+                                defaults=allocation_data,
+                            )
                         )
 
-                        if budget_created:
-                            created_budgets.append(budget)
+                        if allocation_created:
+                            created_budgets.append(allocation)
                         else:
-                            updated_budgets.append(budget)
+                            updated_budgets.append(allocation)
                     else:
                         # Only create if doesn't exist
                         try:
-                            budget = Budget.objects.create(**budget_data)
-                            created_budgets.append(budget)
+                            allocation = BudgetAllocation.objects.create(
+                                **allocation_data
+                            )
+                            created_budgets.append(allocation)
                         except Exception:
-                            # Budget already exists, skip
+                            # Allocation already exists, skip
                             pass
 
                 # Update period totals
@@ -324,20 +337,34 @@ class BudgetWizard:
     def get_existing_budget_summary(
         self, year: int, month: int
     ) -> Optional[Dict[str, Any]]:
-        """Get summary of existing budgets for a given period."""
+        """Get summary of existing budget allocations for a given period."""
         try:
-            period = BudgetPeriod.objects.get(year=year, month=month)
-            budgets = Budget.objects.filter(year=year, month=month).select_related(
-                "category", "subcategory", "payoree"
-            )
+            # Get budget plans for this period
+            budget_plans = BudgetPlan.objects.filter(year=year, month=month)
+            if not budget_plans.exists():
+                return None
+
+            # Get all allocations for this period
+            allocations = BudgetAllocation.objects.filter(
+                budget_plan__year=year, budget_plan__month=month
+            ).select_related("budget_plan", "category", "subcategory", "payoree")
+
+            # Get legacy period if it exists
+            try:
+                period = BudgetPeriod.objects.get(year=year, month=month)
+            except BudgetPeriod.DoesNotExist:
+                period = None
+
+            total_budgeted = sum(a.amount for a in allocations)
 
             return {
                 "period": period,
-                "budget_count": len(budgets),
-                "total_budgeted": period.total_budgeted,
-                "baseline_total": period.baseline_total,
-                "is_finalized": period.is_finalized,
-                "budgets": list(budgets),
+                "budget_plans": list(budget_plans),
+                "allocation_count": len(allocations),
+                "total_budgeted": total_budgeted,
+                "baseline_total": sum(a.baseline_amount or 0 for a in allocations),
+                "is_finalized": period.is_finalized if period else False,
+                "allocations": list(allocations),
             }
         except BudgetPeriod.DoesNotExist:
             return None
