@@ -1,10 +1,11 @@
 # Import CSV Transactions
 
-**Status**: ✅ COMPLETED  
+**Status**: 🔄 NEEDS ATDD CONVERSION  
 **Epic**: Data Ingestion  
 **Priority**: Must Have  
 **Estimated Effort**: 5 points  
 **Actual Effort**: 8 points  
+**ATDD Status**: Legacy format - needs conversion to ATDD criteria format  
 
 ## User Story
 

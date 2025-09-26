@@ -1,10 +1,11 @@
 # Create Budget Allocations
 
-**Status**: ✅ COMPLETED  
+**Status**: 🔄 NEEDS TESTS  
 **Epic**: Budget Management  
 **Priority**: Must Have  
 **Estimated Effort**: 8 points  
 **Actual Effort**: 13 points (expanded scope)  
+**ATDD Status**: No acceptance tests linked to criteria  
 
 ## User Story
 
@@ -25,6 +26,8 @@ Budget allocations are the core functionality of the system. Users need to:
 - [ ] ✅ Given historical transaction data, when I run the wizard, then it suggests budget amounts based on past spending
 - [ ] ✅ Given suggested amounts, when I review them, then I can adjust individual allocations before saving
 - [ ] ✅ Given I finalize my budget, when I save, then budget allocations are created in the database
+
+> **⚠️ ATDD Note**: These acceptance criteria need to be converted to the ATDD format with unique IDs and linked to automated tests before this story can be marked as COMPLETED. See `import_csv_transactions_atdd.md` for the required format.
 
 ### Allocation Management
 - [ ] ✅ Given existing budget allocations, when I view the budget list, then I see all allocations with amounts and time periods

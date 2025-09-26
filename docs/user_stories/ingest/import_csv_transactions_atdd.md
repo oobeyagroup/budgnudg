@@ -1,10 +1,11 @@
 # Enhanced User Story with Criteria IDs for ATDD Linking
 
-**Status**: ✅ COMPLETED  
+**Status**: 🚧 IN PROGRESS  
 **Epic**: Data Ingestion  
 **Priority**: Must Have  
 **Estimated Effort**: 5 points  
 **Actual Effort**: 8 points  
+**ATDD Status**: 9/11 tests passing - 2 failing tests need fixes  
 
 ## User Story
 

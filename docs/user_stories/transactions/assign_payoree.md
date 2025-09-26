@@ -1,10 +1,11 @@
 # Assign Payoree to Transactions
 
-**Status**: ✅ COMPLETED  
+**Status**: 🔄 NEEDS TESTS  
 **Epic**: Transaction Management  
 **Priority**: Must Have  
 **Estimated Effort**: 3 points  
 **Actual Effort**: 5 points  
+**ATDD Status**: No acceptance tests linked to criteria  
 
 ## User Story
 
@@ -25,6 +26,8 @@ Knowing who transactions are with (merchants, employers, service providers) enab
 - [ ] ✅ Given a payoree name I type, when it matches existing payorees, then I see autocomplete suggestions
 - [ ] ✅ Given a new payoree name, when I enter it, then a new payoree record is created automatically
 - [ ] ✅ Given I assign a payoree to a transaction, when I save, then the assignment persists in the database
+
+> **⚠️ ATDD Note**: These acceptance criteria need to be converted to the ATDD format with unique IDs (e.g., `payoree_dropdown_selection`, `payoree_autocomplete_suggestions`) and linked to automated tests before this story can be marked as COMPLETED. See `import_csv_transactions_atdd.md` for the required format.
 
 ### Bulk Operations
 - [ ] ✅ Given multiple transactions with no payoree, when I select them and choose "Assign Payoree", then I can assign the same payoree to all selected transactions
