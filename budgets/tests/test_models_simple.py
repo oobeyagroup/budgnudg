@@ -19,13 +19,10 @@ class BudgetAllocationBasicTest(TestCase):
         """Set up test data."""
         self.category = Category.objects.create(name="Groceries", type="expense")
         self.payoree = Payoree.objects.create(name="Whole Foods")
-        
+
         # Create a budget plan for allocations
         self.budget_plan = BudgetPlan.objects.create(
-            name="Normal Budget",
-            year=2025,
-            month=10,
-            is_active=True
+            name="Normal Budget", year=2025, month=10, is_active=True
         )
 
     def test_budget_allocation_creation_with_category(self):
@@ -39,7 +36,7 @@ class BudgetAllocationBasicTest(TestCase):
 
         self.assertEqual(allocation.category, self.category)
         self.assertEqual(allocation.year, 2025)  # From budget_plan property
-        self.assertEqual(allocation.month, 10)   # From budget_plan property
+        self.assertEqual(allocation.month, 10)  # From budget_plan property
         self.assertEqual(allocation.amount, Decimal("500.00"))
         self.assertEqual(allocation.needs_level, "core")
 
@@ -73,7 +70,7 @@ class BudgetPlanBasicTest(TestCase):
     """Basic tests for BudgetPlan model functionality."""
 
     def setUp(self):
-        """Set up test data.""" 
+        """Set up test data."""
         self.category = Category.objects.create(name="Groceries", type="expense")
 
     def test_budget_plan_creation(self):
@@ -83,7 +80,7 @@ class BudgetPlanBasicTest(TestCase):
             year=2025,
             month=10,
             is_active=True,
-            description="Test budget plan"
+            description="Test budget plan",
         )
 
         self.assertEqual(plan.name, "Normal Budget")
@@ -101,12 +98,9 @@ class BudgetPeriodBasicTest(TestCase):
 
         # Create budget plan and allocation for testing period updates
         self.budget_plan = BudgetPlan.objects.create(
-            name="Normal Budget",
-            year=2025,
-            month=10,
-            is_active=True
+            name="Normal Budget", year=2025, month=10, is_active=True
         )
-        
+
         self.allocation = BudgetAllocation.objects.create(
             budget_plan=self.budget_plan,
             category=self.category,
@@ -146,10 +140,7 @@ class BudgetAllocationValidationTest(TestCase):
         """Set up test data."""
         self.category = Category.objects.create(name="Groceries", type="expense")
         self.budget_plan = BudgetPlan.objects.create(
-            name="Normal Budget",
-            year=2025,
-            month=10,
-            is_active=True
+            name="Normal Budget", year=2025, month=10, is_active=True
         )
 
     def test_budget_plan_validation_invalid_month(self):

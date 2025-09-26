@@ -31,7 +31,7 @@ class BudgetViewsTest(TestCase):
             month=10,
             is_active=True,
         )
-        
+
         self.budget_allocation = BudgetAllocation.objects.create(
             budget_plan=self.budget_plan,
             category=self.category,
@@ -347,7 +347,7 @@ class BudgetViewPermissionsTest(TestCase):
             month=10,
             is_active=True,
         )
-        
+
         self.budget_allocation = BudgetAllocation.objects.create(
             budget_plan=self.budget_plan,
             category=self.category,

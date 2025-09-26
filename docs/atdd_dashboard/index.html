@@ -1,0 +1,194 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ATDD Dashboard - BudgNudg</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .status-badge {
+            font-size: 1.2em;
+            margin-right: 0.5em;
+        }
+        .criteria-row {
+            padding: 0.5em;
+            border-left: 3px solid #dee2e6;
+            margin-bottom: 0.5em;
+        }
+        .criteria-completed { border-left-color: #198754; }
+        .criteria-planned { border-left-color: #ffc107; }
+        .criteria-future { border-left-color: #6c757d; }
+    </style>
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <div class="row">
+            <div class="col-12">
+                <h1 class="mb-4">ATDD Dashboard</h1>
+                <p class="text-muted">Acceptance Test-Driven Development Status</p>
+                <p class="text-muted">Generated: 2025-09-26 14:09:21</p>
+            </div>
+        </div>
+        
+        <!-- Summary Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total Criteria</h5>
+                        <h2 class="text-primary">16</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Completed</h5>
+                        <h2 class="text-success">16</h2>
+                        <small class="text-muted">
+                        100.0%
+                        </small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Tests</h5>
+                        <h2 class="text-info">0</h2>
+                        <small class="text-muted">Pass Rate: 0.0%</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Coverage</h5>
+                        <h2 class="text-warning">1</h2>
+                        <small class="text-muted">Stories with tests</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- User Stories Detail -->
+        <div class="row">
+
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Ingest / Import_Csv_Transactions</h5>
+                        <small class="text-muted">
+                            16 criteria | 
+                            0 tests | 
+                            0 passing
+                        </small>
+                    </div>
+                    <div class="card-body">
+            
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>csv_upload_validation</strong>: Given I have a valid CSV file, when I upload it through the interface, then the system validates format and creates import batch
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>csv_format_detection</strong>: Given I upload a CSV with headers, when the system processes it, then it automatically detects column structure and data types
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>csv_error_reporting</strong>: Given I upload an invalid CSV file, when the system processes it, then I receive clear error messages about what needs to be fixed
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>csv_duplicate_detection</strong>: Given I upload a CSV with duplicate transactions, when the system processes it, then duplicates are flagged for review
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>profile_column_mapping</strong>: Given I have a financial account profile, when I apply it to an uploaded CSV, then the system maps columns according to the profile configuration
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>profile_data_parsing</strong>: Given a profile is applied, when the system parses the data, then amounts are correctly formatted and dates are standardized
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>profile_preview_generation</strong>: Given data has been parsed with a profile, when I request a preview, then I can see how transactions will appear in the system
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>profile_validation_feedback</strong>: Given column mapping encounters issues, when I view the preview, then I see warnings about data quality problems
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>transaction_creation</strong>: Given I have previewed and approved parsed data, when I commit the import, then actual Transaction records are created in the database
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>bank_account_assignment</strong>: Given I specify a bank account during commit, when transactions are created, then they are properly linked to that account
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>import_status_tracking</strong>: Given I commit an import batch, when the process completes, then the batch status is updated to "committed"
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>import_audit_trail</strong>: Given transactions are imported, when I review the import history, then I can see which batch each transaction came from
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>import_rollback</strong>: Given an import fails partway through, when I check the system state, then no partial data is left in the database
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>batch_reprocessing</strong>: Given an import batch has errors, when I fix the issues, then I can reprocess the batch without losing previous work
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>data_validation_rules</strong>: Given transactions have invalid data, when I attempt to commit, then the system prevents import and shows validation errors
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>duplicate_import_prevention</strong>: Given I try to import the same CSV file twice, when the system detects this, then it warns me about potential duplicates
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                    </div>
+                </div>
+            </div>
+            
+        </div>
+    </div>
+</body>
+</html>
+        
