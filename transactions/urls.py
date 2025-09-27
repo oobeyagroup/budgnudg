@@ -14,6 +14,7 @@ from transactions.views.set_field import SetTransactionFieldView
 from transactions.views.apply_current import ApplyCurrentToSimilarView
 from transactions.views.bank_accounts import BankAccountsListView
 from transactions.views.edit import TransactionEditView, get_subcategories_for_category
+from transactions.views.search import search_transactions
 from transactions.views.reports import (
     ReportAccountTimeSpanView,
     ReportIncomeStatementView,
@@ -55,6 +56,8 @@ from transactions.views.pivot_table import FlexiblePivotTableView
 app_name = "transactions"
 
 urlpatterns = [
+    # Search functionality
+    path("search/", search_transactions, name="search"),
     # Dashboard
     path("", DashboardView.as_view(), name="dashboard"),
     # Payoree Report

@@ -1,10 +1,11 @@
 # Advanced Transaction Search & Filtering
 
-**Status**: ⏳ COULD HAVE  
+**Status**: 🚧 IN PROGRESS  
 **Epic**: Transaction Management & Analysis  
 **Priority**: Could Have  
 **Estimated Effort**: 3 points  
-**Target Release**: Q3 2026  
+**Target Release**: Current Sprint  
+**ATDD Status**: Converting to incremental test-driven development  
 
 ## User Story
 
@@ -23,29 +24,35 @@ This feature transforms basic transaction listing into a powerful analysis tool 
 
 ## Acceptance Criteria
 
-### Advanced Search Capabilities
-- [ ] 💡 Given transaction history, when I use advanced search, then I can filter by amount ranges, date ranges, multiple categories, multiple payorees, and description keywords simultaneously
-- [ ] 💡 Given search criteria, when I want to exclude results, then I can use negative filters (e.g., "NOT category:groceries")
-- [ ] 💡 Given complex searches, when I build search queries, then I can use logical operators (AND, OR, NOT) between different criteria
-- [ ] 💡 Given transaction amounts, when I search, then I can use comparison operators (greater than, less than, equal to, between)
+### Basic Search Functionality (MVP)
+- [ ] 🚧 `search_by_date_range` Given I have transactions across multiple dates, when I filter by a date range, then I see only transactions within that range
+- [ ] 🚧 `search_by_amount_range` Given I have transactions of various amounts, when I filter by amount range ($50-$200), then I see only transactions within that range
+- [ ] 🚧 `search_by_category` Given I have transactions in different categories, when I filter by a specific category, then I see only transactions in that category
+- [ ] 🚧 `search_by_description_keywords` Given I have transactions with various descriptions, when I search by keywords, then I see transactions containing those keywords
 
-### Saved Search Patterns  
-- [ ] 💡 Given frequently used search criteria, when I create a search, then I can save it with a custom name for future reuse
-- [ ] 💡 Given saved searches, when I access them, then I can modify, duplicate, or delete existing saved patterns
-- [ ] 💡 Given saved search patterns, when I run them, then they automatically apply current date ranges or use relative dates ("last 30 days")
-- [ ] 💡 Given multiple saved searches, when organizing them, then I can group them into folders or categories
+### Advanced Search Capabilities
+- [ ] ⏳ `search_multiple_criteria` Given transaction history, when I use advanced search, then I can filter by amount ranges, date ranges, multiple categories, multiple payorees, and description keywords simultaneously
+- [ ] ⏳ `search_negative_filters` Given search criteria, when I want to exclude results, then I can use negative filters (e.g., "NOT category:groceries")
+- [ ] ⏳ `search_logical_operators` Given complex searches, when I build search queries, then I can use logical operators (AND, OR, NOT) between different criteria
+- [ ] ⏳ `search_comparison_operators` Given transaction amounts, when I search, then I can use comparison operators (greater than, less than, equal to, between)
 
 ### Quick Filter Interface
-- [ ] 💡 Given common search needs, when I want fast filtering, then I have quick-access buttons for frequent criteria (This Month, Last Month, High Amounts, Uncategorized)
-- [ ] 💡 Given search results, when I want to refine further, then I can add additional filters without losing current results
-- [ ] 💡 Given applied filters, when I review them, then I can see all active filters clearly and remove individual filters easily
-- [ ] 💡 Given search history, when I want to repeat searches, then I can access my recent searches from a dropdown
+- [ ] ⏳ `quick_filter_buttons` Given common search needs, when I want fast filtering, then I have quick-access buttons for frequent criteria (This Month, Last Month, High Amounts, Uncategorized)
+- [ ] ⏳ `filter_refinement` Given search results, when I want to refine further, then I can add additional filters without losing current results
+- [ ] ⏳ `applied_filter_display` Given applied filters, when I review them, then I can see all active filters clearly and remove individual filters easily
+- [ ] ⏳ `search_history` Given search history, when I want to repeat searches, then I can access my recent searches from a dropdown
 
 ### Results Analysis & Export
-- [ ] 💡 Given search results, when I view them, then I can see summary statistics (total amount, transaction count, average amount, category breakdown)
-- [ ] 💡 Given filtered transactions, when I want to export, then I can download results as CSV with customizable column selection
-- [ ] 💡 Given search results, when I analyze patterns, then I can view results grouped by payoree, category, amount ranges, or time periods
-- [ ] 💡 Given filtered data, when I need reporting, then I can generate visual charts (spending over time, category distribution) directly from search results
+- [ ] ⏳ `search_results_summary` Given search results, when I view them, then I can see summary statistics (total amount, transaction count, average amount, category breakdown)
+- [ ] ⏳ `csv_export` Given filtered transactions, when I want to export, then I can download results as CSV with customizable column selection
+- [ ] ⏳ `results_grouping` Given search results, when I analyze patterns, then I can view results grouped by payoree, category, amount ranges, or time periods
+- [ ] ⏳ `visual_charts` Given filtered data, when I need reporting, then I can generate visual charts (spending over time, category distribution) directly from search results
+
+### Saved Search Patterns  
+- [ ] 💡 `save_search_patterns` Given frequently used search criteria, when I create a search, then I can save it with a custom name for future reuse
+- [ ] 💡 `manage_saved_searches` Given saved searches, when I access them, then I can modify, duplicate, or delete existing saved patterns
+- [ ] 💡 `relative_date_searches` Given saved search patterns, when I run them, then they automatically apply current date ranges or use relative dates ("last 30 days")
+- [ ] 💡 `organize_searches` Given multiple saved searches, when organizing them, then I can group them into folders or categories
 
 ## MoSCoW Prioritization
 

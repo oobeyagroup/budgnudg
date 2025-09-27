@@ -164,16 +164,21 @@ class ATDDDashboardGenerator:
         results = {}
 
         try:
-            # Run pytest with JSON reporting
+            # Run pytest with JSON reporting for all ATDD tests
+            atdd_test_files = [
+                "ingest/tests/test_acceptance_ingest_happy_path_atdd.py",
+                "transactions/tests/test_acceptance_search_filtering_atdd.py",
+            ]
+
             result = subprocess.run(
                 [
-                    "python",
+                    sys.executable,  # Use the current Python interpreter
                     "-m",
                     "pytest",
                     "--tb=short",
                     "-v",
-                    "ingest/tests/test_acceptance_ingest_happy_path_atdd.py",
-                ],
+                ]
+                + atdd_test_files,
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,

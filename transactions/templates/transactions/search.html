@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+{% load static %}
+{% load bootstrap5 %}
+
+{% block title %}Advanced Transaction Search & Filtering{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2><i class="fas fa-search me-2"></i>Advanced Transaction Search & Filtering</h2>
+                <a href="{% url 'transactions:dashboard' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search Form -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <form method="get" class="card p-4 shadow-sm">
+                <div class="row g-3">
+                    <!-- Date Range -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Date Range</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="date" class="form-control" name="start_date" 
+                                       value="{{ request.GET.start_date }}" placeholder="Start Date">
+                            </div>
+                            <div class="col-6">
+                                <input type="date" class="form-control" name="end_date" 
+                                       value="{{ request.GET.end_date }}" placeholder="End Date">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Amount Range -->
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Amount Range</label>
+                        <div class="row g-2">
+                            <div class="col-6">
+                                <input type="number" step="0.01" class="form-control" name="min_amount" 
+                                       value="{{ request.GET.min_amount }}" placeholder="Min Amount">
+                            </div>
+                            <div class="col-6">
+                                <input type="number" step="0.01" class="form-control" name="max_amount" 
+                                       value="{{ request.GET.max_amount }}" placeholder="Max Amount">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category -->
+                    <div class="col-md-6">
+                        <label for="category" class="form-label fw-semibold">Category</label>
+                        <select name="category" id="category" class="form-select">
+                            <option value="">All Categories</option>
+                            {% for category in categories %}
+                                <option value="{{ category.id }}"
+                                        {% if category.id|stringformat:"s" == request.GET.category %}selected{% endif %}>
+                                    {{ category.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Description -->
+                    <div class="col-md-6">
+                        <label for="description" class="form-label fw-semibold">Description Keywords</label>
+                        <input type="text" name="description" id="description" class="form-control"
+                               value="{{ request.GET.description }}" 
+                               placeholder="Search in description...">
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="col-12">
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-search me-1"></i>Search Transactions
+                            </button>
+                            <a href="{% url 'transactions:search' %}" class="btn btn-outline-secondary">
+                                <i class="fas fa-times me-1"></i>Clear Filters
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search Results -->
+    {% if transactions %}
+        <!-- Search Results Summary -->
+        {% if request.GET %}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Found <strong>{{ total_count }}</strong> transactions
+                    {% if limited_count < total_count %}
+                        (showing first <strong>{{ limited_count }}</strong>)
+                    {% endif %}
+                    {% if summary %}
+                        - Total Amount: <strong>${{ summary.total_amount|floatformat:2 }}</strong>
+                        {% if summary.date_range.0 and summary.date_range.1 %}
+                            from {{ summary.date_range.0 }} to {{ summary.date_range.1 }}
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="alert alert-secondary">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Showing 
+                    {% if total_count > limited_count %}
+                        the most recent <strong>{{ limited_count }}</strong> of <strong>{{ total_count }}</strong> total transactions.
+                    {% else %}
+                        all <strong>{{ total_count }}</strong> transactions.
+                    {% endif %}
+                    Use the search form above to filter results.
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Transaction Results Table -->
+        {% if transactions %}
+        <div class="row">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Description</th>
+                                        <th>Category</th>
+                                        <th>Amount</th>
+                                        <th>Account</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for transaction in transactions %}
+                                    <tr>
+                                        <td>{{ transaction.date|date:"M d, Y" }}</td>
+                                        <td>
+                                            <div class="fw-semibold">{{ transaction.description|truncatechars:50 }}</div>
+                                            {% if transaction.payoree %}
+                                                <small class="text-muted">{{ transaction.payoree.name }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if transaction.category %}
+                                                <span class="badge bg-secondary">{{ transaction.category.name }}</span>
+                                            {% else %}
+                                                <span class="badge bg-warning text-dark">Uncategorized</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <span class="{% if transaction.amount >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                                                {% if transaction.amount >= 0 %}+{% endif %}${{ transaction.amount|floatformat:2 }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ transaction.bank_account.name }}</small>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="row">
+            <div class="col-12">
+                <div class="alert alert-warning text-center">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    No transactions found matching your search criteria.
+                    <div class="mt-2">
+                        <a href="{% url 'transactions:search' %}" class="btn btn-outline-primary btn-sm">
+                            Clear filters and try again
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle me-2"></i>
+                No transactions found. Please check if data has been imported into the system.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
