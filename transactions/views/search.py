@@ -30,8 +30,8 @@ def search_transactions(request):
     filters_applied = []
 
     # Date range filter
-    date_start = request.GET.get("date_start")
-    date_end = request.GET.get("date_end")
+    date_start = request.GET.get("start_date")  # Changed from date_start to match form
+    date_end = request.GET.get("end_date")  # Changed from date_end to match form
 
     if date_start:
         try:
@@ -50,29 +50,53 @@ def search_transactions(request):
             pass  # Invalid date format, ignore
 
     # Amount range filter
-    amount_min = request.GET.get("amount_min")
-    amount_max = request.GET.get("amount_max")
+    amount_min = request.GET.get("min_amount")  # Changed from amount_min to match form
+    amount_max = request.GET.get("max_amount")  # Changed from amount_max to match form
 
-    if amount_min:
+    if amount_min and amount_max:
         try:
             min_amount = Decimal(amount_min)
-            # Filter for absolute values since amounts are typically negative for expenses
-            transactions = transactions.extra(
-                where=["ABS(amount) >= %s"], params=[min_amount]
-            )
-            filters_applied.append(f"Min Amount: ${min_amount}")
-        except (ValueError, Decimal.InvalidOperation):
-            pass
-
-    if amount_max:
-        try:
             max_amount = Decimal(amount_max)
-            transactions = transactions.extra(
-                where=["ABS(amount) <= %s"], params=[max_amount]
-            )
-            filters_applied.append(f"Max Amount: ${max_amount}")
+            # For range filtering, we want transactions between min and max
+            # If both are negative: min_amount <= transaction.amount <= max_amount
+            # If both are positive: -max_amount <= transaction.amount <= -min_amount
+            if min_amount < 0 and max_amount < 0:
+                # Both negative: filter for transactions in the range
+                transactions = transactions.filter(
+                    amount__gte=min_amount, amount__lte=max_amount
+                )
+                filters_applied.append(f"Amount Range: ${min_amount} to ${max_amount}")
+            elif min_amount > 0 and max_amount > 0:
+                # Both positive: convert to negative range for expenses
+                transactions = transactions.filter(
+                    amount__gte=-max_amount, amount__lte=-min_amount
+                )
+                filters_applied.append(f"Amount Range: ${min_amount} to ${max_amount}")
         except (ValueError, Decimal.InvalidOperation):
             pass
+    else:
+        # Handle single-sided filters
+        if amount_min:
+            try:
+                min_amount = Decimal(amount_min)
+                if min_amount < 0:
+                    transactions = transactions.filter(amount__gte=min_amount)
+                else:
+                    transactions = transactions.filter(amount__lte=-min_amount)
+                filters_applied.append(f"Min Amount: ${abs(min_amount)}")
+            except (ValueError, Decimal.InvalidOperation):
+                pass
+
+        if amount_max:
+            try:
+                max_amount = Decimal(amount_max)
+                if max_amount < 0:
+                    transactions = transactions.filter(amount__lte=max_amount)
+                else:
+                    transactions = transactions.filter(amount__gte=-max_amount)
+                filters_applied.append(f"Max Amount: ${abs(max_amount)}")
+            except (ValueError, Decimal.InvalidOperation):
+                pass
 
     # Category filter
     category_id = request.GET.get("category")

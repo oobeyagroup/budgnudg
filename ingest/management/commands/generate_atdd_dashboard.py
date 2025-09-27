@@ -135,6 +135,9 @@ class ATDDDashboardGenerator:
 
             atdd_tracker = importlib.import_module("atdd_tracker")
 
+            # Clear registry for fresh discovery
+            atdd_tracker.clear_registry()
+
             # Find and import all test files with ATDD annotations
             test_files = list(self.project_root.rglob("*test*atdd*.py"))
 
@@ -192,6 +195,7 @@ class ATDDDashboardGenerator:
                 # Look for test result lines
                 if "::test_" in line and ("PASSED" in line or "FAILED" in line):
                     parts = line.split()
+                    test_file_path = parts[0].split("::")[0] if "::" in parts[0] else ""
                     test_name = (
                         parts[0].split("::")[-1] if "::" in parts[0] else parts[0]
                     )
@@ -206,8 +210,13 @@ class ATDDDashboardGenerator:
                             except ValueError:
                                 pass
 
-                    # For demo purposes, assign to ingest story
-                    story_key = "ingest/import_csv_transactions"
+                    # Map test file to appropriate story based on path
+                    story_key = "ingest/import_csv_transactions"  # default
+                    if "search_filtering" in test_file_path:
+                        story_key = "transactions/advanced_search_filtering"
+                    elif "ingest" in test_file_path:
+                        story_key = "ingest/import_csv_transactions"
+
                     if story_key not in results:
                         results[story_key] = []
 

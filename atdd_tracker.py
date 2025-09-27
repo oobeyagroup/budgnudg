@@ -46,6 +46,11 @@ def user_story(app: str, story: str):
         if not hasattr(func, "_atdd_metadata"):
             func._atdd_metadata = {}
         func._atdd_metadata["story"] = f"{app}/{story}"
+
+        # If the test has a deferred registration function, call it now
+        if hasattr(func, "_register_test"):
+            func._register_test()
+
         return func
 
     return decorator
@@ -86,21 +91,25 @@ def acceptance_test(name: str, criteria_id: str, given: str, when: str, then: st
             }
         )
 
-        # Register in global registry
-        story = func._atdd_metadata.get("story", "unknown")
-        if story not in TEST_REGISTRY:
-            TEST_REGISTRY[story] = []
+        # Register the test - defer registration to allow user_story decorator to set story path
+        def register_test():
+            story = func._atdd_metadata.get("story", "unknown")
+            if story not in TEST_REGISTRY:
+                TEST_REGISTRY[story] = []
 
-        TEST_REGISTRY[story].append(
-            TestMetadata(
-                story_path=story,
-                criteria_id=criteria_id,
-                test_name=name,
-                bdd_given=given,
-                bdd_when=when,
-                bdd_then=then,
+            TEST_REGISTRY[story].append(
+                TestMetadata(
+                    story_path=story,
+                    criteria_id=criteria_id,
+                    test_name=name,
+                    bdd_given=given,
+                    bdd_when=when,
+                    bdd_then=then,
+                )
             )
-        )
+
+        # Store the registration function to be called later
+        func._register_test = register_test
 
         return func
 
@@ -117,8 +126,8 @@ def get_test_registry() -> Dict[str, List[TestMetadata]]:
     return TEST_REGISTRY.copy()
 
 
-def clear_test_registry():
-    """Clear the test registry (useful for testing)."""
+def clear_registry():
+    """Clear the test registry for fresh test discovery."""
     global TEST_REGISTRY
     TEST_REGISTRY = {}
 
