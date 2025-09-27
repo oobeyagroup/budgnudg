@@ -27,7 +27,7 @@
             <div class="col-12">
                 <h1 class="mb-4">ATDD Dashboard</h1>
                 <p class="text-muted">Acceptance Test-Driven Development Status</p>
-                <p class="text-muted">Generated: 2025-09-27 00:49:39</p>
+                <p class="text-muted">Generated: 2025-09-27 13:23:04</p>
             </div>
         </div>
         
@@ -37,7 +37,7 @@
                 <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">Total Criteria</h5>
-                        <h2 class="text-primary">16</h2>
+                        <h2 class="text-primary">36</h2>
                     </div>
                 </div>
             </div>
@@ -47,7 +47,7 @@
                         <h5 class="card-title">Completed</h5>
                         <h2 class="text-success">16</h2>
                         <small class="text-muted">
-                        100.0%
+                        44.4%
                         </small>
                     </div>
                 </div>
@@ -65,7 +65,7 @@
                 <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">Coverage</h5>
-                        <h2 class="text-warning">1</h2>
+                        <h2 class="text-warning">2</h2>
                         <small class="text-muted">Stories with tests</small>
                     </div>
                 </div>
@@ -81,8 +81,8 @@
                         <h5 class="mb-0">Ingest / Import_Csv_Transactions</h5>
                         <small class="text-muted">
                             16 criteria | 
-                            17 tests | 
-                            13 passing
+                            13 tests | 
+                            9 passing
                         </small>
                     </div>
                     <div class="card-body">
@@ -180,6 +180,142 @@
                         <div class="criteria-row criteria-completed">
                             <span class="status-badge">✅</span>
                             <strong>duplicate_import_prevention</strong>: Given I try to import the same CSV file twice, when the system detects this, then it warns me about potential duplicates
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Transactions / Advanced_Search_Filtering</h5>
+                        <small class="text-muted">
+                            20 criteria | 
+                            4 tests | 
+                            4 passing
+                        </small>
+                    </div>
+                    <div class="card-body">
+            
+                        <div class="criteria-row criteria-planned">
+                            <span class="status-badge">🚧</span>
+                            <strong>search_by_date_range</strong>: Given I have transactions across multiple dates, when I filter by a date range, then I see only transactions within that range
+                            <span class='badge bg-success ms-2'>PASS</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-planned">
+                            <span class="status-badge">🚧</span>
+                            <strong>search_by_amount_range</strong>: Given I have transactions of various amounts, when I filter by amount range ($50-$200), then I see only transactions within that range
+                            <span class='badge bg-success ms-2'>PASS</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-planned">
+                            <span class="status-badge">🚧</span>
+                            <strong>search_by_category</strong>: Given I have transactions in different categories, when I filter by a specific category, then I see only transactions in that category
+                            <span class='badge bg-success ms-2'>PASS</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-planned">
+                            <span class="status-badge">🚧</span>
+                            <strong>search_by_description_keywords</strong>: Given I have transactions with various descriptions, when I search by keywords, then I see transactions containing those keywords
+                            <span class='badge bg-success ms-2'>PASS</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>search_multiple_criteria</strong>: Given transaction history, when I use advanced search, then I can filter by amount ranges, date ranges, multiple categories, multiple payorees, and description keywords simultaneously
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>search_negative_filters</strong>: Given search criteria, when I want to exclude results, then I can use negative filters (e.g., "NOT category:groceries")
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>search_logical_operators</strong>: Given complex searches, when I build search queries, then I can use logical operators (AND, OR, NOT) between different criteria
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>search_comparison_operators</strong>: Given transaction amounts, when I search, then I can use comparison operators (greater than, less than, equal to, between)
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>quick_filter_buttons</strong>: Given common search needs, when I want fast filtering, then I have quick-access buttons for frequent criteria (This Month, Last Month, High Amounts, Uncategorized)
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>filter_refinement</strong>: Given search results, when I want to refine further, then I can add additional filters without losing current results
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>applied_filter_display</strong>: Given applied filters, when I review them, then I can see all active filters clearly and remove individual filters easily
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>search_history</strong>: Given search history, when I want to repeat searches, then I can access my recent searches from a dropdown
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>search_results_summary</strong>: Given search results, when I view them, then I can see summary statistics (total amount, transaction count, average amount, category breakdown)
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>csv_export</strong>: Given filtered transactions, when I want to export, then I can download results as CSV with customizable column selection
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>results_grouping</strong>: Given search results, when I analyze patterns, then I can view results grouped by payoree, category, amount ranges, or time periods
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>visual_charts</strong>: Given filtered data, when I need reporting, then I can generate visual charts (spending over time, category distribution) directly from search results
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">💡</span>
+                            <strong>save_search_patterns</strong>: Given frequently used search criteria, when I create a search, then I can save it with a custom name for future reuse
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">💡</span>
+                            <strong>manage_saved_searches</strong>: Given saved searches, when I access them, then I can modify, duplicate, or delete existing saved patterns
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">💡</span>
+                            <strong>relative_date_searches</strong>: Given saved search patterns, when I run them, then they automatically apply current date ranges or use relative dates ("last 30 days")
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">💡</span>
+                            <strong>organize_searches</strong>: Given multiple saved searches, when organizing them, then I can group them into folders or categories
                             <span class='badge bg-light text-dark ms-2'>NO TEST</span>
                         </div>
                 
