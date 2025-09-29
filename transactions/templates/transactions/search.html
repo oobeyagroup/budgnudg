@@ -164,9 +164,9 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Date</th>
-                                        <th>Description</th>
-                                        <th>Category</th>
-                                        <th>Amount</th>
+                                        <th style="width: 40%;">Description</th>
+                                        <th style="width: 10%;">Category</th>
+                                        <th  style="width: 10%;" class="text-end">Amount</th>
                                         <th>Account</th>
                                     </tr>
                                 </thead>
@@ -187,9 +187,9 @@
                                                 <span class="badge bg-warning text-dark">Uncategorized</span>
                                             {% endif %}
                                         </td>
-                                        <td>
-                                            <span class="{% if transaction.amount >= 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
-                                                {% if transaction.amount >= 0 %}+{% endif %}${{ transaction.amount|floatformat:2 }}
+                                        <td class="text-end">
+                                            <span class="currency {% if transaction.amount >= 0 %}currency-positive {% elif transaction.amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">
+                                                {{ transaction.amount|floatformat:2 }}
                                             </span>
                                         </td>
                                         <td>
