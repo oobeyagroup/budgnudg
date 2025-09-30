@@ -63,6 +63,7 @@ BudgNudg was designed from the ground up to make shared financial reflection sim
 ### ✍️ 1–5 Transaction Scoring
 - Simple reflection scale (1 = regret, 5 = proud)
 - Allows partners to quickly assess whether a purchase “felt right”
+- AI evaluation of to make language style (aggresive, passive. judgemental  ) transparent
 - Avoids spreadsheet complexity or moral judgment
 
 ### 🤝 Shared Understanding Through Behavior

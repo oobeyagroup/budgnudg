@@ -268,7 +268,6 @@ class Transaction(models.Model):
         null=True,
         help_text="Single value (e.g., {'core': 100}) or percentage allocation across budget tiers",
     )
-
     # Valid needs level values:
     # 1 Critical Needs: Food, utilities, insurance, medical, taxes. Non-negotiable.
     # 2 Core Operations: Groceries, transportation, home maintenance. Flexible but vital.

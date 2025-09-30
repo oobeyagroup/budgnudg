@@ -5,6 +5,33 @@
 **Priority**: Could Have  
 **Estimated Effort**: 5 points  
 **Target Release**: Q2 2026  
+**Related User Stories**: 
+
+## Related User Stories
+
+The implementation of this budget alignment review feature should consider future integration with these related user stories, with design decisions favoring anticipated refactorings in these directions:
+
+### Budget Management Dependencies
+- **[Create Budget Allocations](../budgets/create_budget_allocations.md)** - Core dependency for having budget data to compare against actual transactions
+- **[Create Multiple Budget Plans](../budgets/create_multiple_budget_plans.md)** - Future enhancement allowing alignment analysis across different budget scenarios (Lean, Normal, Splurge)
+
+### Transaction Analysis Synergies  
+- **[Advanced Transaction Search & Filtering](./advanced_search_filtering.md)** - Shared filtering and analysis patterns that should be unified into reusable components
+- **[Assign Payoree](./assign_payoree.md)** - Transaction categorization improvements that affect budget alignment accuracy
+
+### Technical Infrastructure
+- **[Advanced Search Filtering ATDD](./advanced_search_filtering_atdd.md)** - Shared testing patterns and infrastructure for transaction filtering and analysis features
+
+### Design Considerations for Future Integration
+
+**Shared Components**: Design filtering, date range selection, and transaction analysis components for reuse across budget alignment and advanced search features.
+
+**Unified Reporting Interface**: Anticipate integration with advanced filtering to allow users to drill down from budget variance analysis to specific transaction searches.
+
+**Multiple Budget Plan Support**: Structure data models and UI components to accommodate future comparison across multiple active budget plans.
+
+**Progressive Enhancement**: Design the basic alignment review to be extensible for advanced recommendation engines and automated budget adjustments.
+
 
 ## User Story
 
