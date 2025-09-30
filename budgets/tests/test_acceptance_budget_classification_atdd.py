@@ -199,3 +199,77 @@ class TestBudgetClassificationATDD(TestCase):
         
         # And: JavaScript for inline editing is included
         self.assertContains(response, 'inline-edit')
+
+    @atdd_test(
+        story="budget_by_classification",
+        criteria_id="real_data_display",
+        description="Historical and budget values display real data from database"
+    )
+    def test_real_data_display(self):
+        """Given transactions and budget allocations exist, when viewing classification analysis, then real values are displayed."""
+        
+        # Given: Historical transactions exist
+        Transaction.objects.create(
+            date=date(2024, 9, 15),
+            amount=Decimal('-150.75'),
+            description="Grocery Store A",
+            category=self.groceries_category,
+            payoree=self.test_payoree
+        )
+        Transaction.objects.create(
+            date=date(2024, 9, 22),
+            amount=Decimal('-89.50'),
+            description="Grocery Store B", 
+            category=self.groceries_category,
+            payoree=self.test_payoree
+        )
+        
+        # When: User views category analysis
+        url = reverse('budgets:classification_analysis')
+        response = self.client.get(url, {
+            'classification_type': 'category',
+            'category_id': self.groceries_category.id
+        })
+        
+        # Then: Real transaction data is displayed 
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Groceries')  # Category name
+        
+        # And: Budget allocation value is shown
+        self.assertContains(response, '$500.00')  # Budget allocation amount
+        
+        # And: Page structure indicates data is present
+        self.assertContains(response, 'historical-column')
+        self.assertContains(response, 'budget-column')
+        self.assertContains(response, 'monthly-data')
+
+    @atdd_test(
+        story="budget_by_classification",
+        criteria_id="ajax_budget_update",
+        description="AJAX endpoint updates budget allocations and returns success"
+    )
+    def test_ajax_budget_update(self):
+        """Given budget allocation exists, when I update via AJAX, then amount is saved and response indicates success."""
+        
+        # Given: Budget allocation exists
+        allocation = self.grocery_allocation
+        original_amount = allocation.amount
+        new_amount = Decimal('600.00')
+        
+        # When: AJAX update is sent
+        update_url = reverse('budgets:classification_update')
+        response = self.client.post(update_url, {
+            'allocation_id': allocation.id,
+            'amount': str(new_amount)
+        })
+        
+        # Then: Response indicates success
+        self.assertEqual(response.status_code, 200)
+        response_data = response.json()
+        self.assertTrue(response_data['success'])
+        self.assertEqual(response_data['new_amount'], '600.00')
+        
+        # And: Database is updated
+        allocation.refresh_from_db()
+        self.assertEqual(allocation.amount, new_amount)
+        self.assertNotEqual(allocation.amount, original_amount)

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% load static %}
+{% load classification_tags %}
 
 {% block title %}Budget by Classification Analysis{% endblock %}
 
@@ -75,7 +76,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="container-fluid">
+<div class="container-fluid py-4">
     <h1>Budget by Classification Analysis</h1>
     
     <!-- Classification Selection Form -->
@@ -159,7 +160,10 @@
                         {% for month in historical_months %}
                         <tr>
                             <td>{{ month.display }}</td>
-                            <td class="currency">$0.00</td>
+                            <td class="currency">
+                                {% month_key month.year month.month as key %}
+                                {{ historical_data|get_item:key|format_currency }}
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
