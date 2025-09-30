@@ -16,17 +16,7 @@ from budgets.models import BudgetPlan, BudgetAllocation
 from transactions.models import Category, Payoree, Transaction
 
 # Import ATDD infrastructure
-try:
-    from atdd_tracker import atdd_test
-except ImportError:
-    # Fallback decorator if atdd_tracker not available
-    def atdd_test(story, criteria_id, description):
-        def decorator(func):
-            func.atdd_story = story
-            func.atdd_criteria_id = criteria_id
-            func.atdd_description = description
-            return func
-        return decorator
+from atdd_tracker import user_story, acceptance_test
 
 
 class TestBudgetClassificationATDD(TestCase):
@@ -78,10 +68,13 @@ class TestBudgetClassificationATDD(TestCase):
             amount=Decimal('500.00')
         )
 
-    @atdd_test(
-        story="budget_by_classification", 
+    @user_story("budgets", "budget_by_classification_atdd")
+    @acceptance_test(
+        name="Classification Type Selection",
         criteria_id="classification_type_selection",
-        description="User can select classification type from dropdown"
+        given="I want to analyze budget by classification",
+        when="I access the page",
+        then="I can select classification type from dropdown"
     )
     def test_classification_type_selection(self):
         """Given I want to analyze budget by classification, when I access the page, then I can select classification type."""
@@ -99,10 +92,13 @@ class TestBudgetClassificationATDD(TestCase):
         self.assertContains(response, 'Subcategory') 
         self.assertContains(response, 'Payoree')
 
-    @atdd_test(
-        story="budget_by_classification",
-        criteria_id="hierarchical_category_selection", 
-        description="When Subcategory is selected, user must first select category"
+    @user_story("budgets", "budget_by_classification_atdd")
+    @acceptance_test(
+        name="Hierarchical Category Selection",
+        criteria_id="hierarchical_category_selection",
+        given="subcategory classification type is selected",
+        when="I select it",
+        then="category dropdown appears first"
     )
     def test_hierarchical_category_selection(self):
         """Given subcategory classification type, when I select it, then category dropdown appears first."""
@@ -121,10 +117,13 @@ class TestBudgetClassificationATDD(TestCase):
         # And: Subcategory dropdown is present but initially disabled/empty
         self.assertContains(response, 'id="subcategory-select"')
 
-    @atdd_test(
-        story="budget_by_classification",
+    @user_story("budgets", "budget_by_classification_atdd")
+    @acceptance_test(
+        name="Single Classification Focus",
         criteria_id="single_classification_focus",
-        description="Page displays data for ONE selected classification at a time"
+        given="I select a classification",
+        when="I view the page",
+        then="data for ONE selected classification is displayed"
     )
     def test_single_classification_focus(self):
         """Given I select a specific classification, when page loads, then only data for that classification is shown."""
@@ -145,10 +144,13 @@ class TestBudgetClassificationATDD(TestCase):
         # And: Only one classification's data is shown (not multiple)
         self.assertContains(response, 'selected-classification')
 
-    @atdd_test(
-        story="budget_by_classification", 
+    @user_story("budgets", "budget_by_classification_atdd")
+    @acceptance_test(
+        name="Historical vs Budget Columns",
         criteria_id="historical_vs_budget_columns",
-        description="Side-by-side display of 12 months historical and budget data"
+        given="I select a classification",
+        when="I view the data",
+        then="I see side-by-side display of 12 months historical and budget data"
     )
     def test_historical_vs_budget_columns(self):
         """Given selected classification, when viewing data, then I see historical and budget columns side by side."""
@@ -177,10 +179,13 @@ class TestBudgetClassificationATDD(TestCase):
         # And: Monthly data is shown (12 months)
         self.assertContains(response, 'monthly-data')
 
-    @atdd_test(
-        story="budget_by_classification",
-        criteria_id="inline_budget_editing",
-        description="User can click budget values to edit them directly"
+    @user_story("budgets", "budget_by_classification_atdd")
+    @acceptance_test(
+        name="Inline Budget Editing",
+        criteria_id="inline_budget_editing", 
+        given="I see budget values",
+        when="I click them",
+        then="I can edit them directly"
     )
     def test_inline_budget_editing(self):
         """Given budget values are displayed, when I click them, then I can edit inline with auto-save."""
@@ -200,10 +205,13 @@ class TestBudgetClassificationATDD(TestCase):
         # And: JavaScript for inline editing is included
         self.assertContains(response, 'inline-edit')
 
-    @atdd_test(
-        story="budget_by_classification",
+    @user_story("budgets", "budget_by_classification_atdd")
+    @acceptance_test(
+        name="Real Data Display",
         criteria_id="real_data_display",
-        description="Historical and budget values display real data from database"
+        given="I have historical transactions and budget data", 
+        when="I view the analysis",
+        then="historical and budget values display real data from database"
     )
     def test_real_data_display(self):
         """Given transactions and budget allocations exist, when viewing classification analysis, then real values are displayed."""
@@ -243,10 +251,13 @@ class TestBudgetClassificationATDD(TestCase):
         self.assertContains(response, 'budget-column')
         self.assertContains(response, 'monthly-data')
 
-    @atdd_test(
-        story="budget_by_classification",
+    @user_story("budgets", "budget_by_classification_atdd")
+    @acceptance_test(
+        name="AJAX Budget Update",
         criteria_id="ajax_budget_update",
-        description="AJAX endpoint updates budget allocations and returns success"
+        given="I have editable budget values",
+        when="I update them via AJAX",
+        then="the budget allocations are updated and success is returned"
     )
     def test_ajax_budget_update(self):
         """Given budget allocation exists, when I update via AJAX, then amount is saved and response indicates success."""

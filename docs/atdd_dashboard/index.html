@@ -27,7 +27,7 @@
             <div class="col-12">
                 <h1 class="mb-4">ATDD Dashboard</h1>
                 <p class="text-muted">Acceptance Test-Driven Development Status</p>
-                <p class="text-muted">Generated: 2025-09-27 14:11:44</p>
+                <p class="text-muted">Generated: 2025-09-30 21:48:37</p>
             </div>
         </div>
         
@@ -37,7 +37,7 @@
                 <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">Total Criteria</h5>
-                        <h2 class="text-primary">36</h2>
+                        <h2 class="text-primary">49</h2>
                     </div>
                 </div>
             </div>
@@ -45,9 +45,9 @@
                 <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">Completed</h5>
-                        <h2 class="text-success">16</h2>
+                        <h2 class="text-success">23</h2>
                         <small class="text-muted">
-                        44.4%
+                        46.9%
                         </small>
                     </div>
                 </div>
@@ -56,8 +56,8 @@
                 <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">Tests</h5>
-                        <h2 class="text-info">0</h2>
-                        <small class="text-muted">Pass Rate: 0.0%</small>
+                        <h2 class="text-info">21</h2>
+                        <small class="text-muted">Pass Rate: 81.0%</small>
                     </div>
                 </div>
             </div>
@@ -65,7 +65,7 @@
                 <div class="card">
                     <div class="card-body text-center">
                         <h5 class="card-title">Coverage</h5>
-                        <h2 class="text-warning">2</h2>
+                        <h2 class="text-warning">3</h2>
                         <small class="text-muted">Stories with tests</small>
                     </div>
                 </div>
@@ -81,8 +81,8 @@
                         <h5 class="mb-0">Ingest / Import_Csv_Transactions</h5>
                         <small class="text-muted">
                             16 criteria | 
-                            0 tests | 
-                            0 passing
+                            13 tests | 
+                            9 passing
                         </small>
                     </div>
                     <div class="card-body">
@@ -144,13 +144,13 @@
                         <div class="criteria-row criteria-completed">
                             <span class="status-badge">✅</span>
                             <strong>bank_account_assignment</strong>: Given I specify a bank account during commit, when transactions are created, then they are properly linked to that account
-                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                            <span class='badge bg-success ms-2'>PASS</span>
                         </div>
                 
                         <div class="criteria-row criteria-completed">
                             <span class="status-badge">✅</span>
                             <strong>import_status_tracking</strong>: Given I commit an import batch, when the process completes, then the batch status is updated to "committed"
-                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                            <span class='badge bg-danger ms-2'>FAIL</span>
                         </div>
                 
                         <div class="criteria-row criteria-completed">
@@ -193,8 +193,8 @@
                         <h5 class="mb-0">Transactions / Advanced_Search_Filtering</h5>
                         <small class="text-muted">
                             20 criteria | 
-                            0 tests | 
-                            0 passing
+                            8 tests | 
+                            8 passing
                         </small>
                     </div>
                     <div class="card-body">
@@ -202,25 +202,25 @@
                         <div class="criteria-row criteria-planned">
                             <span class="status-badge">🚧</span>
                             <strong>search_by_date_range</strong>: Given I have transactions across multiple dates, when I filter by a date range, then I see only transactions within that range
-                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                            <span class='badge bg-success ms-2'>PASS</span>
                         </div>
                 
                         <div class="criteria-row criteria-planned">
                             <span class="status-badge">🚧</span>
                             <strong>search_by_amount_range</strong>: Given I have transactions of various amounts, when I filter by amount range ($50-$200), then I see only transactions within that range
-                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                            <span class='badge bg-success ms-2'>PASS</span>
                         </div>
                 
                         <div class="criteria-row criteria-planned">
                             <span class="status-badge">🚧</span>
                             <strong>search_by_category</strong>: Given I have transactions in different categories, when I filter by a specific category, then I see only transactions in that category
-                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                            <span class='badge bg-success ms-2'>PASS</span>
                         </div>
                 
                         <div class="criteria-row criteria-planned">
                             <span class="status-badge">🚧</span>
                             <strong>search_by_description_keywords</strong>: Given I have transactions with various descriptions, when I search by keywords, then I see transactions containing those keywords
-                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                            <span class='badge bg-success ms-2'>PASS</span>
                         </div>
                 
                         <div class="criteria-row criteria-future">
@@ -316,6 +316,100 @@
                         <div class="criteria-row criteria-future">
                             <span class="status-badge">💡</span>
                             <strong>organize_searches</strong>: Given multiple saved searches, when organizing them, then I can group them into folders or categories
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Budgets / Budget_By_Classification</h5>
+                        <small class="text-muted">
+                            13 criteria | 
+                            0 tests | 
+                            0 passing
+                        </small>
+                    </div>
+                    <div class="card-body">
+            
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>classification_type_selection</strong>: User can select classification type from dropdown (Category, Subcategory, Payoree)
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>hierarchical_category_selection</strong>: When "Subcategory" is selected, user must first select a category, then subcategory becomes available
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>single_classification_focus</strong>: Page displays data for ONE selected classification at a time
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>historical_vs_budget_columns</strong>: Side-by-side display showing 12 months of historical data (left) and 12 months of budget data (right)
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>inline_budget_editing</strong>: User can click budget values to edit them directly with auto-save functionality
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>real_data_display</strong>: Historical and budget values display real data from database
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-completed">
+                            <span class="status-badge">✅</span>
+                            <strong>ajax_budget_update</strong>: AJAX endpoint updates budget allocations and returns success
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-planned">
+                            <span class="status-badge">🚧</span>
+                            <strong>budget_plan_selection</strong>: User can select which budget plan to display (defaults to active plan)
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-planned">
+                            <span class="status-badge">🚧</span>
+                            <strong>apply_to_all_months</strong>: Buttons to copy a budget value to all months or specific month ranges
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-planned">
+                            <span class="status-badge">🚧</span>
+                            <strong>monthly_totals_display</strong>: Shows monthly totals for both historical and budget columns
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>multi_plan_toggle</strong>: Toggle to show multiple budget plans (≤3) in comparison view
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>variance_indicators</strong>: Visual indicators showing significant variances between historical and budget
+                            <span class='badge bg-light text-dark ms-2'>NO TEST</span>
+                        </div>
+                
+                        <div class="criteria-row criteria-future">
+                            <span class="status-badge">⏳</span>
+                            <strong>keyboard_navigation</strong>: Tab/Enter navigation between editable budget fields
                             <span class='badge bg-light text-dark ms-2'>NO TEST</span>
                         </div>
                 

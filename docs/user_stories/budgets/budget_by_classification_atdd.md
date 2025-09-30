@@ -38,23 +38,25 @@ As a budget manager, I want to analyze historical spending and budget allocation
 
 ### Must Have
 
-- [ ] **`classification_type_selection`**: User can select classification type from dropdown (Category, Subcategory, Payoree)
-- [ ] **`hierarchical_category_selection`**: When "Subcategory" is selected, user must first select a category, then subcategory becomes available
-- [ ] **`single_classification_focus`**: Page displays data for ONE selected classification at a time
-- [ ] **`historical_vs_budget_columns`**: Side-by-side display showing 12 months of historical data (left) and 12 months of budget data (right)
-- [ ] **`inline_budget_editing`**: User can click budget values to edit them directly with auto-save functionality
+- [ ] ✅ `classification_type_selection` User can select classification type from dropdown (Category, Subcategory, Payoree)
+- [ ] ✅ `hierarchical_category_selection` When "Subcategory" is selected, user must first select a category, then subcategory becomes available
+- [ ] ✅ `single_classification_focus` Page displays data for ONE selected classification at a time
+- [ ] ✅ `historical_vs_budget_columns` Side-by-side display showing 12 months of historical data (left) and 12 months of budget data (right)
+- [ ] ✅ `inline_budget_editing` User can click budget values to edit them directly with auto-save functionality
 
 ### Should Have
 
-- [ ] **`budget_plan_selection`**: User can select which budget plan to display (defaults to active plan)
-- [ ] **`apply_to_all_months`**: Buttons to copy a budget value to all months or specific month ranges
-- [ ] **`monthly_totals_display`**: Shows monthly totals for both historical and budget columns
+- [ ] ✅ `real_data_display` Historical and budget values display real data from database
+- [ ] ✅ `ajax_budget_update` AJAX endpoint updates budget allocations and returns success
+- [ ] 🚧 `budget_plan_selection` User can select which budget plan to display (defaults to active plan)
+- [ ] 🚧 `apply_to_all_months` Buttons to copy a budget value to all months or specific month ranges
+- [ ] 🚧 `monthly_totals_display` Shows monthly totals for both historical and budget columns
 
 ### Could Have
 
-- [ ] **`multi_plan_toggle`**: Toggle to show multiple budget plans (≤3) in comparison view
-- [ ] **`variance_indicators`**: Visual indicators showing significant variances between historical and budget
-- [ ] **`keyboard_navigation`**: Tab/Enter navigation between editable budget fields
+- [ ] ⏳ `multi_plan_toggle` Toggle to show multiple budget plans (≤3) in comparison view
+- [ ] ⏳ `variance_indicators` Visual indicators showing significant variances between historical and budget
+- [ ] ⏳ `keyboard_navigation` Tab/Enter navigation between editable budget fields
 
 ### Won't Have (This Iteration)
 
