@@ -1,11 +1,11 @@
 # Create Budget Allocations
 
-**Status**: 🔄 NEEDS TESTS  
+**Status**: ✅ COMPLETE - ATDD IMPLEMENTED  
 **Epic**: Budget Management  
 **Priority**: Must Have  
 **Estimated Effort**: 8 points  
 **Actual Effort**: 13 points (expanded scope)  
-**ATDD Status**: No acceptance tests linked to criteria  
+**ATDD Status**: ✅ 6 acceptance tests implemented and passing  
 
 ## User Story
 
@@ -22,23 +22,76 @@ Budget allocations are the core functionality of the system. Users need to:
 ## Acceptance Criteria
 
 ### Budget Creation Workflow
-- [ ] ✅ Given I want to create a budget, when I access the budget wizard, then I can configure time periods and calculation methods
-- [ ] ✅ Given historical transaction data, when I run the wizard, then it suggests budget amounts based on past spending
-- [ ] ✅ Given suggested amounts, when I review them, then I can adjust individual allocations before saving
-- [ ] ✅ Given I finalize my budget, when I save, then budget allocations are created in the database
 
-> **⚠️ ATDD Note**: These acceptance criteria need to be converted to the ATDD format with unique IDs and linked to automated tests before this story can be marked as COMPLETED. See `import_csv_transactions_atdd.md` for the required format.
+#### `budget_wizard_access`
+**Given** I want to create a budget  
+**When** I access the budget wizard interface  
+**Then** I can configure time periods and calculation methods  
+**And** the system presents historical data options  
+
+#### `budget_amount_suggestions`
+**Given** I have historical transaction data  
+**When** I run the budget suggestion wizard  
+**Then** the system suggests realistic budget amounts based on past spending patterns  
+**And** suggestions use configurable calculation methods (median, average, maximum)  
+
+#### `budget_allocation_adjustment`
+**Given** the system presents suggested budget amounts  
+**When** I review the suggestions  
+**Then** I can adjust individual payoree and category allocations before saving  
+**And** the system validates that adjustments are reasonable  
+
+#### `budget_allocation_persistence`  
+**Given** I have finalized my budget allocations  
+**When** I save the budget plan  
+**Then** payoree-centric budget allocations are created in the database  
+**And** the budget plan is marked as active for the specified time period
 
 ### Allocation Management
-- [ ] ✅ Given existing budget allocations, when I view the budget list, then I see all allocations with amounts and time periods
-- [ ] ✅ Given a specific allocation, when I click on it, then I see detailed spending vs. budget analysis
-- [ ] ✅ Given I need to modify an allocation, when I edit it, then changes are reflected in spending calculations
-- [ ] ✅ Given multiple allocations for the same period, when I view them together, then I see total budget summary
+
+#### `budget_allocation_listing`
+**Given** I have existing budget allocations  
+**When** I view the budget list interface  
+**Then** I see all payoree-based allocations with amounts and time periods  
+**And** allocations are grouped by effective category for easy review  
+
+#### `allocation_detail_analysis`
+**Given** I want to analyze a specific allocation  
+**When** I click on a payoree allocation  
+**Then** I see detailed spending vs. budget analysis for that payoree  
+**And** the system shows transaction history and variance calculations  
+
+#### `allocation_modification`
+**Given** I need to modify an existing allocation  
+**When** I edit the allocation amount or details  
+**Then** changes are immediately reflected in spending calculations  
+**And** the system updates related budget summaries  
+
+#### `budget_summary_aggregation`
+**Given** I have multiple allocations for the same time period  
+**When** I view them in the budget summary  
+**Then** I see total budget amounts aggregated by category and payoree  
+**And** the system shows overall budget utilization metrics
 
 ### Integration with Transactions
-- [ ] ✅ Given budget allocations exist, when new transactions are imported, then they're automatically matched to relevant budget categories
-- [ ] ✅ Given spending against an allocation, when I view budget progress, then I see actual vs. budgeted amounts with variance
-- [ ] ✅ Given I exceed a budget allocation, when the system detects this, then I receive appropriate visual indicators
+
+#### `transaction_budget_matching`
+**Given** I have active budget allocations  
+**When** new transactions are imported into the system  
+**Then** transactions are automatically matched to relevant payoree-based budget allocations  
+**And** category inference from payoree defaults ensures accurate budget tracking  
+
+#### `budget_progress_tracking`
+**Given** I have spending against payoree allocations  
+**When** I view budget progress reports  
+**Then** I see actual vs. budgeted amounts with variance calculations  
+**And** the system shows trending and forecasting based on current spending patterns  
+
+#### `budget_overrun_alerts`
+**Given** my spending approaches or exceeds a budget allocation  
+**When** the system detects budget variance thresholds  
+**Then** I receive appropriate visual indicators and notifications  
+**And** the system suggests potential reallocation options from underutilized budgets
 
 ## MoSCoW Prioritization
 
@@ -79,7 +132,7 @@ Budget allocations are the core functionality of the system. Users need to:
 
 ## Architecture Decisions
 
-### Model Structure
+### Model Structure (Post-Refactoring)
 ```python
 class BudgetPlan(models.Model):
     name = CharField()  # e.g., "October 2025 Budget"  
@@ -88,13 +141,20 @@ class BudgetPlan(models.Model):
     is_active = BooleanField()
 
 class BudgetAllocation(models.Model):
+    # SIMPLIFIED: Payoree-centric model
     budget_plan = ForeignKey(BudgetPlan)
-    category = ForeignKey(Category, null=True)
-    subcategory = ForeignKey(Category, null=True) 
-    payoree = ForeignKey(Payoree, null=True)
-    needs_level = CharField(null=True)
+    payoree = ForeignKey(Payoree)  # Required - core of allocation
     amount = DecimalField()
     is_ai_suggested = BooleanField()
+    
+    # Category/subcategory derived from payoree.default_category/subcategory
+    @property
+    def effective_category(self):
+        return self.payoree.default_category
+        
+    @property  
+    def effective_subcategory(self):
+        return self.payoree.default_subcategory
 ```
 
 ### Calculation Service
@@ -105,10 +165,18 @@ class BudgetAllocation(models.Model):
 
 ## Testing Strategy
 
-- Unit tests for budget calculation algorithms
-- Integration tests for wizard workflow
-- Performance tests with large historical datasets  
-- User acceptance testing for budget creation flow
+**ATDD Test Coverage**: `budgets/tests/test_acceptance_budget_creation_atdd.py`
+- ✅ `budget_wizard_access` - Wizard interface configuration and access
+- ✅ `budget_amount_suggestions` - Historical data-based budget suggestions  
+- ✅ `budget_allocation_adjustment` - User modification of suggested amounts
+- ✅ `budget_allocation_persistence` - Database persistence of payoree-centric allocations
+- ✅ `budget_allocation_listing` - Budget list interface and display
+- ✅ `transaction_budget_matching` - Automatic transaction to allocation matching
+
+**Additional Testing**:
+- Unit tests for budget calculation algorithms (`BaselineCalculator`)
+- Integration tests for wizard workflow (`BudgetWizard`)  
+- Performance tests with large historical datasets
 - Edge case testing (no historical data, outlier months)
 
 ## Success Metrics

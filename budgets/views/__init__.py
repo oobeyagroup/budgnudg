@@ -24,13 +24,14 @@ class BudgetListView(ListView):
 
     def get_queryset(self):
         return BudgetAllocation.objects.select_related(
-            "budget_plan", "category", "subcategory", "payoree"
+            "budget_plan", "payoree", "payoree__default_category", "payoree__default_subcategory"
         ).order_by(
             "-budget_plan__year",
             "-budget_plan__month",
             "budget_plan__name",
-            "category__name",
-            "subcategory__name",
+            "payoree__default_category__name",
+            "payoree__default_subcategory__name",
+            "payoree__name",
         )
 
 
