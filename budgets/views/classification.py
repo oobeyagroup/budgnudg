@@ -61,6 +61,7 @@ def budget_classification_analysis(request):
     context["category_id"] = category_id
     context["subcategory_id"] = subcategory_id
     context["payoree_id"] = payoree_id
+    context["return_to"] = request.GET.get("return")
 
     # If a specific classification is selected, load data
     selected_classification = None

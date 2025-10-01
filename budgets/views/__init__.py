@@ -273,6 +273,11 @@ class BudgetReportView(TemplateView):
                 category_type = budget.category.type
                 category_name = budget.category.name
                 category_obj = budget.category
+            elif budget.subcategory and budget.subcategory.parent:
+                # Use parent category if subcategory has one
+                category_type = budget.subcategory.parent.type
+                category_name = budget.subcategory.parent.name
+                category_obj = budget.subcategory.parent
             else:
                 category_type = "uncategorized"
                 category_name = "Uncategorized"

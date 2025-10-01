@@ -96,7 +96,15 @@
 
 {% block content %}
 <div class="container-fluid py-4">
-    <h1>Budget by Classification Analysis</h1>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1>Budget by Classification Analysis</h1>
+        {% if return_to %}
+            <a href="{% if return_to == 'budget_report' %}/budgets/report/{% else %}/budgets/{% endif %}" 
+               class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i>Back to {% if return_to == 'budget_report' %}Budget Report{% else %}Budgets{% endif %}
+            </a>
+        {% endif %}
+    </div>
     
     <!-- Classification Selection Form -->
     <div class="classification-form">
@@ -149,6 +157,9 @@
                     <button type="submit" class="btn btn-primary">Analyze</button>
                 </div>
             </div>
+            {% if return_to %}
+                <input type="hidden" name="return" value="{{ return_to }}">
+            {% endif %}
         </form>
     </div>
     

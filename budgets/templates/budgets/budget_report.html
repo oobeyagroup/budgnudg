@@ -274,7 +274,14 @@
                                         <td class="description-cell ps-4">
                                             <i class="fas fa-chevron-down collapse-icon me-2"></i>
                                             <i class="fas fa-tag me-2"></i>
-                                            {{ category_name }}
+                                            {% if category_data.category_obj %}
+                                                <a href="/budgets/classification/?classification_type=category&category_id={{ category_data.category_obj.pk }}&return=budget_report" 
+                                                   class="text-primary text-decoration-none">
+                                                    {{ category_name }}
+                                                </a>
+                                            {% else %}
+                                                {{ category_name }}
+                                            {% endif %}
                                         </td>
                                         <td class="amount-cell text-end">
                                             <span class="currency {% if category_data.total_amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ category_data.total_amount|floatformat:2|intcomma }}</span>
@@ -308,7 +315,14 @@
                                             <td class="description-cell ps-5">
                                                 <i class="fas fa-chevron-down collapse-icon me-2"></i>
                                                 <i class="fas fa-tags me-2"></i>
-                                                {{ subcategory_name }}
+                                                {% if subcategory_data.subcategory_obj %}
+                                                    <a href="/budgets/classification/?classification_type=subcategory&category_id={{ category_data.category_obj.pk }}&subcategory_id={{ subcategory_data.subcategory_obj.pk }}&return=budget_report" 
+                                                       class="text-secondary text-decoration-none">
+                                                        {{ subcategory_name }}
+                                                    </a>
+                                                {% else %}
+                                                    {{ subcategory_name }}
+                                                {% endif %}
                                             </td>
                                             <td class="amount-cell text-end">
                                                 <span class="{% if subcategory_data.total_amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
@@ -339,7 +353,12 @@
                                             <tr class="budget-row collapse" id="subcategory-{{ category_type }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}">
                                                 <td class="description-cell ps-5">
                                                     {% if budget.payoree %}
-                                                        <strong>XXXXX{{ budget.payoree.name }}</strong>
+                                                        <strong>
+                                                            <a href="/budgets/classification/?classification_type=payoree&payoree_id={{ budget.payoree.pk }}&return=budget_report" 
+                                                               class="text-decoration-none">
+                                                                {{ budget.payoree.name }}
+                                                            </a>
+                                                        </strong>
                                                     {% else %}
                                                         <em class="text-muted">General Allocation</em>
                                                     {% endif %}
