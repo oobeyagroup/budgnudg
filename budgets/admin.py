@@ -43,15 +43,15 @@ class BudgetPlanAdmin(admin.ModelAdmin):
 
 @admin.register(BudgetAllocation)
 class BudgetAllocationAdmin(admin.ModelAdmin):
-    """Admin interface for BudgetAllocation model."""
+    """Simplified admin interface for payoree-centric BudgetAllocation model."""
 
     list_display = [
         "budget_plan",
-        "scope_display",
+        "payoree",
+        "effective_category_display", 
         "amount",
         "baseline_amount",
         "variance_display",
-        "needs_level",
         "is_ai_suggested",
         "recurring_series",
     ]
@@ -59,17 +59,15 @@ class BudgetAllocationAdmin(admin.ModelAdmin):
     list_filter = [
         "budget_plan__year",
         "budget_plan__month",
-        "needs_level",
         "is_ai_suggested",
-        "category",
+        "payoree__default_category",
         ("recurring_series", admin.RelatedOnlyFieldListFilter),
     ]
 
     search_fields = [
         "budget_plan__name",
-        "category__name",
-        "subcategory__name",
         "payoree__name",
+        "payoree__default_category__name",
         "user_note",
     ]
 
@@ -77,10 +75,10 @@ class BudgetAllocationAdmin(admin.ModelAdmin):
         "-budget_plan__year",
         "-budget_plan__month",
         "budget_plan__name",
-        "category__name",
+        "payoree__name",
     ]
 
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields = ["created_at", "updated_at", "effective_category_display"]
 
     fieldsets = (
         (
@@ -88,8 +86,8 @@ class BudgetAllocationAdmin(admin.ModelAdmin):
             {"fields": ("budget_plan",)},
         ),
         (
-            "Allocation Scope",
-            {"fields": ("category", "subcategory", "payoree", "needs_level")},
+            "Allocation", 
+            {"fields": ("payoree", "effective_category_display")},
         ),
         ("Amount Details", {"fields": ("amount", "baseline_amount")}),
         ("AI & Integration", {"fields": ("is_ai_suggested", "recurring_series")}),
@@ -102,28 +100,16 @@ class BudgetAllocationAdmin(admin.ModelAdmin):
         ),
     )
 
-    def period_display(self, obj):
-        """Display period in readable format."""
-        return obj.period_display
+    def effective_category_display(self, obj):
+        """Display the effective category from the payoree."""
+        if obj.payoree and obj.payoree.default_category:
+            category_display = f"📁 {obj.payoree.default_category.name}"
+            if obj.payoree.default_subcategory:
+                category_display += f" → {obj.payoree.default_subcategory.name}"
+            return category_display
+        return "No category set"
 
-    period_display.short_description = "Period"
-    period_display.admin_order_field = "year"
-
-    def scope_display(self, obj):
-        """Display budget scope clearly."""
-        parts = []
-        if obj.category:
-            parts.append(f"📁 {obj.category.name}")
-        if obj.subcategory:
-            parts.append(f"→ {obj.subcategory.name}")
-        if obj.payoree:
-            parts.append(f"👤 {obj.payoree.name}")
-        if obj.needs_level:
-            parts.append(f"🏷️ {obj.needs_level.title()}")
-
-        return " ".join(parts) if parts else "General"
-
-    scope_display.short_description = "Scope"
+    effective_category_display.short_description = "Category"
 
     def variance_display(self, obj):
         """Display variance with color coding."""

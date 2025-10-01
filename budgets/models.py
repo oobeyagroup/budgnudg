@@ -2,11 +2,8 @@ from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.core.exceptions import ValidationError
 from decimal import Decimal
-from datetime import datetime
-
-
-# Temporary alias for compatibility during migration
-Budget = None  # Will be set after BudgetAllocation is defined
+from datetime import datetime, date
+from calendar import monthrange
 
 
 class BudgetPlan(models.Model):
@@ -41,7 +38,12 @@ class BudgetPlan(models.Model):
 
 
 class BudgetAllocation(models.Model):
-    """Individual spending allocation within a budget plan for categories, subcategories, payorees, or needs levels."""
+    """
+    Simplified payoree-centric budget allocation.
+    
+    Each allocation is tied to a specific payoree, making budgeting more concrete
+    and actionable. Categories are derived from the payoree's default category.
+    """
 
     # Link to budget plan
     budget_plan = models.ForeignKey(
@@ -51,46 +53,11 @@ class BudgetAllocation(models.Model):
         help_text="Budget plan this allocation belongs to",
     )
 
-    # Scope - following existing precedence: category > subcategory > payoree
-    category = models.ForeignKey(
-        "transactions.Category",
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        limit_choices_to={"parent__isnull": True},  # Top-level categories only
-        help_text="Allocation applies to this category",
-    )
-    subcategory = models.ForeignKey(
-        "transactions.Category",
-        null=True,
-        blank=True,
-        on_delete=models.CASCADE,
-        related_name="subcategory_allocations",
-        limit_choices_to={"parent__isnull": False},  # Subcategories only
-        help_text="Allocation applies to this subcategory",
-    )
+    # Simplified: Only payoree-based allocations
     payoree = models.ForeignKey(
         "transactions.Payoree",
-        null=True,
-        blank=True,
         on_delete=models.CASCADE,
-        help_text="Allocation applies to this payoree",
-    )
-
-    # Needs level integration with existing Transaction model system
-    needs_level = models.CharField(
-        max_length=20,
-        choices=[
-            ("critical", "Critical"),
-            ("core", "Core"),
-            ("lifestyle", "Lifestyle"),
-            ("discretionary", "Discretionary"),
-            ("luxury", "Luxury"),
-            ("deferred", "Deferred"),
-        ],
-        null=True,
-        blank=True,
-        help_text="Allocation applies to this needs level",
+        help_text="Payoree for this budget allocation",
     )
 
     # Budget allocation amount
@@ -127,47 +94,21 @@ class BudgetAllocation(models.Model):
     )
 
     class Meta:
-        # Ensure one allocation per scope per budget plan
-        unique_together = [
-            ("budget_plan", "category", "subcategory", "payoree", "needs_level")
-        ]
-        ordering = ["budget_plan", "category__name"]
+        # Simplified: One allocation per payoree per budget plan
+        unique_together = [("budget_plan", "payoree")]
+        ordering = ["budget_plan", "payoree__name"]
         indexes = [
             models.Index(fields=["budget_plan"]),
-            models.Index(fields=["category"]),
-            models.Index(fields=["subcategory"]),
             models.Index(fields=["payoree"]),
         ]
 
     def __str__(self):
-        scope_parts = []
-        if self.category:
-            scope_parts.append(self.category.name)
-        if self.subcategory:
-            scope_parts.append(f"→ {self.subcategory.name}")
-        if self.payoree:
-            scope_parts.append(f"({self.payoree.name})")
-        if self.needs_level:
-            scope_parts.append(f"[{self.get_needs_level_display()}]")
-
-        scope = " ".join(scope_parts) if scope_parts else "General Allocation"
-        return f"{self.budget_plan.name}: {scope} - ${self.amount}"
+        return f"{self.budget_plan.name}: {self.payoree.name} - ${self.amount}"
 
     def clean(self):
-        """Validate that subcategory belongs to category if both are specified."""
-        if self.subcategory and self.category:
-            if self.subcategory.parent != self.category:
-                raise ValidationError(
-                    {
-                        "subcategory": f'Subcategory "{self.subcategory}" must belong to category "{self.category}"'
-                    }
-                )
-
-        # At least one scope field must be specified
-        if not any([self.category, self.subcategory, self.payoree, self.needs_level]):
-            raise ValidationError(
-                "At least one scope field (category, subcategory, payoree, or needs_level) must be specified"
-            )
+        """Simplified validation - only need to ensure payoree is provided."""
+        if not self.payoree:
+            raise ValidationError("Payoree is required for budget allocations")
 
     @property
     def year(self):
@@ -186,6 +127,16 @@ class BudgetAllocation(models.Model):
 
         return f"{month_name[self.month]} {self.year}"
 
+    @property
+    def effective_category(self):
+        """Get effective category from payoree's default category."""
+        return self.payoree.default_category
+
+    @property
+    def effective_subcategory(self):
+        """Get effective subcategory from payoree's default subcategory."""
+        return self.payoree.default_subcategory
+
     def get_variance_vs_baseline(self):
         """Calculate variance from baseline amount."""
         if not self.baseline_amount:
@@ -199,9 +150,23 @@ class BudgetAllocation(models.Model):
         return ((self.amount - self.baseline_amount) / self.baseline_amount) * 100
 
     def get_current_spent(self):
-        """Get current amount spent for this allocation (placeholder for future integration)."""
-        # TODO: Integrate with transaction system to calculate actual spending
-        return Decimal("0.00")
+        """Get current amount spent for this payoree in this period."""
+        from transactions.models import Transaction
+        
+        # Get transactions for this payoree in this budget period
+        start_date = date(self.year, self.month, 1)
+        if self.month == 12:
+            end_date = date(self.year + 1, 1, 1)
+        else:
+            end_date = date(self.year, self.month + 1, 1)
+        
+        transactions = Transaction.objects.filter(
+            payoree=self.payoree,
+            date__gte=start_date,
+            date__lt=end_date
+        )
+        
+        return sum(abs(t.amount) for t in transactions)
 
     def get_spent_percentage(self):
         """Get percentage of allocation spent."""
@@ -212,21 +177,17 @@ class BudgetAllocation(models.Model):
 
     def get_remaining_amount(self):
         """Get remaining allocation amount."""
-        return self.amount - self.get_current_spent()
+        return abs(self.amount) - self.get_current_spent()
 
     @property
     def start_date(self):
         """Budget period start date."""
-        from datetime import datetime
-
-        return datetime(self.year, self.month, 1).date()
+        return date(self.year, self.month, 1)
 
     @property
     def end_date(self):
         """Budget period end date."""
-        from datetime import datetime, date
         import calendar
-
         last_day = calendar.monthrange(self.year, self.month)[1]
         return date(self.year, self.month, last_day)
 
@@ -234,16 +195,6 @@ class BudgetAllocation(models.Model):
     def is_active(self):
         """Check if allocation is for current or future period."""
         return self.budget_plan.is_active
-
-    @property
-    def scope_key(self):
-        """Generate a unique key for this allocation's scope."""
-        return (
-            self.category_id or 0,
-            self.subcategory_id or 0,
-            self.payoree_id or 0,
-            self.needs_level or "",
-        )
 
 
 # Legacy model - keeping for backwards compatibility, but may be deprecated
@@ -317,5 +268,33 @@ class BudgetPeriod(models.Model):
         self.save(update_fields=["total_budgeted", "baseline_total", "updated_at"])
 
 
-# Compatibility alias for existing code during migration
+def get_or_create_misc_payoree(name_suffix, default_category=None, default_subcategory=None):
+    """
+    Create or get a 'misc' payoree for category/subcategory-level budgeting.
+    
+    Args:
+        name_suffix: e.g., "Groceries - Misc" or "Utilities - Misc"
+        default_category: Category to assign to this misc payoree
+        default_subcategory: Optional subcategory
+    
+    Returns:
+        Payoree instance for misc allocations
+    """
+    from transactions.models import Payoree
+    
+    payoree, created = Payoree.objects.get_or_create(
+        name=name_suffix,
+        defaults={
+            'default_category': default_category,
+            'default_subcategory': default_subcategory,
+        }
+    )
+    
+    if created:
+        print(f"Created misc payoree: {name_suffix}")
+    
+    return payoree
+
+
+# Compatibility alias for existing code during migration  
 Budget = BudgetAllocation

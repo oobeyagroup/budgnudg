@@ -58,12 +58,12 @@ class BaselineCalculator:
     @trace
     def calculate_baselines(
         self, end_date: Optional[date] = None, method: str = "median"
-    ) -> Dict[Tuple, Dict[str, Any]]:
+    ) -> Dict[int, Dict[str, Any]]:
         """
-        Calculate baseline spending by scope (category, subcategory, payoree, needs_level).
+        Calculate baseline spending by payoree (simplified from multi-scope approach).
 
-        Returns dict keyed by (category_id, subcategory_id, payoree_id, needs_level)
-        with values containing baseline amount and supporting statistics.
+        Returns dict keyed by payoree_id with values containing baseline amount 
+        and supporting statistics.
         """
         if not end_date:
             end_date = date.today()
@@ -78,7 +78,7 @@ class BaselineCalculator:
         # Filter out debt service transactions
         operational_transactions = self._filter_operational_transactions(transactions)
 
-        return self._aggregate_by_scope(operational_transactions, method)
+        return self._aggregate_by_payoree(operational_transactions, method)
 
     @trace
     def calculate_month_specific_baselines(
@@ -243,34 +243,23 @@ class BaselineCalculator:
 
         return baselines
 
-    def _aggregate_by_scope(
-        self, transactions: QuerySet, method: str
-    ) -> Dict[Tuple, Dict[str, Any]]:
-        """Aggregate transactions by scope and calculate baselines."""
+    def _aggregate_by_payoree(
+        self, transactions, method: str
+    ) -> Dict[int, Dict[str, Any]]:
+        """Aggregate transactions by payoree and calculate baselines (simplified)."""
 
-        # Group transactions by month and scope
+        # Group transactions by month and payoree
         monthly_data = defaultdict(lambda: defaultdict(list))
 
         for txn in transactions:
-            # Extract effective needs level using Transaction's existing logic
-            needs_levels = txn.effective_needs_levels()
-            primary_level = (
-                max(needs_levels, key=needs_levels.get) if needs_levels else None
-            )
+            if txn.payoree_id:  # Only process transactions with payorees
+                payoree_id = txn.payoree_id
+                month_key = (txn.date.year, txn.date.month)
+                monthly_data[payoree_id][month_key].append(float(abs(txn.amount)))
 
-            scope_key = (
-                txn.category_id,
-                txn.subcategory_id if hasattr(txn, "subcategory") else None,
-                txn.payoree_id,
-                primary_level,
-            )
-
-            month_key = (txn.date.year, txn.date.month)
-            monthly_data[scope_key][month_key].append(float(txn.amount))
-
-        # Calculate monthly totals and then baseline for each scope
+        # Calculate monthly totals and then baseline for each payoree
         baselines = {}
-        for scope_key, months in monthly_data.items():
+        for payoree_id, months in monthly_data.items():
             monthly_totals = [sum(amounts) for amounts in months.values()]
 
             if not monthly_totals:
@@ -278,7 +267,7 @@ class BaselineCalculator:
 
             baseline = self._calculate_baseline(monthly_totals, method)
 
-            baselines[scope_key] = {
+            baselines[payoree_id] = {
                 "monthly_baseline": Decimal(str(baseline)),
                 "support": {
                     "n_months": len(monthly_totals),
@@ -290,7 +279,7 @@ class BaselineCalculator:
                 },
             }
 
-        return self._apply_precedence_rules(baselines)
+        return baselines
 
     def _calculate_baseline(self, monthly_amounts: List[float], method: str) -> float:
         """Calculate baseline using specified method."""
@@ -371,9 +360,9 @@ class BaselineCalculator:
     @trace
     def suggest_budget_amounts(
         self,
-        baselines: Dict[Tuple, Dict[str, Any]],
+        baselines: Dict[int, Dict[str, Any]],
         adjustment_factors: Optional[Dict[str, float]] = None,
-    ) -> Dict[Tuple, Decimal]:
+    ) -> Dict[int, Decimal]:
         """
         Apply AI/ML suggestions to baseline amounts.
 
@@ -394,75 +383,65 @@ class BaselineCalculator:
 
         suggestions = {}
 
-        for scope_key, data in baselines.items():
-            category_id, subcategory_id, payoree_id, needs_level = scope_key
+        for payoree_id, data in baselines.items():
             baseline = data["monthly_baseline"]
+            
+            # Get payoree to determine needs level from its default setting
+            try:
+                payoree = Payoree.objects.get(id=payoree_id)
+                primary_needs_level = payoree.primary_needs_level()
+            except Payoree.DoesNotExist:
+                primary_needs_level = "discretionary"  # Default fallback
 
             # Apply adjustment factor based on needs level
-            factor = adjustment_factors.get(needs_level, 1.0)
+            factor = adjustment_factors.get(primary_needs_level, 1.0)
             suggested_amount = baseline * Decimal(str(factor))
 
             # Round to nearest dollar for cleaner budgets
             suggested_amount = suggested_amount.quantize(Decimal("1"))
 
-            suggestions[scope_key] = suggested_amount
+            suggestions[payoree_id] = suggested_amount
 
         return suggestions
 
     @trace
-    def get_category_suggestions(
+    def get_payoree_suggestions(
         self, target_months: int = 3, method: str = "median"
     ) -> List[Dict[str, Any]]:
         """
-        Generate a list of budget suggestions ready for the wizard UI.
+        Generate a list of budget suggestions for payorees (simplified from category-based approach).
 
-        Returns list of dicts with keys: category_id, subcategory_id, payoree_id,
-        needs_level, baseline_amount, suggested_amount, supporting_data
+        Returns list of dicts with keys: payoree_id, payoree_name, category_name,
+        baseline_amount, suggested_amount, supporting_data
         """
         baselines = self.calculate_baselines(method=method)
         suggestions = self.suggest_budget_amounts(baselines)
 
         result = []
 
-        for scope_key, suggested_amount in suggestions.items():
-            category_id, subcategory_id, payoree_id, needs_level = scope_key
-            baseline_data = baselines[scope_key]
+        for payoree_id, suggested_amount in suggestions.items():
+            baseline_data = baselines[payoree_id]
 
-            # Look up related objects for display
-            category_name = None
-            subcategory_name = None
-            payoree_name = None
-
-            if category_id:
-                try:
-                    category = Category.objects.get(id=category_id)
-                    category_name = category.name
-                except Category.DoesNotExist:
-                    pass
-
-            if subcategory_id:
-                try:
-                    subcategory = Category.objects.get(id=subcategory_id)
-                    subcategory_name = subcategory.name
-                except Category.DoesNotExist:
-                    pass
-
-            if payoree_id:
-                try:
-                    payoree = Payoree.objects.get(id=payoree_id)
-                    payoree_name = payoree.name
-                except Payoree.DoesNotExist:
-                    pass
+            # Look up payoree for display info
+            try:
+                payoree = Payoree.objects.get(id=payoree_id)
+                payoree_name = payoree.name
+                category_name = payoree.default_category.name if payoree.default_category else "Uncategorized"
+                subcategory_name = payoree.default_subcategory.name if payoree.default_subcategory else None
+                primary_needs_level = payoree.primary_needs_level()
+            except Payoree.DoesNotExist:
+                payoree_name = f"Unknown Payoree (ID: {payoree_id})"
+                category_name = "Unknown"
+                subcategory_name = None
+                primary_needs_level = "discretionary"
 
             result.append(
                 {
-                    "category_id": category_id,
-                    "subcategory_id": subcategory_id,
                     "payoree_id": payoree_id,
-                    "needs_level": needs_level,
+                    "payoree_name": payoree_name,
                     "category_name": category_name,
                     "subcategory_name": subcategory_name,
-                    "payoree_name": payoree_name,
+                    "needs_level": primary_needs_level,
                     "baseline_amount": baseline_data["monthly_baseline"],
                     "suggested_amount": suggested_amount,
                     "support": baseline_data["support"],

@@ -66,11 +66,10 @@ class BudgetWizard:
             period_date = add_months(current_date, i)
             period_key = f"{period_date.year}_{period_date.month}"
 
-            # Get month-specific baseline suggestions
+            # Get payoree-based baseline suggestions (simplified)
             month_suggestions = (
-                self.baseline_calculator.get_month_specific_category_suggestions(
-                    target_month=period_date.month,
-                    target_year=period_date.year,
+                self.baseline_calculator.get_payoree_suggestions(
+                    target_months=1,
                     method=method,
                 )
             )
