@@ -1511,7 +1511,6 @@ from statistics import median
 from datetime import date
 from typing import Iterable
 from django.contrib import messages
-from django.contrib.auth.decorators import login_required
 from django.db.models import Avg, Count, F, Q
 from django.http import HttpRequest, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import redirect
@@ -1543,7 +1542,6 @@ def _median_amount(amts: Iterable[Decimal]) -> Decimal:
     except Exception:
         return Decimal("0.00")
 
-@login_required
 def create_series_from_cluster(request: HttpRequest) -> HttpResponse:
     """
     POST with `txn_ids` (comma-separated or repeated) to propose a RecurringSeries

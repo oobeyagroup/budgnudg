@@ -66,11 +66,30 @@
         border-left: 4px solid #2196f3;
     }
     
+    .fallback-indicator {
+        background: #fff3cd;
+        border-left-color: #ffc107;
+    }
+    
     .inline-edit-input {
         width: 100px;
         padding: 2px 6px;
         border: 1px solid #ccc;
         border-radius: 3px;
+    }
+    
+    .editable-create {
+        cursor: pointer;
+        padding: 4px 8px;
+        border-radius: 4px;
+        transition: all 0.2s;
+        border: 1px dashed #007bff;
+        display: inline-block;
+    }
+    
+    .editable-create:hover {
+        background-color: #e3f2fd;
+        border-color: #0056b3;
     }
 </style>
 {% endblock %}
@@ -135,10 +154,15 @@
     
     <!-- Selected Classification Display -->
     {% if selected_classification %}
-    <div class="selected-classification">
+    <div class="selected-classification{% if fallback_to_category %} fallback-indicator{% endif %}">
         <h4>Analyzing: {{ selected_classification.name }}</h4>
         <p class="mb-0">
             Type: {{ classification_type|capfirst }}
+            {% if fallback_to_category %}
+                <span class="badge bg-warning ms-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>No Subcategories Available - Analyzing Category
+                </span>
+            {% endif %}
             {% if active_budget_plan %} | Budget Plan: {{ active_budget_plan.name }} ({{ active_budget_plan.year }}-{{ active_budget_plan.month|stringformat:"02d" }}){% endif %}
         </p>
     </div>
@@ -187,15 +211,30 @@
                         <tr>
                             <td>{{ month.display }}</td>
                             <td>
-                                {% if current_allocation %}
+                                {% month_key month.year month.month as key %}
+                                {% if current_allocation and budget_data|get_item:key %}
                                 <span class="editable-budget" 
                                       data-allocation-id="{{ current_allocation.id }}" 
                                       data-month="{{ month.year }}-{{ month.month|stringformat:"02d" }}"
                                       onclick="startInlineEdit(this)">
-                                    ${{ current_allocation.amount|floatformat:2 }}
+                                    {{ budget_data|get_item:key|format_currency }}
+                                </span>
+                                {% elif current_allocation %}
+                                <span class="editable-budget" 
+                                      data-allocation-id="{{ current_allocation.id }}" 
+                                      data-month="{{ month.year }}-{{ month.month|stringformat:"02d" }}"
+                                      onclick="startInlineEdit(this)">
+                                    $0.00
                                 </span>
                                 {% else %}
-                                <span class="text-muted">No allocation</span>
+                                <span class="text-muted editable-create" 
+                                      data-classification-type="{{ classification_type }}"
+                                      data-classification-id="{% if classification_obj %}{{ classification_obj.id }}{% endif %}"
+                                      data-month="{{ month.year }}-{{ month.month|stringformat:"02d" }}"
+                                      onclick="createAllocation(this)"
+                                      style="cursor: pointer; color: #007bff;">
+                                    + Create Budget
+                                </span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -257,15 +296,17 @@ function handleCategoryChange() {
 }
 
 function startInlineEdit(element) {
-    const currentAmount = element.textContent.replace('$', '').replace(',', '');
+    const currentAmount = element.textContent.replace('$', '').replace(',', '').trim();
     const allocationId = element.getAttribute('data-allocation-id');
     
     // Create input field
     const input = document.createElement('input');
     input.type = 'number';
     input.step = '0.01';
-    input.value = currentAmount;
+    input.min = '0';
+    input.value = currentAmount === '0.00' ? '' : currentAmount;
     input.className = 'inline-edit-input';
+    input.placeholder = 'Enter amount';
     
     // Replace span with input
     element.style.display = 'none';
@@ -294,16 +335,27 @@ function startInlineEdit(element) {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                element.textContent = `$${parseFloat(data.new_amount).toFixed(2)}`;
+                // Format the amount properly
+                const formattedAmount = parseFloat(data.new_amount).toLocaleString('en-US', {
+                    style: 'currency',
+                    currency: 'USD'
+                });
+                element.textContent = formattedAmount;
                 element.style.display = 'inline';
                 input.remove();
+                
+                // Show success feedback
+                element.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    element.style.backgroundColor = '';
+                }, 1000);
             } else {
                 alert('Error saving: ' + data.error);
                 input.focus();
             }
         })
         .catch(error => {
-            alert('Error saving changes');
+            alert('Error saving changes: ' + error.message);
             console.error('Error:', error);
             input.focus();
         });
@@ -316,6 +368,91 @@ function startInlineEdit(element) {
         } else if (e.key === 'Escape') {
             element.style.display = 'inline';
             input.remove();
+        }
+    });
+}
+
+function createAllocation(element) {
+    // Create input field for new allocation
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.step = '0.01';
+    input.min = '0';
+    input.className = 'inline-edit-input';
+    input.placeholder = 'Enter amount';
+    
+    // Replace span with input
+    element.style.display = 'none';
+    element.parentNode.insertBefore(input, element.nextSibling);
+    input.focus();
+    
+    const classificationType = element.getAttribute('data-classification-type');
+    const classificationId = element.getAttribute('data-classification-id');
+    const month = element.getAttribute('data-month');
+    
+    // Handle save on blur or enter
+    const createAndSave = function() {
+        const amount = parseFloat(input.value);
+        if (isNaN(amount) || amount < 0) {
+            alert('Please enter a valid positive amount');
+            input.focus();
+            return;
+        }
+        
+        // Send AJAX request to create allocation
+        fetch('{% url "budgets:classification_create" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: `classification_type=${classificationType}&classification_id=${classificationId}&amount=${amount}&month=${month}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Convert to editable budget element
+                element.className = 'editable-budget';
+                element.setAttribute('data-allocation-id', data.allocation_id);
+                element.setAttribute('onclick', 'startInlineEdit(this)');
+                
+                const formattedAmount = parseFloat(data.new_amount).toLocaleString('en-US', {
+                    style: 'currency',
+                    currency: 'USD'
+                });
+                element.textContent = formattedAmount;
+                element.style.display = 'inline';
+                element.style.color = '';
+                input.remove();
+                
+                // Show success feedback
+                element.style.backgroundColor = '#d4edda';
+                setTimeout(() => {
+                    element.style.backgroundColor = '';
+                }, 1000);
+            } else {
+                alert('Error creating allocation: ' + data.error);
+                input.focus();
+            }
+        })
+        .catch(error => {
+            alert('Error creating allocation: ' + error.message);
+            console.error('Error:', error);
+            input.focus();
+        });
+    };
+    
+    const cancelCreate = function() {
+        element.style.display = 'inline';
+        input.remove();
+    };
+    
+    input.addEventListener('blur', createAndSave);
+    input.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            createAndSave();
+        } else if (e.key === 'Escape') {
+            cancelCreate();
         }
     });
 }

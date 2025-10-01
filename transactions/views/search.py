@@ -7,15 +7,12 @@ based on ATDD test requirements.
 """
 
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from decimal import Decimal
 from datetime import datetime
 
 from transactions.models import Transaction, Category, Payoree
 
-
-@login_required
 def search_transactions(request):
     """
     Search and filter transactions based on various criteria.

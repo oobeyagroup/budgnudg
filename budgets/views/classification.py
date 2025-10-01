@@ -6,10 +6,9 @@ for specific classifications (categories, subcategories, payorees).
 """
 
 from django.shortcuts import render
-from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 
@@ -17,7 +16,6 @@ from budgets.models import BudgetPlan, BudgetAllocation
 from transactions.models import Category, Payoree, Transaction
 
 
-@login_required
 def budget_classification_analysis(request):
     """
     Main view for budget by classification analysis.
@@ -87,6 +85,26 @@ def budget_classification_analysis(request):
             context = _load_classification_data(
                 request, context, "subcategory", selected_classification
             )
+        except Category.DoesNotExist:
+            pass
+
+    # Handle fallback: when subcategory is selected but no subcategory_id is provided,
+    # check if the selected category has no subcategories and fall back to category analysis
+    elif classification_type == "subcategory" and category_id and not subcategory_id:
+        try:
+            selected_category = Category.objects.get(
+                id=category_id, parent__isnull=True
+            )
+            # Check if this category has any subcategories
+            if not selected_category.subcategories.exists():
+                # No subcategories exist, fall back to analyzing the category itself
+                context["selected_classification"] = selected_category
+                context["fallback_to_category"] = (
+                    True  # Flag for template to show appropriate message
+                )
+                context = _load_classification_data(
+                    request, context, "category", selected_category
+                )
         except Category.DoesNotExist:
             pass
 
@@ -211,21 +229,59 @@ def _load_classification_data(
     # Load budget allocation data
     budget_data = {}
     if active_budget_plan:
-        # Find existing allocation for this classification
-        allocation = None
+        # Find existing allocation(s) for this classification
+        total_allocation_amount = Decimal("0")
+        primary_allocation = None
+
         if classification_type == "category":
-            allocation = BudgetAllocation.objects.filter(
+            # First try to find category-level allocation (no payoree)
+            category_allocation = BudgetAllocation.objects.filter(
                 budget_plan=active_budget_plan,
                 category=classification_obj,
                 subcategory__isnull=True,
                 payoree__isnull=True,
             ).first()
+
+            # Also find all payoree-specific allocations for this category
+            payoree_allocations = BudgetAllocation.objects.filter(
+                budget_plan=active_budget_plan,
+                category=classification_obj,
+                subcategory__isnull=True,
+                payoree__isnull=False,
+            )
+
+            # CRITICAL FIX: Also find all subcategory allocations for this parent category
+            subcategory_allocations = BudgetAllocation.objects.filter(
+                budget_plan=active_budget_plan,
+                subcategory__parent=classification_obj,
+            )
+
+            # Sum all allocations for this category
+            if category_allocation:
+                total_allocation_amount += abs(category_allocation.amount)
+                primary_allocation = category_allocation
+
+            for alloc in payoree_allocations:
+                total_allocation_amount += abs(alloc.amount)
+                if not primary_allocation:
+                    primary_allocation = alloc
+
+            # Add subcategory allocations to the total
+            for alloc in subcategory_allocations:
+                total_allocation_amount += abs(alloc.amount)
+                if not primary_allocation:
+                    primary_allocation = alloc
+
         elif classification_type == "subcategory":
             allocation = BudgetAllocation.objects.filter(
                 budget_plan=active_budget_plan,
                 subcategory=classification_obj,
                 payoree__isnull=True,
             ).first()
+            if allocation:
+                total_allocation_amount = abs(allocation.amount)
+                primary_allocation = allocation
+
         elif classification_type == "payoree":
             allocation = BudgetAllocation.objects.filter(
                 budget_plan=active_budget_plan,
@@ -233,15 +289,19 @@ def _load_classification_data(
                 category__isnull=True,
                 subcategory__isnull=True,
             ).first()
+            if allocation:
+                total_allocation_amount = abs(allocation.amount)
+                primary_allocation = allocation
 
-        context["current_allocation"] = allocation
+        context["current_allocation"] = primary_allocation
+        context["total_allocation_amount"] = total_allocation_amount
 
         # For now, show the same budget amount for all months
         # TODO: Support different monthly allocations
-        if allocation:
+        if total_allocation_amount > 0:
             for month_info in budget_months:
-                budget_data[f"{month_info['year']}-{month_info['month']:02d}"] = abs(
-                    allocation.amount
+                budget_data[f"{month_info['year']}-{month_info['month']:02d}"] = (
+                    total_allocation_amount
                 )
 
     context["budget_data"] = budget_data
@@ -249,7 +309,6 @@ def _load_classification_data(
     return context
 
 
-@login_required
 @require_http_methods(["POST"])
 def update_budget_allocation(request):
     """
@@ -272,7 +331,84 @@ def update_budget_allocation(request):
 
     except BudgetAllocation.DoesNotExist:
         return JsonResponse({"success": False, "error": "Allocation not found"})
-    except ValueError:
+    except (ValueError, InvalidOperation):
+        return JsonResponse({"success": False, "error": "Invalid amount"})
+    except Exception as e:
+        return JsonResponse({"success": False, "error": str(e)})
+
+
+@require_http_methods(["POST"])
+def create_budget_allocation(request):
+    """
+    AJAX endpoint for creating new budget allocations.
+
+    Handles creation of budget allocations when none exist for a classification.
+    """
+    try:
+        classification_type = request.POST.get("classification_type")
+        classification_id = request.POST.get("classification_id")
+        amount = request.POST.get("amount")
+        month = request.POST.get("month")  # Format: YYYY-MM
+
+        if not all([classification_type, classification_id, amount]):
+            return JsonResponse({"success": False, "error": "Missing parameters"})
+
+        # Get active budget plan
+        budget_plan = BudgetPlan.objects.filter(is_active=True).first()
+        if not budget_plan:
+            budget_plan = BudgetPlan.objects.first()
+
+        if not budget_plan:
+            return JsonResponse({"success": False, "error": "No budget plan available"})
+
+        # Prepare allocation data
+        allocation_data = {
+            "budget_plan": budget_plan,
+            "amount": Decimal(amount),
+        }
+
+        # Set classification based on type
+        if classification_type == "category":
+            from transactions.models import Category
+
+            classification_obj = Category.objects.get(id=classification_id)
+            allocation_data["category"] = classification_obj
+        elif classification_type == "subcategory":
+            from transactions.models import Category
+
+            classification_obj = Category.objects.get(id=classification_id)
+            allocation_data["subcategory"] = classification_obj
+        elif classification_type == "payoree":
+            classification_obj = Payoree.objects.get(id=classification_id)
+            allocation_data["payoree"] = classification_obj
+        else:
+            return JsonResponse(
+                {"success": False, "error": "Invalid classification type"}
+            )
+
+        # Check if allocation already exists
+        existing = (
+            BudgetAllocation.objects.filter(**allocation_data).exclude(amount=0).first()
+        )
+        if existing:
+            return JsonResponse(
+                {"success": False, "error": "Allocation already exists"}
+            )
+
+        # Create new allocation
+        allocation = BudgetAllocation.objects.create(**allocation_data)
+
+        return JsonResponse(
+            {
+                "success": True,
+                "allocation_id": allocation.id,
+                "new_amount": str(allocation.amount),
+            }
+        )
+
+    except (Category.DoesNotExist, Payoree.DoesNotExist):
+        return JsonResponse({"success": False, "error": "Classification not found"})
+    except (ValueError, InvalidOperation):
         return JsonResponse({"success": False, "error": "Invalid amount"})
     except Exception as e:
         return JsonResponse({"success": False, "error": str(e)})

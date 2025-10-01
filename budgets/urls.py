@@ -3,6 +3,7 @@ from . import views
 from .views.classification import (
     budget_classification_analysis,
     update_budget_allocation,
+    create_budget_allocation,
 )
 
 app_name = "budgets"
@@ -21,6 +22,9 @@ urlpatterns = [
     ),
     path(
         "classification/update/", update_budget_allocation, name="classification_update"
+    ),
+    path(
+        "classification/create/", create_budget_allocation, name="classification_create"
     ),
     # Wizard flow
     path("wizard/", views.BudgetWizardView.as_view(), name="wizard"),
