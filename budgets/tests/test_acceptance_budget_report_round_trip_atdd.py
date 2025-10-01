@@ -39,12 +39,16 @@ class TestBudgetReportRoundTripATDD(TestCase):
             name="Utilities", type="expense"
         )
 
-        # Create test payorees
+        # Create test payorees with default subcategories for drill-down testing
         self.grocery_store = Payoree.objects.create(
-            name="Whole Foods", default_category=self.groceries_category
+            name="Whole Foods", 
+            default_category=self.groceries_category,
+            default_subcategory=self.food_subcategory
         )
         self.restaurant = Payoree.objects.create(
-            name="Local Restaurant", default_category=self.groceries_category
+            name="Local Restaurant", 
+            default_category=self.groceries_category,
+            default_subcategory=self.dining_subcategory
         )
 
         # Create current and future budget plans

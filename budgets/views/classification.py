@@ -235,60 +235,34 @@ def _load_classification_data(
         primary_allocation = None
 
         if classification_type == "category":
-            # First try to find category-level allocation (no payoree)
-            category_allocation = BudgetAllocation.objects.filter(
+            # In payoree-centric model, find all allocations where payoree's default_category matches
+            category_allocations = BudgetAllocation.objects.filter(
                 budget_plan=active_budget_plan,
-                category=classification_obj,
-                subcategory__isnull=True,
-                payoree__isnull=True,
-            ).first()
-
-            # Also find all payoree-specific allocations for this category
-            payoree_allocations = BudgetAllocation.objects.filter(
-                budget_plan=active_budget_plan,
-                category=classification_obj,
-                subcategory__isnull=True,
-                payoree__isnull=False,
-            )
-
-            # CRITICAL FIX: Also find all subcategory allocations for this parent category
-            subcategory_allocations = BudgetAllocation.objects.filter(
-                budget_plan=active_budget_plan,
-                subcategory__parent=classification_obj,
+                payoree__default_category=classification_obj,
             )
 
             # Sum all allocations for this category
-            if category_allocation:
-                total_allocation_amount += abs(category_allocation.amount)
-                primary_allocation = category_allocation
-
-            for alloc in payoree_allocations:
-                total_allocation_amount += abs(alloc.amount)
-                if not primary_allocation:
-                    primary_allocation = alloc
-
-            # Add subcategory allocations to the total
-            for alloc in subcategory_allocations:
+            for alloc in category_allocations:
                 total_allocation_amount += abs(alloc.amount)
                 if not primary_allocation:
                     primary_allocation = alloc
 
         elif classification_type == "subcategory":
-            allocation = BudgetAllocation.objects.filter(
+            # Find allocations for payorees whose default subcategory matches
+            allocations = BudgetAllocation.objects.filter(
                 budget_plan=active_budget_plan,
-                subcategory=classification_obj,
-                payoree__isnull=True,
-            ).first()
-            if allocation:
-                total_allocation_amount = abs(allocation.amount)
-                primary_allocation = allocation
+                payoree__default_subcategory=classification_obj
+            )
+            for allocation in allocations:
+                total_allocation_amount += abs(allocation.amount)
+                if primary_allocation is None:
+                    primary_allocation = allocation
 
         elif classification_type == "payoree":
+            # Direct payoree allocation
             allocation = BudgetAllocation.objects.filter(
                 budget_plan=active_budget_plan,
                 payoree=classification_obj,
-                category__isnull=True,
-                subcategory__isnull=True,
             ).first()
             if allocation:
                 total_allocation_amount = abs(allocation.amount)

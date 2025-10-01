@@ -316,10 +316,17 @@
                                                 <i class="fas fa-chevron-down collapse-icon me-2"></i>
                                                 <i class="fas fa-tags me-2"></i>
                                                 {% if subcategory_data.subcategory_obj %}
-                                                    <a href="/budgets/classification/?classification_type=subcategory&category_id={{ category_data.category_obj.pk }}&subcategory_id={{ subcategory_data.subcategory_obj.pk }}&return=budget_report" 
-                                                       class="text-secondary text-decoration-none">
-                                                        {{ subcategory_name }}
-                                                    </a>
+                                                    {% if subcategory_data.drill_down_type == "subcategory" %}
+                                                        <a href="/budgets/classification/?classification_type=subcategory&category_id={{ category_data.category_obj.pk }}&subcategory_id={{ subcategory_data.subcategory_obj.pk }}&return=budget_report" 
+                                                           class="text-secondary text-decoration-none">
+                                                            {{ subcategory_name }}
+                                                        </a>
+                                                    {% else %}
+                                                        <a href="/budgets/classification/?classification_type=payoree&payoree_id={{ subcategory_data.subcategory_obj.pk }}&return=budget_report" 
+                                                           class="text-secondary text-decoration-none">
+                                                            {{ subcategory_name }}
+                                                        </a>
+                                                    {% endif %}
                                                 {% else %}
                                                     {{ subcategory_name }}
                                                 {% endif %}

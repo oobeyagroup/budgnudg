@@ -288,10 +288,12 @@ class BudgetReportView(TemplateView):
             if effective_subcategory:
                 subcategory_name = effective_subcategory.name
                 subcategory_obj = effective_subcategory
+                drill_down_type = "subcategory"
             else:
                 # For payoree-centric model, group by payoree if no subcategory
                 subcategory_name = budget.payoree.name if budget.payoree else "Unknown Payoree"
-                subcategory_obj = None
+                subcategory_obj = budget.payoree
+                drill_down_type = "payoree"
 
             # Determine month key
             month_key = f"{budget.budget_plan.year}-{budget.budget_plan.month:02d}"
@@ -304,6 +306,7 @@ class BudgetReportView(TemplateView):
                     "budget": budget,
                     "category_obj": category_obj,
                     "subcategory_obj": subcategory_obj,
+                    "drill_down_type": drill_down_type,
                 }
             )
 
@@ -361,6 +364,9 @@ class BudgetReportView(TemplateView):
                         "monthly_totals": monthly_totals,
                         "subcategory_obj": (
                             all_budgets[0]["subcategory_obj"] if all_budgets else None
+                        ),
+                        "drill_down_type": (
+                            all_budgets[0]["drill_down_type"] if all_budgets else "payoree"
                         ),
                     }
 
