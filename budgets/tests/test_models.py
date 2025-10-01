@@ -1,6 +1,7 @@
 """
-Tests for Budget and BudgetPeriod models.
+Tests for BudgetPlan and BudgetAllocation models.
 
+Updated for payoree-centric budget refactoring.
 Covers model validation, relationships, methods, and constraints.
 """
 
@@ -10,12 +11,39 @@ from django.test import TestCase
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
-from budgets.models import Budget, BudgetPeriod
+from budgets.models import BudgetPlan, BudgetAllocation
 from transactions.models import Category, Payoree, RecurringSeries
 
 
-class BudgetModelTest(TestCase):
-    """Test Budget model functionality."""
+class BudgetPlanModelTest(TestCase):
+    """Test BudgetPlan model functionality."""
+
+    def test_budget_plan_creation(self):
+        """Test creating a budget plan."""
+        plan = BudgetPlan.objects.create(
+            name="October Budget",
+            year=2025,
+            month=10,
+            is_active=True,
+            description="Monthly budget for October"
+        )
+        
+        self.assertEqual(plan.name, "October Budget")
+        self.assertEqual(plan.year, 2025)
+        self.assertEqual(plan.month, 10)
+        self.assertTrue(plan.is_active)
+        self.assertEqual(str(plan), "October Budget - 2025-10")
+
+    def test_budget_plan_unique_constraint(self):
+        """Test that name, year, month must be unique together."""
+        BudgetPlan.objects.create(name="Budget", year=2025, month=10)
+        
+        with self.assertRaises(IntegrityError):
+            BudgetPlan.objects.create(name="Budget", year=2025, month=10)
+
+
+class BudgetAllocationModelTest(TestCase):
+    """Test BudgetAllocation model functionality (payoree-centric)."""
 
     def setUp(self):
         """Set up test data."""
@@ -23,45 +51,46 @@ class BudgetModelTest(TestCase):
         self.subcategory = Category.objects.create(
             name="Organic Foods", parent=self.category, type="expense"
         )
-        self.payoree = Payoree.objects.create(name="Whole Foods")
-
-    def test_budget_creation_with_category(self):
-        """Test creating budget with category."""
-        budget = Budget.objects.create(
-            category=self.category,
-            amount=Decimal("500.00"),
-            start_date=date(2025, 10, 1),
-            end_date=date(2025, 12, 31),
-            needs_level="Need",
+        self.payoree = Payoree.objects.create(
+            name="Whole Foods", 
+            default_category=self.category,
+            default_subcategory=self.subcategory
+        )
+        
+        self.budget_plan = BudgetPlan.objects.create(
+            name="Test Budget", year=2025, month=10, is_active=True
         )
 
-        self.assertEqual(budget.category, self.category)
-        self.assertEqual(budget.amount, Decimal("500.00"))
-        self.assertEqual(budget.needs_level, "Need")
-        self.assertTrue(budget.is_active)
-
-    def test_budget_creation_with_subcategory(self):
-        """Test creating budget with subcategory."""
-        budget = Budget.objects.create(
-            category=self.category,
-            subcategory=self.subcategory,
-            amount=Decimal("200.00"),
-            start_date=date(2025, 10, 1),
-            end_date=date(2025, 12, 31),
-            needs_level="Want",
+    def test_allocation_creation_with_payoree(self):
+        """Test creating budget allocation with payoree (simplified model)."""
+        allocation = BudgetAllocation.objects.create(
+            budget_plan=self.budget_plan,
+            payoree=self.payoree,
+            amount=Decimal("500.00")
         )
 
-        self.assertEqual(budget.category, self.category)
-        self.assertEqual(budget.subcategory, self.subcategory)
-        self.assertEqual(budget.amount, Decimal("200.00"))
+        self.assertEqual(allocation.payoree, self.payoree)
+        self.assertEqual(allocation.amount, Decimal("500.00"))
+        self.assertEqual(allocation.budget_plan, self.budget_plan)
+        self.assertTrue(allocation.is_active)
 
-    def test_budget_creation_with_payoree(self):
-        """Test creating budget with payoree."""
-        budget = Budget.objects.create(
+    def test_effective_category_properties(self):
+        """Test effective category properties derive from payoree."""
+        allocation = BudgetAllocation.objects.create(
+            budget_plan=self.budget_plan,
+            payoree=self.payoree,
+            amount=Decimal("200.00")
+        )
+
+        self.assertEqual(allocation.effective_category, self.category)
+        self.assertEqual(allocation.effective_subcategory, self.subcategory)
+
+    def test_allocation_with_ai_suggestion(self):
+        """Test creating allocation with AI suggestion metadata."""
+        allocation = BudgetAllocation.objects.create(
+            budget_plan=self.budget_plan,
             payoree=self.payoree,
             amount=Decimal("300.00"),
-            start_date=date(2025, 10, 1),
-            end_date=date(2025, 12, 31),
             needs_level="Wish",
         )
 

@@ -107,7 +107,7 @@ class BudgetAllocation(models.Model):
 
     def clean(self):
         """Simplified validation - only need to ensure payoree is provided."""
-        if not self.payoree:
+        if not self.payoree_id:
             raise ValidationError("Payoree is required for budget allocations")
 
     @property
