@@ -11,7 +11,7 @@ Budget Report and Budget by Classification Analysis views.
 from django.test import TestCase, Client
 from django.urls import reverse
 from decimal import Decimal
-from datetime import datetime, date
+from datetime import date
 from dateutil.relativedelta import relativedelta
 
 from budgets.models import BudgetPlan, BudgetAllocation
@@ -66,22 +66,15 @@ class TestBudgetReportRoundTripATDD(TestCase):
             is_active=False,
         )
 
-        # Create budget allocations for different scenarios
-        # Category-level allocation
+        # Create budget allocations using payoree-centric model
+        # Grocery store allocation (groceries category via payoree default)
         self.groceries_allocation = BudgetAllocation.objects.create(
             budget_plan=self.current_budget_plan,
-            category=self.groceries_category,
+            payoree=self.grocery_store,
             amount=Decimal("800.00"),
         )
 
-        # Subcategory-level allocation
-        self.food_allocation = BudgetAllocation.objects.create(
-            budget_plan=self.current_budget_plan,
-            subcategory=self.food_subcategory,
-            amount=Decimal("500.00"),
-        )
-
-        # Payoree-level allocation
+        # Restaurant allocation (also groceries category via payoree default)
         self.restaurant_allocation = BudgetAllocation.objects.create(
             budget_plan=self.current_budget_plan,
             payoree=self.restaurant,
@@ -91,7 +84,7 @@ class TestBudgetReportRoundTripATDD(TestCase):
         # Next month allocation for testing future budget navigation
         self.next_month_groceries = BudgetAllocation.objects.create(
             budget_plan=self.next_budget_plan,
-            category=self.groceries_category,
+            payoree=self.grocery_store,
             amount=Decimal("850.00"),
         )
 
@@ -100,7 +93,7 @@ class TestBudgetReportRoundTripATDD(TestCase):
             source="test_file.csv",
             sheet_account="expense",
             account_type="checking",
-            date=datetime(2025, 9, 15),
+            date=date(2025, 9, 15),  # Use date instead of datetime
             amount=Decimal("-125.50"),
             description="Grocery shopping",
             payoree=self.grocery_store,
@@ -122,10 +115,10 @@ class TestBudgetReportRoundTripATDD(TestCase):
         # Verify Budget Report loads successfully
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Groceries")
-        # The Budget Report shows totals, so we expect to see the aggregated amount
+        # The Budget Report shows payoree allocations grouped by category
         self.assertContains(
-            response, "1,650.00"
-        )  # Total from category + subcategory allocations
+            response, "1,000.00"
+        )  # Total from grocery store + restaurant allocations
 
         # When: I click on a category row (simulated by constructing the expected drill-down URL)
         # The drill-down link should be generated in the Budget Report template

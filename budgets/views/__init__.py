@@ -247,15 +247,18 @@ class BudgetReportView(TemplateView):
             combined_filter = reduce(lambda q1, q2: q1 | q2, month_filters)
             budgets = (
                 BudgetAllocation.objects.select_related(
-                    "budget_plan", "category", "subcategory", "payoree"
+                    "budget_plan", 
+                    "payoree__default_category",
+                    "payoree__default_subcategory",
+                    "payoree"
                 )
                 .filter(combined_filter)
                 .order_by(
                     "-budget_plan__year",
                     "-budget_plan__month",
                     "budget_plan__name",
-                    "category__name",
-                    "subcategory__name",
+                    "payoree__default_category__name",
+                    "payoree__name",
                 )
             )
         else:
@@ -268,27 +271,26 @@ class BudgetReportView(TemplateView):
         )
 
         for budget in budgets:
-            # Determine category type
-            if budget.category:
-                category_type = budget.category.type
-                category_name = budget.category.name
-                category_obj = budget.category
-            elif budget.subcategory and budget.subcategory.parent:
-                # Use parent category if subcategory has one
-                category_type = budget.subcategory.parent.type
-                category_name = budget.subcategory.parent.name
-                category_obj = budget.subcategory.parent
+            # Use effective category from payoree-centric model
+            effective_category = budget.effective_category
+            effective_subcategory = budget.effective_subcategory
+
+            if effective_category:
+                category_type = effective_category.type
+                category_name = effective_category.name
+                category_obj = effective_category
             else:
                 category_type = "uncategorized"
                 category_name = "Uncategorized"
                 category_obj = None
 
-            # Determine subcategory
-            if budget.subcategory:
-                subcategory_name = budget.subcategory.name
-                subcategory_obj = budget.subcategory
+            # Use effective subcategory or payoree name as subcategory
+            if effective_subcategory:
+                subcategory_name = effective_subcategory.name
+                subcategory_obj = effective_subcategory
             else:
-                subcategory_name = "No Subcategory"
+                # For payoree-centric model, group by payoree if no subcategory
+                subcategory_name = budget.payoree.name if budget.payoree else "Unknown Payoree"
                 subcategory_obj = None
 
             # Determine month key
