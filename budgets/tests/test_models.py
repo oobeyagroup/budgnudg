@@ -25,9 +25,9 @@ class BudgetPlanModelTest(TestCase):
             year=2025,
             month=10,
             is_active=True,
-            description="Monthly budget for October"
+            description="Monthly budget for October",
         )
-        
+
         self.assertEqual(plan.name, "October Budget")
         self.assertEqual(plan.year, 2025)
         self.assertEqual(plan.month, 10)
@@ -37,7 +37,7 @@ class BudgetPlanModelTest(TestCase):
     def test_budget_plan_unique_constraint(self):
         """Test that name, year, month must be unique together."""
         BudgetPlan.objects.create(name="Budget", year=2025, month=10)
-        
+
         with self.assertRaises(IntegrityError):
             BudgetPlan.objects.create(name="Budget", year=2025, month=10)
 
@@ -52,11 +52,11 @@ class BudgetAllocationModelTest(TestCase):
             name="Organic Foods", parent=self.category, type="expense"
         )
         self.payoree = Payoree.objects.create(
-            name="Whole Foods", 
+            name="Whole Foods",
             default_category=self.category,
-            default_subcategory=self.subcategory
+            default_subcategory=self.subcategory,
         )
-        
+
         self.budget_plan = BudgetPlan.objects.create(
             name="Test Budget", year=2025, month=10, is_active=True
         )
@@ -64,9 +64,7 @@ class BudgetAllocationModelTest(TestCase):
     def test_allocation_creation_with_payoree(self):
         """Test creating budget allocation with payoree (simplified model)."""
         allocation = BudgetAllocation.objects.create(
-            budget_plan=self.budget_plan,
-            payoree=self.payoree,
-            amount=Decimal("500.00")
+            budget_plan=self.budget_plan, payoree=self.payoree, amount=Decimal("500.00")
         )
 
         self.assertEqual(allocation.payoree, self.payoree)
@@ -77,9 +75,7 @@ class BudgetAllocationModelTest(TestCase):
     def test_effective_category_properties(self):
         """Test effective category properties derive from payoree."""
         allocation = BudgetAllocation.objects.create(
-            budget_plan=self.budget_plan,
-            payoree=self.payoree,
-            amount=Decimal("200.00")
+            budget_plan=self.budget_plan, payoree=self.payoree, amount=Decimal("200.00")
         )
 
         self.assertEqual(allocation.effective_category, self.category)

@@ -31,6 +31,27 @@ urlpatterns = [
     path(
         "wizard-simple/", views.BudgetWizardSimpleView.as_view(), name="wizard_simple"
     ),
+    # Deletion endpoints
+    path(
+        "delete/<int:allocation_id>/confirm/",
+        views.AllocationDeleteConfirmView.as_view(),
+        name="allocation_delete_confirm",
+    ),
+    path(
+        "delete/<int:allocation_id>/",
+        views.AllocationDeleteView.as_view(),
+        name="allocation_delete",
+    ),
+    path(
+        "delete/bulk/",
+        views.BulkAllocationDeleteView.as_view(),
+        name="allocation_bulk_delete",
+    ),
+    path(
+        "delete/<int:allocation_id>/impact/",
+        views.AllocationImpactAnalysisView.as_view(),
+        name="allocation_impact_analysis",
+    ),
     # API endpoints
     path("api/baseline/", views.BudgetBaselineAPIView.as_view(), name="api_baseline"),
     path("api/suggest/", views.BudgetSuggestAPIView.as_view(), name="api_suggest"),

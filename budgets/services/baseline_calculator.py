@@ -62,7 +62,7 @@ class BaselineCalculator:
         """
         Calculate baseline spending by payoree (simplified from multi-scope approach).
 
-        Returns dict keyed by payoree_id with values containing baseline amount 
+        Returns dict keyed by payoree_id with values containing baseline amount
         and supporting statistics.
         """
         if not end_date:
@@ -385,7 +385,7 @@ class BaselineCalculator:
 
         for payoree_id, data in baselines.items():
             baseline = data["monthly_baseline"]
-            
+
             # Get payoree to determine needs level from its default setting
             try:
                 payoree = Payoree.objects.get(id=payoree_id)
@@ -426,8 +426,16 @@ class BaselineCalculator:
             try:
                 payoree = Payoree.objects.get(id=payoree_id)
                 payoree_name = payoree.name
-                category_name = payoree.default_category.name if payoree.default_category else "Uncategorized"
-                subcategory_name = payoree.default_subcategory.name if payoree.default_subcategory else None
+                category_name = (
+                    payoree.default_category.name
+                    if payoree.default_category
+                    else "Uncategorized"
+                )
+                subcategory_name = (
+                    payoree.default_subcategory.name
+                    if payoree.default_subcategory
+                    else None
+                )
                 primary_needs_level = payoree.primary_needs_level()
             except Payoree.DoesNotExist:
                 payoree_name = f"Unknown Payoree (ID: {payoree_id})"

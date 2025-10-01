@@ -251,7 +251,7 @@ def _load_classification_data(
             # Find allocations for payorees whose default subcategory matches
             allocations = BudgetAllocation.objects.filter(
                 budget_plan=active_budget_plan,
-                payoree__default_subcategory=classification_obj
+                payoree__default_subcategory=classification_obj,
             )
             for allocation in allocations:
                 total_allocation_amount += abs(allocation.amount)

@@ -24,7 +24,10 @@ class BudgetListView(ListView):
 
     def get_queryset(self):
         return BudgetAllocation.objects.select_related(
-            "budget_plan", "payoree", "payoree__default_category", "payoree__default_subcategory"
+            "budget_plan",
+            "payoree",
+            "payoree__default_category",
+            "payoree__default_subcategory",
         ).order_by(
             "-budget_plan__year",
             "-budget_plan__month",
@@ -248,10 +251,10 @@ class BudgetReportView(TemplateView):
             combined_filter = reduce(lambda q1, q2: q1 | q2, month_filters)
             budgets = (
                 BudgetAllocation.objects.select_related(
-                    "budget_plan", 
+                    "budget_plan",
                     "payoree__default_category",
                     "payoree__default_subcategory",
-                    "payoree"
+                    "payoree",
                 )
                 .filter(combined_filter)
                 .order_by(
@@ -292,7 +295,9 @@ class BudgetReportView(TemplateView):
                 drill_down_type = "subcategory"
             else:
                 # For payoree-centric model, group by payoree if no subcategory
-                subcategory_name = budget.payoree.name if budget.payoree else "Unknown Payoree"
+                subcategory_name = (
+                    budget.payoree.name if budget.payoree else "Unknown Payoree"
+                )
                 subcategory_obj = budget.payoree
                 drill_down_type = "payoree"
 
@@ -367,7 +372,9 @@ class BudgetReportView(TemplateView):
                             all_budgets[0]["subcategory_obj"] if all_budgets else None
                         ),
                         "drill_down_type": (
-                            all_budgets[0]["drill_down_type"] if all_budgets else "payoree"
+                            all_budgets[0]["drill_down_type"]
+                            if all_budgets
+                            else "payoree"
                         ),
                     }
 
@@ -455,3 +462,13 @@ class BudgetReportView(TemplateView):
         )
 
         return context
+
+
+# Import allocation deletion views
+from .allocation_deletion import (
+    AllocationDeleteConfirmView,
+    AllocationDeleteView,
+    BulkAllocationDeleteView,
+    AllocationImpactAnalysisView,
+    AllocationDeleteFormView,
+)

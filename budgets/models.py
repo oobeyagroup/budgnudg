@@ -36,11 +36,24 @@ class BudgetPlan(models.Model):
     def __str__(self):
         return f"{self.name} - {self.year}-{self.month:02d}"
 
+    @property
+    def start_date(self):
+        """Get the start date of the budget plan period."""
+        return date(self.year, self.month, 1)
+
+    @property
+    def end_date(self):
+        """Get the end date of the budget plan period."""
+        import calendar
+
+        last_day = calendar.monthrange(self.year, self.month)[1]
+        return date(self.year, self.month, last_day)
+
 
 class BudgetAllocation(models.Model):
     """
     Simplified payoree-centric budget allocation.
-    
+
     Each allocation is tied to a specific payoree, making budgeting more concrete
     and actionable. Categories are derived from the payoree's default category.
     """
@@ -152,20 +165,18 @@ class BudgetAllocation(models.Model):
     def get_current_spent(self):
         """Get current amount spent for this payoree in this period."""
         from transactions.models import Transaction
-        
+
         # Get transactions for this payoree in this budget period
         start_date = date(self.year, self.month, 1)
         if self.month == 12:
             end_date = date(self.year + 1, 1, 1)
         else:
             end_date = date(self.year, self.month + 1, 1)
-        
+
         transactions = Transaction.objects.filter(
-            payoree=self.payoree,
-            date__gte=start_date,
-            date__lt=end_date
+            payoree=self.payoree, date__gte=start_date, date__lt=end_date
         )
-        
+
         return sum(abs(t.amount) for t in transactions)
 
     def get_spent_percentage(self):
@@ -188,6 +199,7 @@ class BudgetAllocation(models.Model):
     def end_date(self):
         """Budget period end date."""
         import calendar
+
         last_day = calendar.monthrange(self.year, self.month)[1]
         return date(self.year, self.month, last_day)
 
@@ -268,33 +280,35 @@ class BudgetPeriod(models.Model):
         self.save(update_fields=["total_budgeted", "baseline_total", "updated_at"])
 
 
-def get_or_create_misc_payoree(name_suffix, default_category=None, default_subcategory=None):
+def get_or_create_misc_payoree(
+    name_suffix, default_category=None, default_subcategory=None
+):
     """
     Create or get a 'misc' payoree for category/subcategory-level budgeting.
-    
+
     Args:
         name_suffix: e.g., "Groceries - Misc" or "Utilities - Misc"
         default_category: Category to assign to this misc payoree
         default_subcategory: Optional subcategory
-    
+
     Returns:
         Payoree instance for misc allocations
     """
     from transactions.models import Payoree
-    
+
     payoree, created = Payoree.objects.get_or_create(
         name=name_suffix,
         defaults={
-            'default_category': default_category,
-            'default_subcategory': default_subcategory,
-        }
+            "default_category": default_category,
+            "default_subcategory": default_subcategory,
+        },
     )
-    
+
     if created:
         print(f"Created misc payoree: {name_suffix}")
-    
+
     return payoree
 
 
-# Compatibility alias for existing code during migration  
+# Compatibility alias for existing code during migration
 Budget = BudgetAllocation

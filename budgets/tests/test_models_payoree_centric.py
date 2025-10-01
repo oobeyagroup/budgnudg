@@ -25,9 +25,9 @@ class BudgetPlanModelTest(TestCase):
             year=2025,
             month=10,
             is_active=True,
-            description="Monthly budget for October"
+            description="Monthly budget for October",
         )
-        
+
         self.assertEqual(plan.name, "October Budget")
         self.assertEqual(plan.year, 2025)
         self.assertEqual(plan.month, 10)
@@ -37,7 +37,7 @@ class BudgetPlanModelTest(TestCase):
     def test_budget_plan_unique_constraint(self):
         """Test that name, year, month must be unique together."""
         BudgetPlan.objects.create(name="Budget", year=2025, month=10)
-        
+
         with self.assertRaises(IntegrityError):
             BudgetPlan.objects.create(name="Budget", year=2025, month=10)
 
@@ -46,7 +46,7 @@ class BudgetPlanModelTest(TestCase):
         plan1 = BudgetPlan.objects.create(name="A", year=2024, month=12)
         plan2 = BudgetPlan.objects.create(name="B", year=2025, month=1)
         plan3 = BudgetPlan.objects.create(name="C", year=2025, month=1)
-        
+
         plans = list(BudgetPlan.objects.all())
         # Should be ordered by -year, -month, name
         self.assertEqual(plans[0], plan2)  # 2025-01 B
@@ -64,11 +64,11 @@ class BudgetAllocationModelTest(TestCase):
             name="Organic Foods", parent=self.category, type="expense"
         )
         self.payoree = Payoree.objects.create(
-            name="Whole Foods", 
+            name="Whole Foods",
             default_category=self.category,
-            default_subcategory=self.subcategory
+            default_subcategory=self.subcategory,
         )
-        
+
         self.budget_plan = BudgetPlan.objects.create(
             name="Test Budget", year=2025, month=10, is_active=True
         )
@@ -76,9 +76,7 @@ class BudgetAllocationModelTest(TestCase):
     def test_allocation_creation_with_payoree(self):
         """Test creating budget allocation with payoree (simplified model)."""
         allocation = BudgetAllocation.objects.create(
-            budget_plan=self.budget_plan,
-            payoree=self.payoree,
-            amount=Decimal("500.00")
+            budget_plan=self.budget_plan, payoree=self.payoree, amount=Decimal("500.00")
         )
 
         self.assertEqual(allocation.payoree, self.payoree)
@@ -89,9 +87,7 @@ class BudgetAllocationModelTest(TestCase):
     def test_effective_category_properties(self):
         """Test effective category properties derive from payoree."""
         allocation = BudgetAllocation.objects.create(
-            budget_plan=self.budget_plan,
-            payoree=self.payoree,
-            amount=Decimal("200.00")
+            budget_plan=self.budget_plan, payoree=self.payoree, amount=Decimal("200.00")
         )
 
         self.assertEqual(allocation.effective_category, self.category)
@@ -105,7 +101,7 @@ class BudgetAllocationModelTest(TestCase):
             amount=Decimal("300.00"),
             is_ai_suggested=True,
             baseline_amount=Decimal("250.00"),
-            user_note="AI suggested based on 6-month average"
+            user_note="AI suggested based on 6-month average",
         )
 
         self.assertTrue(allocation.is_ai_suggested)
@@ -117,7 +113,7 @@ class BudgetAllocationModelTest(TestCase):
         allocation = BudgetAllocation(
             budget_plan=self.budget_plan,
             # payoree=None,  # Missing required payoree
-            amount=Decimal("500.00")
+            amount=Decimal("500.00"),
         )
 
         with self.assertRaises(ValidationError) as cm:
@@ -130,9 +126,7 @@ class BudgetAllocationModelTest(TestCase):
         """Test that payoree can only have one allocation per budget plan."""
         # Create first allocation
         BudgetAllocation.objects.create(
-            budget_plan=self.budget_plan,
-            payoree=self.payoree,
-            amount=Decimal("500.00")
+            budget_plan=self.budget_plan, payoree=self.payoree, amount=Decimal("500.00")
         )
 
         # Try to create duplicate - should fail
@@ -140,7 +134,7 @@ class BudgetAllocationModelTest(TestCase):
             BudgetAllocation.objects.create(
                 budget_plan=self.budget_plan,
                 payoree=self.payoree,
-                amount=Decimal("300.00")
+                amount=Decimal("300.00"),
             )
 
     def test_allocation_properties(self):
@@ -149,7 +143,7 @@ class BudgetAllocationModelTest(TestCase):
             budget_plan=self.budget_plan,
             payoree=self.payoree,
             amount=Decimal("500.00"),
-            baseline_amount=Decimal("450.00")
+            baseline_amount=Decimal("450.00"),
         )
 
         # Test year/month properties
@@ -160,7 +154,9 @@ class BudgetAllocationModelTest(TestCase):
         # Test variance calculations
         self.assertEqual(allocation.get_variance_vs_baseline(), Decimal("50.00"))
         variance_pct = allocation.get_variance_percentage()
-        expected_pct = ((Decimal("500.00") - Decimal("450.00")) / Decimal("450.00")) * 100
+        expected_pct = (
+            (Decimal("500.00") - Decimal("450.00")) / Decimal("450.00")
+        ) * 100
         self.assertAlmostEqual(float(variance_pct), float(expected_pct), places=2)
 
         # Test date properties
@@ -172,14 +168,14 @@ class BudgetAllocationModelTest(TestCase):
         recurring_series = RecurringSeries.objects.create(
             payoree=self.payoree,
             amount_cents=50000,  # $500.00 in cents
-            interval="monthly"
+            interval="monthly",
         )
 
         allocation = BudgetAllocation.objects.create(
             budget_plan=self.budget_plan,
             payoree=self.payoree,
             amount=Decimal("500.00"),
-            recurring_series=recurring_series
+            recurring_series=recurring_series,
         )
 
         self.assertEqual(allocation.recurring_series, recurring_series)
@@ -187,9 +183,7 @@ class BudgetAllocationModelTest(TestCase):
     def test_str_representation(self):
         """Test string representation of allocation."""
         allocation = BudgetAllocation.objects.create(
-            budget_plan=self.budget_plan,
-            payoree=self.payoree,
-            amount=Decimal("500.00")
+            budget_plan=self.budget_plan, payoree=self.payoree, amount=Decimal("500.00")
         )
 
         expected_str = f"{self.budget_plan.name}: {self.payoree.name} - $500.00"
@@ -198,20 +192,15 @@ class BudgetAllocationModelTest(TestCase):
     def test_multiple_payorees_same_plan(self):
         """Test multiple payorees can have allocations in same plan."""
         payoree2 = Payoree.objects.create(
-            name="Safeway",
-            default_category=self.category
+            name="Safeway", default_category=self.category
         )
 
         allocation1 = BudgetAllocation.objects.create(
-            budget_plan=self.budget_plan,
-            payoree=self.payoree,
-            amount=Decimal("300.00")
+            budget_plan=self.budget_plan, payoree=self.payoree, amount=Decimal("300.00")
         )
 
         allocation2 = BudgetAllocation.objects.create(
-            budget_plan=self.budget_plan,
-            payoree=payoree2,
-            amount=Decimal("200.00")
+            budget_plan=self.budget_plan, payoree=payoree2, amount=Decimal("200.00")
         )
 
         self.assertNotEqual(allocation1.id, allocation2.id)
@@ -223,14 +212,14 @@ class BudgetAllocationModelTest(TestCase):
         utilities_category = Category.objects.create(name="Utilities", type="expense")
         electric_company = Payoree.objects.create(
             name="Electric Company",
-            default_category=utilities_category
+            default_category=utilities_category,
             # No default_subcategory
         )
 
         allocation = BudgetAllocation.objects.create(
             budget_plan=self.budget_plan,
             payoree=electric_company,
-            amount=Decimal("150.00")
+            amount=Decimal("150.00"),
         )
 
         self.assertEqual(allocation.effective_category, utilities_category)
@@ -241,7 +230,7 @@ class BudgetAllocationModelTest(TestCase):
         # Note: BudgetPlan ordering is ["-year", "-month", "name"]
         # So newer plans come first (2025-11 before 2025-10)
         plan2 = BudgetPlan.objects.create(name="Plan B", year=2025, month=11)
-        
+
         payoree_b = Payoree.objects.create(
             name="B Store", default_category=self.category
         )
@@ -260,7 +249,7 @@ class BudgetAllocationModelTest(TestCase):
         )
 
         allocations = list(BudgetAllocation.objects.all())
-        
+
         # BudgetAllocation ordering is ["budget_plan", "payoree__name"]
         # But BudgetPlan has its own ordering which affects the FK ordering
         # Plan B (2025-11) comes before Test Budget (2025-10) due to BudgetPlan ordering

@@ -55,7 +55,7 @@ class TestBudgetClassificationATDD(TestCase):
         # Create test budget allocations
         self.grocery_allocation = BudgetAllocation.objects.create(
             budget_plan=self.budget_plan,
-            category=self.groceries_category,
+            payoree=self.groceries_category,
             amount=Decimal("500.00"),
         )
 

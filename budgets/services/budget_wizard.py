@@ -67,11 +67,9 @@ class BudgetWizard:
             period_key = f"{period_date.year}_{period_date.month}"
 
             # Get payoree-based baseline suggestions (simplified)
-            month_suggestions = (
-                self.baseline_calculator.get_payoree_suggestions(
-                    target_months=1,
-                    method=method,
-                )
+            month_suggestions = self.baseline_calculator.get_payoree_suggestions(
+                target_months=1,
+                method=method,
             )
 
             all_suggestions_by_month[period_key] = month_suggestions
@@ -275,12 +273,13 @@ class BudgetWizard:
 
                 # Process budget items for this period
                 for item in period_items:
+                    payoree_id = item.get("payoree_id")
+                    if not payoree_id:
+                        continue  # Skip items without payoree
+                    
                     allocation_data = {
                         "budget_plan": budget_plan,
-                        "category_id": item.get("category_id"),
-                        "subcategory_id": item.get("subcategory_id"),
-                        "payoree_id": item.get("payoree_id"),
-                        "needs_level": item.get("needs_level"),
+                        "payoree_id": payoree_id,
                         "amount": item.get("suggested_amount")
                         or item.get("ai_suggested_amount"),
                         "baseline_amount": item.get("baseline_amount"),
@@ -294,14 +293,11 @@ class BudgetWizard:
                     }
 
                     if overwrite_existing:
-                        # Update or create budget allocation
+                        # Update or create budget allocation (simplified for payoree-centric model)
                         allocation, allocation_created = (
                             BudgetAllocation.objects.update_or_create(
                                 budget_plan=budget_plan,
-                                category_id=allocation_data.get("category_id"),
-                                subcategory_id=allocation_data.get("subcategory_id"),
-                                payoree_id=allocation_data.get("payoree_id"),
-                                needs_level=allocation_data.get("needs_level"),
+                                payoree_id=payoree_id,
                                 defaults=allocation_data,
                             )
                         )

@@ -48,7 +48,7 @@ class BudgetAllocationAdmin(admin.ModelAdmin):
     list_display = [
         "budget_plan",
         "payoree",
-        "effective_category_display", 
+        "effective_category_display",
         "amount",
         "baseline_amount",
         "variance_display",
@@ -86,7 +86,7 @@ class BudgetAllocationAdmin(admin.ModelAdmin):
             {"fields": ("budget_plan",)},
         ),
         (
-            "Allocation", 
+            "Allocation",
             {"fields": ("payoree", "effective_category_display")},
         ),
         ("Amount Details", {"fields": ("amount", "baseline_amount")}),
