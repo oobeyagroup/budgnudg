@@ -268,11 +268,9 @@ class BudgetReportView(TemplateView):
         else:
             budgets = BudgetAllocation.objects.none()
 
-        # Group budgets by category type, category, subcategory, and month
-        # Same structure as transaction report
-        grouped_data = defaultdict(
-            lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-        )
+        # Group budgets by category type, category, and payoree
+        # Consolidate all allocations for a payoree into a single row
+        grouped_data = defaultdict(lambda: defaultdict(lambda: defaultdict(dict)))
 
         for budget in budgets:
             # Use effective category from payoree-centric model
@@ -288,36 +286,45 @@ class BudgetReportView(TemplateView):
                 category_name = "Uncategorized"
                 category_obj = None
 
-            # Use effective subcategory or payoree name as subcategory
-            if effective_subcategory:
-                subcategory_name = effective_subcategory.name
-                subcategory_obj = effective_subcategory
-                drill_down_type = "subcategory"
-            else:
-                # For payoree-centric model, group by payoree if no subcategory
-                subcategory_name = (
-                    budget.payoree.name if budget.payoree else "Unknown Payoree"
-                )
-                subcategory_obj = budget.payoree
-                drill_down_type = "payoree"
-
+            # Group by payoree name (consolidate all subcategories under payoree)
+            payoree_name = budget.payoree.name if budget.payoree else "Unknown Payoree"
+            
             # Determine month key
             month_key = f"{budget.budget_plan.year}-{budget.budget_plan.month:02d}"
 
-            # Group the budget
-            grouped_data[category_type][category_name][subcategory_name][
-                month_key
-            ].append(
-                {
-                    "budget": budget,
+            # Initialize payoree data structure if not exists
+            if "payoree_obj" not in grouped_data[category_type][category_name][payoree_name]:
+                grouped_data[category_type][category_name][payoree_name] = {
+                    "payoree_obj": budget.payoree,
                     "category_obj": category_obj,
-                    "subcategory_obj": subcategory_obj,
-                    "drill_down_type": drill_down_type,
+                    "drill_down_type": "payoree",
+                    "total_amount": 0,
+                    "total_count": 0,
+                    "allocations": defaultdict(list),
+                    "monthly_totals": defaultdict(float),
+                    "monthly_sources": defaultdict(list),
                 }
-            )
+
+            # Add allocation to the payoree
+            grouped_data[category_type][category_name][payoree_name]["allocations"][month_key].append(budget)
+            
+            # Add to monthly totals
+            grouped_data[category_type][category_name][payoree_name]["monthly_totals"][month_key] += float(budget.amount)
+            
+            # Track source information (user vs wizard) for tooltips
+            source_info = "User Created" if not budget.is_ai_suggested else "Wizard Generated"
+            grouped_data[category_type][category_name][payoree_name]["monthly_sources"][month_key].append({
+                "amount": float(budget.amount),
+                "source": source_info,
+                "note": budget.user_note if budget.user_note else None
+            })
+            
+            # Update totals
+            grouped_data[category_type][category_name][payoree_name]["total_amount"] += float(budget.amount)
+            grouped_data[category_type][category_name][payoree_name]["total_count"] += 1
 
         # Convert to regular dict and calculate counts and monthly totals
-        # Same structure as transaction report
+        # Updated structure for payoree-consolidated view
         organized_data = {}
         for category_type, categories in grouped_data.items():
             organized_data[category_type] = {
@@ -329,9 +336,9 @@ class BudgetReportView(TemplateView):
                 },
             }
 
-            for category_name, subcategories in categories.items():
+            for category_name, payorees in categories.items():
                 category_data = {
-                    "subcategories": {},
+                    "subcategories": {},  # Keep same structure but treat as payorees
                     "total_count": 0,
                     "total_amount": 0,
                     "category_obj": None,
@@ -340,74 +347,55 @@ class BudgetReportView(TemplateView):
                     },
                 }
 
-                for subcategory_name, monthly_budgets in subcategories.items():
-                    subcategory_total = 0
-                    subcategory_count = 0
-                    monthly_totals = {
-                        month["date"].strftime("%Y-%m"): 0 for month in months
-                    }
-                    all_budgets = []
+                for payoree_name, payoree_data in payorees.items():
+                    # Convert defaultdict to regular dict for template access
+                    monthly_totals_dict = dict(payoree_data["monthly_totals"])
+                    monthly_sources_dict = dict(payoree_data["monthly_sources"])
+                    
+                    # Ensure all months have entries
+                    for month_info in months:
+                        month_key = month_info["date"].strftime("%Y-%m")
+                        if month_key not in monthly_totals_dict:
+                            monthly_totals_dict[month_key] = 0
+                        if month_key not in monthly_sources_dict:
+                            monthly_sources_dict[month_key] = []
 
-                    # Process each month for this subcategory
-                    for month_key, budget_data in monthly_budgets.items():
-                        month_total = sum(
-                            float(b["budget"].amount) for b in budget_data
-                        )
-                        month_count = len(budget_data)
-
-                        # Use defensive programming to avoid KeyError
-                        monthly_totals[month_key] = (
-                            monthly_totals.get(month_key, 0) + month_total
-                        )
-                        subcategory_total += month_total
-                        subcategory_count += month_count
-                        all_budgets.extend(budget_data)
-
-                    category_data["subcategories"][subcategory_name] = {
-                        "budgets": all_budgets,  # 'budgets' instead of 'transactions'
-                        "count": subcategory_count,
-                        "total_amount": subcategory_total,
-                        "monthly_totals": monthly_totals,
-                        "subcategory_obj": (
-                            all_budgets[0]["subcategory_obj"] if all_budgets else None
-                        ),
-                        "drill_down_type": (
-                            all_budgets[0]["drill_down_type"]
-                            if all_budgets
-                            else "payoree"
-                        ),
+                    category_data["subcategories"][payoree_name] = {
+                        "budgets": [{  # Consolidated payoree budget entry
+                            "budget": payoree_data["payoree_obj"],  # For compatibility
+                            "payoree": payoree_data["payoree_obj"],
+                            "category_obj": payoree_data["category_obj"],
+                            "subcategory_obj": payoree_data["payoree_obj"],
+                            "drill_down_type": payoree_data["drill_down_type"],
+                            "monthly_totals": monthly_totals_dict,
+                            "monthly_sources": monthly_sources_dict,  # New field for tooltips
+                            "total_amount": payoree_data["total_amount"],
+                        }],
+                        "count": payoree_data["total_count"],
+                        "total_amount": payoree_data["total_amount"],
+                        "monthly_totals": monthly_totals_dict,
+                        "monthly_sources": monthly_sources_dict,
+                        "subcategory_obj": payoree_data["payoree_obj"],
+                        "drill_down_type": payoree_data["drill_down_type"],
                     }
 
-                    # Set category object from first budget
-                    if not category_data["category_obj"] and all_budgets:
-                        category_data["category_obj"] = all_budgets[0]["category_obj"]
+                    # Set category object from first payoree
+                    if not category_data["category_obj"]:
+                        category_data["category_obj"] = payoree_data["category_obj"]
 
                     # Add to category totals
-                    category_data["total_count"] += subcategory_count
-                    category_data["total_amount"] += subcategory_total
-                    for month_key, amount in monthly_totals.items():
-                        category_data["monthly_totals"][month_key] = (
-                            category_data["monthly_totals"].get(month_key, 0) + amount
-                        )
+                    category_data["total_count"] += payoree_data["total_count"]
+                    category_data["total_amount"] += payoree_data["total_amount"]
+                    for month_key, amount in monthly_totals_dict.items():
+                        category_data["monthly_totals"][month_key] += amount
 
-                organized_data[category_type]["categories"][
-                    category_name
-                ] = category_data
-                organized_data[category_type]["total_count"] += category_data[
-                    "total_count"
-                ]
-                organized_data[category_type]["total_amount"] += category_data[
-                    "total_amount"
-                ]
+                organized_data[category_type]["categories"][category_name] = category_data
+                organized_data[category_type]["total_count"] += category_data["total_count"]
+                organized_data[category_type]["total_amount"] += category_data["total_amount"]
 
                 # Add to category type monthly totals
                 for month_key, amount in category_data["monthly_totals"].items():
-                    organized_data[category_type]["monthly_totals"][month_key] = (
-                        organized_data[category_type]["monthly_totals"].get(
-                            month_key, 0
-                        )
-                        + amount
-                    )
+                    organized_data[category_type]["monthly_totals"][month_key] += amount
 
         # Calculate grand totals including monthly
         grand_total_count = sum(data["total_count"] for data in organized_data.values())

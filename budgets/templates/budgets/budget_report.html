@@ -132,6 +132,25 @@
     .badge-lifestyle { background-color: #20c997 !important; color: white; }
     .badge-discretionary { background-color: #6f42c1 !important; color: white; }
     
+    /* Tooltip styling */
+    .tooltip {
+        font-size: 0.875rem;
+    }
+    
+    .tooltip-inner {
+        max-width: 300px;
+        text-align: left;
+    }
+    
+    /* Hover effect for cells with tooltips */
+    .monthly-column span[data-bs-toggle="tooltip"]:hover {
+        background-color: rgba(0, 123, 255, 0.1);
+        border-radius: 3px;
+        padding: 2px 4px;
+        margin: -2px -4px;
+        cursor: help;
+    }
+    
     @media (max-width: 768px) {
         .month-header {
             min-width: 60px;
@@ -354,53 +373,69 @@
                                             {% endfor %}
                                         </tr>
                                         
-                                        <!-- Budget Line Items (collapsed by default) -->
+                                        <!-- Consolidated Payoree Row -->
                                         {% for budget_data in subcategory_data.budgets %}
-                                            {% with budget=budget_data.budget %}
+                                            {% with payoree=budget_data.payoree %}
                                             <tr class="budget-row collapse" id="subcategory-{{ category_type }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}">
                                                 <td class="description-cell ps-5">
-                                                    {% if budget.payoree %}
+                                                    {% if payoree %}
                                                         <strong>
-                                                            <a href="/budgets/classification/?classification_type=payoree&payoree_id={{ budget.payoree.pk }}&return=budget_report" 
+                                                            <a href="/budgets/classification/?classification_type=payoree&payoree_id={{ payoree.pk }}&return=budget_report" 
                                                                class="text-decoration-none">
-                                                                {{ budget.payoree.name }}
+                                                                {{ payoree.name }}
                                                             </a>
                                                         </strong>
                                                     {% else %}
                                                         <em class="text-muted">General Allocation</em>
                                                     {% endif %}
-                                                    {% if budget.user_note %}
-                                                        <small class="text-muted d-block">{{ budget.user_note|truncatechars:30 }}</small>
-                                                    {% endif %}
                                                 </td>
                                                 <td class="amount-cell text-end">
-                                                             <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ budget.amount|floatformat:2|intcomma }}</span>
+                                                    <span class="fw-semibold currency {% if budget_data.total_amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ budget_data.total_amount|floatformat:2|intcomma }}</span>
                                                 </td>
                                                 <td class="count-cell text-center">
-                                                    {% if budget.needs_level %}
-                                                        <span class="badge badge-{{ budget.needs_level }}" style="font-size: 0.6rem;">
-                                                            {{ budget.get_needs_level_display|truncatechars:4 }}
-                                                        </span>
-                                                    {% endif %}
+                                                    <span class="text-muted small">{{ subcategory_data.count }} allocation{{ subcategory_data.count|pluralize }}</span>
                                                 </td>
                                                 {% for month in months %}
                                                     {% with month_key=month.date|date:"Y-m" %}
+                                                        {% with amount=budget_data.monthly_totals|lookup:month_key %}
+                                                        {% with sources=budget_data.monthly_sources|lookup:month_key %}
                                                         <td class="monthly-column text-end">
-                                                            {% if month_key in budget_data.months %}
-                                                            <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ budget.amount|floatformat:2|intcomma }}</span>
+                                                            {% if amount != 0 %}
+                                                                {% if sources and sources|length > 0 %}
+                                                                    {% if sources|length == 1 %}
+                                                                        {% comment %} Single source - show basic tooltip {% endcomment %}
+                                                                        {% with source=sources.0 %}
+                                                                        <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}" 
+                                                                              data-bs-toggle="tooltip" 
+                                                                              data-bs-placement="top" 
+                                                                              title="{{ source.source }}{% if source.note %} - {{ source.note|truncatechars:50 }}{% endif %}">
+                                                                            {{ amount|floatformat:2|intcomma }}
+                                                                        </span>
+                                                                        {% endwith %}
+                                                                    {% else %}
+                                                                        {% comment %} Multiple sources - show detailed breakdown {% endcomment %}
+                                                                        <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}" 
+                                                                              data-bs-toggle="tooltip" 
+                                                                              data-bs-placement="top" 
+                                                                              data-bs-html="true"
+                                                                              title="<strong>Multiple Allocations:</strong><br>{% for si in sources %}• {{ si.source }}: ${{ si.amount|floatformat:2 }}{% if not forloop.last %}<br>{% endif %}{% endfor %}">
+                                                                            {{ amount|floatformat:2|intcomma }}
+                                                                        </span>
+                                                                    {% endif %}
+                                                                {% else %}
+                                                                    {% comment %} No source info available {% endcomment %}
+                                                                    <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
+                                                                        {{ amount|floatformat:2|intcomma }}
+                                                                    </span>
+                                                                {% endif %}
                                                             {% else %}
                                                                 <span class="text-muted">-</span>
                                                             {% endif %}
                                                         </td>
+                                                        {% endwith %}
+                                                        {% endwith %}
                                                     {% endwith %}
                                                 {% endfor %}
-                                                <td class="action-cell text-center">
-                                                    {% if budget.is_ai_suggested %}
-                                                        <i class="fas fa-robot text-primary" title="AI Suggested"></i>
-                                                    {% else %}
-                                                        <i class="fas fa-user text-secondary" title="User Created"></i>
-                                                    {% endif %}
-                                                </td>
                                             </tr>
                                             {% endwith %}
                                         {% endfor %}
@@ -473,8 +508,16 @@ function collapseAll() {
     });
 }
 
-// Handle collapse icon rotation
+// Handle collapse icon rotation and initialize tooltips
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            html: tooltipTriggerEl.hasAttribute('data-bs-html')
+        });
+    });
+
     document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(element => {
         element.addEventListener('click', function() {
             const icon = this.querySelector('.collapse-icon');
