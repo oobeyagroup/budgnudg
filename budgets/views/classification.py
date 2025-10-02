@@ -229,6 +229,7 @@ def _load_classification_data(
 
     # Load budget allocation data
     budget_data = {}
+    allocation_by_month = {}  # Initialize for all classification types
     if active_budget_plan:
         # Find existing allocation(s) for this classification
         total_allocation_amount = Decimal("0")
@@ -259,27 +260,47 @@ def _load_classification_data(
                     primary_allocation = allocation
 
         elif classification_type == "payoree":
-            # Direct payoree allocation
-            allocation = BudgetAllocation.objects.filter(
-                budget_plan=active_budget_plan,
+            # Direct payoree allocations across all budget plans
+            allocations = BudgetAllocation.objects.filter(
                 payoree=classification_obj,
-            ).first()
-            if allocation:
-                total_allocation_amount = abs(allocation.amount)
-                primary_allocation = allocation
+            )
 
+            # Build a map of allocations by month
+            allocation_by_month = {}
+            for allocation in allocations:
+                month_key = (
+                    f"{allocation.budget_plan.year}-{allocation.budget_plan.month:02d}"
+                )
+                allocation_by_month[month_key] = allocation
+                total_allocation_amount += abs(allocation.amount)
+                if primary_allocation is None:
+                    primary_allocation = allocation
+
+            # Set budget data for specific months where allocations exist
+            for month_info in budget_months:
+                month_key = f"{month_info['year']}-{month_info['month']:02d}"
+                if month_key in allocation_by_month:
+                    budget_data[month_key] = abs(allocation_by_month[month_key].amount)
+
+        # Store allocation IDs by month for template access
+        context["allocation_by_month"] = allocation_by_month
         context["current_allocation"] = primary_allocation
         context["total_allocation_amount"] = total_allocation_amount
 
-        # For now, show the same budget amount for all months
-        # TODO: Support different monthly allocations
-        if total_allocation_amount > 0:
+        # For categories/subcategories, show the same budget amount for all months
+        # For payorees, we already have month-specific data from the allocation lookups above
+        # TODO: Support different monthly allocations for categories/subcategories
+        if (
+            classification_type in ["category", "subcategory"]
+            and total_allocation_amount > 0
+        ):
             for month_info in budget_months:
                 budget_data[f"{month_info['year']}-{month_info['month']:02d}"] = (
                     total_allocation_amount
                 )
 
     context["budget_data"] = budget_data
+    context["classification_obj"] = classification_obj
 
     return context
 
@@ -320,18 +341,40 @@ def create_budget_allocation(request):
     Handles creation of budget allocations when none exist for a classification.
     """
     try:
+        # Import at the top to avoid scoping issues
+        from transactions.models import Category, Payoree
+        from ..models import get_or_create_misc_payoree
+
         classification_type = request.POST.get("classification_type")
         classification_id = request.POST.get("classification_id")
         amount = request.POST.get("amount")
         month = request.POST.get("month")  # Format: YYYY-MM
 
-        if not all([classification_type, classification_id, amount]):
+        if not all([classification_type, classification_id, amount, month]):
             return JsonResponse({"success": False, "error": "Missing parameters"})
 
-        # Get active budget plan
-        budget_plan = BudgetPlan.objects.filter(is_active=True).first()
+        # Parse the month (format: YYYY-MM)
+        try:
+            year, month_num = month.split("-")
+            year = int(year)
+            month_num = int(month_num)
+        except (ValueError, AttributeError):
+            return JsonResponse({"success": False, "error": "Invalid month format"})
+
+        # Find or create budget plan for the specific month
+        # If multiple plans exist for the same month, prefer active ones
+        budget_plan = BudgetPlan.objects.filter(year=year, month=month_num).first()
+        created = False
+
         if not budget_plan:
-            budget_plan = BudgetPlan.objects.first()
+            budget_plan, created = BudgetPlan.objects.get_or_create(
+                year=year,
+                month=month_num,
+                defaults={
+                    "name": f"Budget Plan {year}-{month_num:02d}",
+                    "is_active": False,  # Don't make it active by default
+                },
+            )
 
         if not budget_plan:
             return JsonResponse({"success": False, "error": "No budget plan available"})
@@ -342,17 +385,26 @@ def create_budget_allocation(request):
             "amount": Decimal(amount),
         }
 
-        # Set classification based on type
+        # Set classification based on type - create or get misc payorees for categories
         if classification_type == "category":
-            from transactions.models import Category
-
             classification_obj = Category.objects.get(id=classification_id)
-            allocation_data["category"] = classification_obj
+            # Create or get a misc payoree for this category
+            misc_payoree = get_or_create_misc_payoree(
+                name_suffix=f"{classification_obj.name} - Misc",
+                default_category=classification_obj,
+            )
+            allocation_data["payoree"] = misc_payoree
+
         elif classification_type == "subcategory":
-            from transactions.models import Category
-
             classification_obj = Category.objects.get(id=classification_id)
-            allocation_data["subcategory"] = classification_obj
+            # Create or get a misc payoree for this subcategory
+            misc_payoree = get_or_create_misc_payoree(
+                name_suffix=f"{classification_obj.name} - Misc",
+                default_category=classification_obj.parent,
+                default_subcategory=classification_obj,
+            )
+            allocation_data["payoree"] = misc_payoree
+
         elif classification_type == "payoree":
             classification_obj = Payoree.objects.get(id=classification_id)
             allocation_data["payoree"] = classification_obj

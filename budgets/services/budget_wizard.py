@@ -276,7 +276,7 @@ class BudgetWizard:
                     payoree_id = item.get("payoree_id")
                     if not payoree_id:
                         continue  # Skip items without payoree
-                    
+
                     allocation_data = {
                         "budget_plan": budget_plan,
                         "payoree_id": payoree_id,

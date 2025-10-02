@@ -49,6 +49,13 @@ class BudgetPlan(models.Model):
         last_day = calendar.monthrange(self.year, self.month)[1]
         return date(self.year, self.month, last_day)
 
+    @property
+    def period_display(self):
+        """Human-readable period display."""
+        from calendar import month_name
+
+        return f"{month_name[self.month]} {self.year}"
+
 
 class BudgetAllocation(models.Model):
     """

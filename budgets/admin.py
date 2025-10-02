@@ -4,9 +4,20 @@ from django.utils.html import format_html
 from .models import BudgetPlan, BudgetAllocation, BudgetPeriod
 
 
+class BudgetAllocationInline(admin.TabularInline):
+    """Inline for managing budget allocations within budget plan admin."""
+
+    model = BudgetAllocation
+    extra = 1
+    fields = ["payoree", "amount", "baseline_amount", "is_ai_suggested", "user_note"]
+    readonly_fields = []
+
+
 @admin.register(BudgetPlan)
 class BudgetPlanAdmin(admin.ModelAdmin):
     """Admin interface for BudgetPlan model."""
+
+    inlines = [BudgetAllocationInline]
 
     list_display = [
         "name",
@@ -29,13 +40,13 @@ class BudgetPlanAdmin(admin.ModelAdmin):
 
     def allocation_count(self, obj):
         """Display count of allocations in this plan."""
-        return obj.budgetallocation_set.count()
+        return obj.allocations.count()
 
     allocation_count.short_description = "Allocations"
 
     def total_amount(self, obj):
         """Display total allocated amount."""
-        total = obj.budgetallocation_set.aggregate(total=Sum("amount"))["total"] or 0
+        total = obj.allocations.aggregate(total=Sum("amount"))["total"] or 0
         return f"${total:,.2f}"
 
     total_amount.short_description = "Total Allocated"
@@ -187,7 +198,7 @@ class BudgetPeriodAdmin(admin.ModelAdmin):
 
     def budget_count_display(self, obj):
         """Display number of budget items in this period."""
-        return obj.get_budget_count()
+        return obj.get_allocation_count()
 
     budget_count_display.short_description = "Budget Items"
 

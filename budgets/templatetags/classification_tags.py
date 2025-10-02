@@ -137,3 +137,29 @@ def abs_value(value):
         return abs(Decimal(str(value)))
     except (ValueError, TypeError, decimal.InvalidOperation):
         return 0
+
+
+@register.simple_tag(takes_context=True)
+def allocation_id_for_month(context, year, month):
+    """
+    Get allocation ID for a specific month.
+
+    Usage: {% allocation_id_for_month year month %}
+
+    Args:
+        context: Template context
+        year: Year (int)
+        month: Month (int)
+
+    Returns:
+        Allocation ID for the given month, or empty string if none exists
+    """
+    try:
+        month_key = f"{int(year)}-{int(month):02d}"
+        allocation_by_month = context.get("allocation_by_month", {})
+
+        if month_key in allocation_by_month:
+            return allocation_by_month[month_key].id
+        return ""
+    except (ValueError, TypeError, AttributeError):
+        return ""

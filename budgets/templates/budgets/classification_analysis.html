@@ -80,10 +80,11 @@
     
     .editable-create {
         cursor: pointer;
-        padding: 4px 8px;
-        border-radius: 4px;
+        background: #eee;
+        /* padding: 4px 8px; */
+        /* border-radius: 4px; */
         transition: all 0.2s;
-        border: 1px dashed #007bff;
+        /* border: 1px dashed #007bff; */
         display: inline-block;
     }
     
@@ -223,24 +224,26 @@
                             <td>{{ month.display }}</td>
                             <td>
                                 {% month_key month.year month.month as key %}
-                                {% if current_allocation and budget_data|get_item:key %}
+                                {% if budget_data|get_item:key %}
                                 <span class="editable-budget" 
-                                      data-allocation-id="{{ current_allocation.id }}" 
+                                      data-allocation-id="{% allocation_id_for_month month.year month.month %}" 
                                       data-month="{{ month.year }}-{{ month.month|stringformat:"02d" }}"
                                       onclick="startInlineEdit(this)">
                                     {{ budget_data|get_item:key|format_currency }}
                                 </span>
                                 {% elif current_allocation %}
-                                <span class="editable-budget" 
-                                      data-allocation-id="{{ current_allocation.id }}" 
+                                <span class="text-muted editable-create" 
+                                      data-classification-type="{{ classification_type }}"
+                                      data-classification-id="{% if classification_obj %}{{ classification_obj.id }}{% elif selected_classification %}{{ selected_classification.id }}{% endif %}"
                                       data-month="{{ month.year }}-{{ month.month|stringformat:"02d" }}"
-                                      onclick="startInlineEdit(this)">
-                                    $0.00
+                                      onclick="createAllocation(this)"
+                                      style="cursor: pointer; color: #007bff;">
+                                    + Create Budget
                                 </span>
                                 {% else %}
                                 <span class="text-muted editable-create" 
                                       data-classification-type="{{ classification_type }}"
-                                      data-classification-id="{% if classification_obj %}{{ classification_obj.id }}{% endif %}"
+                                      data-classification-id="{% if classification_obj %}{{ classification_obj.id }}{% elif selected_classification %}{{ selected_classification.id }}{% endif %}"
                                       data-month="{{ month.year }}-{{ month.month|stringformat:"02d" }}"
                                       onclick="createAllocation(this)"
                                       style="cursor: pointer; color: #007bff;">
@@ -406,6 +409,13 @@ function createAllocation(element) {
         const amount = parseFloat(input.value);
         if (isNaN(amount) || amount < 0) {
             alert('Please enter a valid positive amount');
+            input.focus();
+            return;
+        }
+        
+        // Validate required parameters
+        if (!classificationType || !classificationId || !amount) {
+            alert('Missing required information. Please try again.');
             input.focus();
             return;
         }
