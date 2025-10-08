@@ -111,51 +111,26 @@ class TransactionHistoryView(ListView):
         return context
 
     def _group_transactions_by_date_and_category(self, transactions):
-        """Group transactions by date, then by category within each date."""
+        """Group transactions by date only (simplified - no category grouping)."""
         grouped = OrderedDict()
 
         for transaction in transactions:
             tx_date = transaction.date
-            category_name = (
-                transaction.category.name if transaction.category else "Uncategorized"
-            )
 
             # Initialize date group if not exists
             if tx_date not in grouped:
                 grouped[tx_date] = {
                     "date": tx_date,
-                    "categories": OrderedDict(),
+                    "transactions": [],
                     "total_income": 0,
                     "total_expense": 0,
                     "net_total": 0,
                     "transaction_count": 0,
                 }
 
-            # Initialize category group within date if not exists
-            if category_name not in grouped[tx_date]["categories"]:
-                grouped[tx_date]["categories"][category_name] = {
-                    "category": transaction.category,
-                    "transactions": [],
-                    "total_amount": 0,
-                    "income_amount": 0,
-                    "expense_amount": 0,
-                    "transaction_count": 0,
-                }
-
-            # Add transaction to appropriate group
-            category_group = grouped[tx_date]["categories"][category_name]
-            category_group["transactions"].append(transaction)
-            category_group["total_amount"] += transaction.amount
-            category_group["transaction_count"] += 1
-
-            # Update category totals
-            if transaction.amount > 0:
-                category_group["income_amount"] += transaction.amount
-            else:
-                category_group["expense_amount"] += abs(transaction.amount)
-
-            # Update daily totals
+            # Add transaction to date group
             day_group = grouped[tx_date]
+            day_group["transactions"].append(transaction)
             day_group["transaction_count"] += 1
             day_group["net_total"] += transaction.amount
 

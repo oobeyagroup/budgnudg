@@ -50,7 +50,7 @@
     /* SUPER VISIBLE DATE SECTIONS */
     /* Crisp Title Styling */
     h1.display-4 {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(90deg, #d4d5f5 0%, #eae5f7 100%);
         background-clip: text;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -70,37 +70,37 @@
         transform: translateX(-50%);
         width: 60px;
         height: 3px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(90deg, #d4d5f5 0%, #eae5f7 100%);
         border-radius: 2px;
     }
 
     /* Elegant Date Section Cards */
-    .date-section.card, div.date-section.card.mb-4 {
+    .date-section.card, div.date-section.card {
         background: rgba(255, 255, 255, 0.15);
         backdrop-filter: blur(25px);
         -webkit-backdrop-filter: blur(25px);
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        border-radius: 20px;
+        border: .5px solid rgba(125, 100, 249, 0.2);
+        border-radius: 16px;
         box-shadow: 
             0 12px 40px rgba(0, 0, 0, 0.08),
             0 6px 20px rgba(0, 0, 0, 0.04),
             inset 0 1px 0 rgba(255, 255, 255, 0.4);
         position: relative;
         overflow: hidden;
-        margin-bottom: 1.5rem;
-    }    /* Elegant Category Groups */
-    .category-group, div.category-group {
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(15px);
-        -webkit-backdrop-filter: blur(15px);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 16px;
-        box-shadow: 
-            0 8px 24px rgba(0, 0, 0, 0.06),
-            0 4px 12px rgba(0, 0, 0, 0.03);
-        position: relative;
-        overflow: hidden;
-        margin: 0.75rem 0;
+        margin-bottom: .75rem;
+    }
+    
+    /* Clean Transaction Items */
+    .transaction-item {
+        transition: all 0.2s ease;
+        border: none
+        /* border-radius: 8px; */
+        /* margin: .1rem 0; */
+    }
+    
+    .transaction-item:hover {
+        background: rgba(255, 255, 255, 0.05);
+        transform: translateX(4px);
     }
     
     /* Clean Card Bodies */
@@ -128,7 +128,11 @@
         color: #4b5563;
     }
     
-    /* Sharp Date Headers */
+    /* Compact Date Headers */
+    .date-header {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
     .date-header h5 {
         font-weight: 500;
         font-size: 1.1rem;
@@ -159,69 +163,17 @@
         top: 0;
         left: 0;
         right: 0;
-        height: 6px;
-        background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%);
+        /* height: 6px; */
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
     }
     
     .date-header {
         background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
         backdrop-filter: blur(20px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        padding: 1.25rem 1.5rem;
+        /* padding: 1.25rem 1.5rem; */
     }
-    
-    /* VISIBLE CATEGORY GROUPS */
-    .category-group {
-        margin: 1rem 1rem 1.5rem 1rem;
-        border-radius: 12px;
-        background: linear-gradient(145deg, #f0fdf4 0%, #ecfdf5 100%);
-        box-shadow: 
-            0 8px 20px rgba(0, 0, 0, 0.1),
-            0 3px 8px rgba(34, 197, 94, 0.2);
-        overflow: hidden;
-        border: 3px solid #22c55e;
-    }
-    
-    .category-header {
-        background: linear-gradient(135deg, rgba(17, 153, 142, 0.1) 0%, rgba(56, 239, 125, 0.1) 100%);
-        cursor: pointer;
-        transition: all 0.3s var(--animation-smooth);
-        padding: 1rem 1.25rem;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .category-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 4px;
-        height: 100%;
-        background: var(--success-gradient);
-        transform: scaleY(0);
-        transition: transform 0.3s var(--animation-smooth);
-    }
-    
-    .category-header:hover {
-        background: linear-gradient(135deg, rgba(17, 153, 142, 0.2) 0%, rgba(56, 239, 125, 0.15) 100%);
-        transform: translateY(-1px);
-        box-shadow: var(--shadow-medium);
-    }
-
-    .category-header:hover::before {
-        transform: scaleY(1);
-    }
-    
-    /* Modern Transaction Items */
-    .transaction-item {
-        transition: all 0.3s var(--animation-smooth);
-        padding: 1rem 1.25rem;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        position: relative;
-        backdrop-filter: blur(5px);
-    }
-    
+        
     .transaction-item:hover {
         background: rgba(255, 255, 255, 0.8);
         transform: translateX(4px);
@@ -310,14 +262,14 @@
     .filter-section {
         background: linear-gradient(145deg, #fafbff 0%, #f1f5f9 100%);
         border-radius: 16px;
-        border: 3px solid #7c3aed;
+        border: 1px solid #7c3aed;
         box-shadow: 
             0 20px 50px rgba(0, 0, 0, 0.15),
             0 8px 20px rgba(124, 58, 237, 0.2),
             inset 0 3px 0 rgba(255, 255, 255, 0.8),
             inset 0 -3px 0 rgba(124, 58, 237, 0.1);
-        padding: 2rem;
-        margin-bottom: 1.5rem;
+        padding: 1rem;
+        margin-bottom: .75rem;
     }
     
     /* Modern Form Controls */
@@ -405,13 +357,13 @@
     .page-header {
         background: linear-gradient(145deg, #f8fafc 0%, #e2e8f0 100%);
         border-radius: 16px;
-        border: 4px solid #3b82f6;
+        border: 1px solid #3b82f6;
         box-shadow: 
             0 12px 30px rgba(0, 0, 0, 0.15),
             0 4px 12px rgba(59, 130, 246, 0.3),
             inset 0 2px 0 rgba(255, 255, 255, 0.7);
-        padding: 1.5rem;
-        margin-bottom: 1.5rem;
+        padding: .5rem;
+        margin-bottom: .75rem;
     }
 
     /* Modern Dark Mode Support */
@@ -589,7 +541,7 @@
     </div>
 
     <!-- Statistics Summary -->
-    <div class="row mb-4">
+    <div class="row mb-2">
         <div class="col-md-2 col-sm-6 mb-3">
             <div class="stats-card p-3 text-center">
                 <div class="h4 mb-1 text-primary">{{ stats.total_transactions }}</div>
@@ -632,140 +584,83 @@
 
     <!-- Transaction Groups by Date -->
     {% for date_key, day_data in grouped_transactions.items %}
-    <div class="date-section card mb-4">
-                <div class="date-header">
-            <div class="row align-items-center">
-                <div class="col-md-4">
-                    <h5 class="mb-0" style="background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 600;">
+    <div class="date-section card">
+                <div class="date-header p-2 ps-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                    <h5 class="mb-0 me-3" style="background: var(--primary-gradient); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; font-weight: 500;">
                         <i class="fas fa-calendar-day me-2"></i>
-                        {{ day_data.date|date:"F j, Y" }} 
+                        {{ day_data.date|date:"F j, Y" }}
                     </h5>
-                    <small class="text-muted mt-1 d-block">{{ day_data.date|date:"l" }}</small>
+                    <small class="text-muted">{{ day_data.date|date:"l" }}</small>
                 </div>
-                <div class="col-md-8">
-                    <div class="row text-end g-3">
-                        <div class="col-2">
-                            <div class="d-flex flex-column">
-                                <small class="text-muted mb-1">Count</small>
-                                <span class="fw-bold" style="color: #667eea; font-size: 1.1rem;">{{ day_data.transaction_count }}</span>
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="d-flex flex-column">
-                                <small class="text-muted mb-1">Income</small>
-                                <span class="amount-positive">${{ day_data.total_income|floatformat:2 }}</span>
-                            </div>
-                        </div>
-                        <div class="col-3">
-                            <div class="d-flex flex-column">
-                                <small class="text-muted mb-1">Expenses</small>
-                                <span class="amount-negative">${{ day_data.total_expense|floatformat:2 }}</span>
-                            </div>
-                        </div>
-                        <div class="col-4">
-                            <div class="d-flex flex-column">
-                                <small class="text-muted mb-1">Net Total</small>
-                                <span class="{% if day_data.net_total >= 0 %}amount-positive{% else %}amount-negative{% endif %}" style="font-size: 1.15rem; font-weight: 700;">
-                                    ${{ day_data.net_total|floatformat:2 }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
+                <div class="d-flex align-items-center gap-4">
+                    <small class="text-muted">
+                        {{ day_data.transaction_count }} transaction{{ day_data.transaction_count|pluralize }}
+                    </small>
+                    {% if day_data.total_income > 0 %}
+                    <small class="text-success">
+                        +${{ day_data.total_income|floatformat:0 }}
+                    </small>
+                    {% endif %}
+                    {% if day_data.total_expense > 0 %}
+                    <small class="text-danger">
+                        -${{ day_data.total_expense|floatformat:0 }}
+                    </small>
+                    {% endif %}
+                    <small class="{% if day_data.net_total >= 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                        Net: ${{ day_data.net_total|floatformat:0 }}
+                    </small>
                 </div>
             </div>
         </div>
         
-        <div class="card-body p-0">
-            {% for category_name, category_data in day_data.categories.items %}
-            <div class="category-group">
-                <div class="category-header" data-bs-toggle="collapse" data-bs-target="#category-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
-                    <div class="row align-items-center">
-                        <div class="col-md-2">
-                            <h6 class="mb-0">
-                                <i class="fas fa-chevron-down collapse-icon me-2"></i>
-                                {% if category_data.category %}
-                                    <i class="fas fa-tag me-2 text-success"></i>
-                                    {{ category_data.category.name }} ({{ category_data.transaction_count }})
-                                    {% if category_data.category.type %}
-                                        <span class="badge bg-light text-dark ms-2">{{ category_data.category.type|capfirst }}</span>
-                                    {% endif %}
-                                {% else %}
-                                    <i class="fas fa-question-circle me-2 text-warning"></i>
-                                    Uncategorized ({{ category_data.transaction_count }})
-                                {% endif %}
-                            </h6>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="row text-end">
-                                <div class="col-4">
-                                    {% if category_data.income_amount > 0 %}
-                                        <small class="text-muted">Income:</small>
-                                        <span class="amount-positive">${{ category_data.income_amount|floatformat:2 }}</span>
-                                    {% elif category_data.expense_amount > 0 %}
-                                        <small class="text-muted">Expense:</small>
-                                        <span class="amount-negative">${{ category_data.expense_amount|floatformat:2 }}</span>
-                                    {% endif %}
-                                </div>
-                                <div class="col-4">
-                                    <small class="text-muted">Total:</small>
-                                    <span class="{% if category_data.total_amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
-                                        ${{ category_data.total_amount|floatformat:2 }}
-                                    </span>
-                                </div>
-                            </div>
+        <div class="card-body p-1">
+            {% for transaction in day_data.transactions %}
+            <div class="transaction-item p-1 ps-3">
+                <div class="row align-items-center">
+                    <div class="col-md-3"> 
+                        {% if transaction.payoree %}
+                            <span class="payoree-name">{{ transaction.payoree.name }}</span>
+                        {% else %}
+                            <span class="text-muted fst-italic">No payoree</span>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        {% if transaction.category %}
+                            <span class="badge bg-success">{{ transaction.category.name }}</span>
+                        {% else %}
+                            <span class="badge bg-warning text-dark">Uncategorized</span>
+                        {% endif %}
+                        {% if transaction.subcategory %}
+                             <small class="text-muted">{{ transaction.subcategory.name }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-3">
+                        {% if transaction.bank_account %}
+                            <small class="text-muted">{{ transaction.bank_account.name }}</small>
+                        {% endif %}
+                        {% if transaction.check_num %}
+                            <small class="transaction-meta">Check #{{ transaction.check_num }}</small>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <span class="{% if transaction.amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
+                            ${{ transaction.amount|floatformat:2 }}
+                        </span>
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <a href="{% url 'transactions:edit_transaction' transaction.pk %}" 
+                               class="btn  btn-sm" title="Edit">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <a href="{% url 'transactions:categorize_transaction' transaction.pk %}" 
+                               class="btn  btn-sm" title="Categorize">
+                                <i class="fas fa-tags"></i>
+                            </a>
                         </div>
                     </div>
-                </div>
-                
-                <div class="collapse show" id="category-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
-                    {% for transaction in category_data.transactions %}
-                    <div class="transaction-item border-bottom">
-                        <div class="row align-items-center ps-5">
-                            <!-- <div class="col-md-4">
-                                <div class="description-text">{{ transaction.description }}</div>
-                                {% if transaction.memo %}
-                                    <div class="transaction-meta">
-                                        <i class="fas fa-sticky-note me-1"></i>{{ transaction.memo }}
-                                    </div>
-                                {% endif %}
-                            </div> -->
-                            <div class="col-md-2"> 
-                                {% if transaction.payoree %}
-                                    <span class="payoree-name">{{ transaction.payoree.name }}</span>
-                                {% else %}
-                                    <span class="text-muted fst-italic">No payoree</span>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-2">
-                                {% if transaction.subcategory %}
-                                    <span class="badge bg-info">{{ transaction.subcategory.name }}</span>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-2">
-                                {% if transaction.bank_account %}
-                                    <small class="text-muted">{{ transaction.bank_account.name }}</small>
-                                {% endif %}
-                                {% if transaction.check_num %}
-                                    <br><small class="transaction-meta">Check #{{ transaction.check_num }}</small>
-                                {% endif %}
-                            </div>
-                            <div class="col-md-1">
-                                <span class="{% if transaction.amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
-                                    ${{ transaction.amount|floatformat:2 }}
-                                </span>
-                            </div>
-                            <div class="col-md-1 text-end">
-                                <div class="btn-group btn-group-sm" role="group">
-                                    <a href="{% url 'transactions:edit_transaction' transaction.pk %}" 
-                                       class="btn  btn-sm" title="Edit">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    <a href="{% url 'transactions:categorize_transaction' transaction.pk %}" 
-                                       class="btn  btn-sm" title="Categorize">
-                                        <i class="fas fa-tags"></i>
-                                    </a>
-                                </div>
-                            </div>
                         </div>
                         
                         {% if transaction.tags.all %}
@@ -780,10 +675,7 @@
                             </div>
                         </div>
                         {% endif %}
-                    </div>
-                    {% endfor %}
                 </div>
-            </div>
             {% endfor %}
         </div>
     </div>
