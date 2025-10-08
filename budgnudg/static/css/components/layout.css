@@ -1,0 +1,62 @@
+/* ===============================================
+   Layout Component Styles
+   =============================================== */
+
+/* === Body Layout === */
+body {
+  padding-top: 56px; /* Account for fixed navbar */
+  font-family: var(--font-family-primary);
+  background: var(--color-background-primary);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-body);
+}
+
+/* === Container Overrides === */
+.container-fluid {
+  padding-left: var(--space-md);
+  padding-right: var(--space-md);
+}
+
+/* === Main Content Area === */
+main {
+  min-height: calc(100vh - 56px);
+  position: relative;
+}
+
+/* === Footer (if needed) === */
+footer {
+  background: linear-gradient(135deg, rgba(248, 250, 252, 0.95) 0%, rgba(241, 245, 249, 0.9) 100%);
+  backdrop-filter: var(--blur-medium);
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  margin-top: var(--space-2xl);
+  padding: var(--space-lg) 0;
+}
+
+/* === Responsive Layout Adjustments === */
+@media (max-width: 768px) {
+  body {
+    padding-top: 60px; /* Slightly more space on mobile */
+  }
+  
+  .container-fluid {
+    padding-left: var(--space-sm);
+    padding-right: var(--space-sm);
+  }
+}
+
+/* === Page Layout Utilities === */
+.page-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: var(--space-lg);
+}
+
+.content-wrapper {
+  background: var(--glass-bg-light);
+  backdrop-filter: var(--blur-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+  margin: var(--space-lg) 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-soft);
+}

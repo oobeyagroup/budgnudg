@@ -1,0 +1,82 @@
+/* ===============================================
+   Table & Data Display Components
+   =============================================== */
+
+/* === DataTables Enhancements === */
+.table-dark {
+  --bs-table-bg: #744245;
+  --bs-table-color: #ffffff;
+}
+
+#transactionTable {
+  width: 100%;
+  table-layout: fixed;
+}
+
+#transactionTable td.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+/* === Currency Formatting System === */
+:root {
+  --currency-symbol-size: 0.75rem;
+}
+
+.currency {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.currency::before {
+  content: '$';
+  font-size: var(--currency-symbol-size);
+  margin-right: 0.1em;
+  opacity: 0.8;
+}
+
+.currency-negative {
+  color: var(--color-danger);
+}
+
+.currency-positive {
+  color: var(--color-success);
+}
+
+.currency-zero {
+  color: var(--color-text-muted);
+}
+
+/* Alternative: Explicit currency wrapper */
+.currency-wrapper {
+  display: inline-flex;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.currency-symbol {
+  font-size: var(--currency-symbol-size);
+  opacity: 0.8;
+  margin-right: 0.1em;
+}
+
+.currency-amount {
+  /* Inherits parent font-size */
+  font-feature-settings: "tnum";
+}
+
+/* === Collapsible Components === */
+.collapsible-header {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+.collapsible-header:hover td {
+  background-color: rgba(102, 126, 234, 0.1) !important;
+}

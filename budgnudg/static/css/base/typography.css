@@ -1,0 +1,59 @@
+/* ===============================================
+   Base Typography & Font Rendering
+   =============================================== */
+
+body {
+  font-family: var(--font-family-primary);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+/* === Heading Hierarchy === */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  font-weight: var(--font-weight-medium);
+  letter-spacing: -0.025em;
+  color: var(--color-text-primary);
+  line-height: 1.2;
+}
+
+h1, .h1 { font-size: 2.25rem; font-weight: var(--font-weight-semibold); }
+h2, .h2 { font-size: 1.875rem; }
+h3, .h3 { font-size: 1.5rem; }
+h4, .h4 { font-size: 1.25rem; }
+h5, .h5 { font-size: 1.125rem; }
+h6, .h6 { font-size: 1rem; }
+
+/* === Text Utilities === */
+.text-gradient {
+  background: var(--primary-gradient);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.text-crisp {
+  letter-spacing: -0.015em;
+  font-weight: var(--font-weight-medium);
+}
+
+/* === Small Text === */
+small, .small {
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-muted);
+  letter-spacing: 0;
+}
+
+/* === Link Styles === */
+a {
+  text-decoration: none;
+  transition: var(--transition-fast);
+}
+
+a:hover {
+  text-decoration: none;
+}

@@ -1,0 +1,105 @@
+/* ===============================================
+   CSS Custom Properties - Design System
+   =============================================== */
+
+:root {
+  /* === Color System === */
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+  --danger-gradient: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+  
+  /* Background System */
+  --bg-gradient: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  --navbar-gradient: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+  
+  /* === Glassmorphism System === */
+  --glass-bg-light: rgba(255, 255, 255, 0.25);
+  --glass-bg-medium: rgba(255, 255, 255, 0.15);
+  --glass-bg-dark: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-border-strong: rgba(125, 100, 249, 0.2);
+  
+  /* Backdrop Blur Levels */
+  --blur-subtle: blur(10px);
+  --blur-medium: blur(20px);
+  --blur-heavy: blur(16px);
+  --blur-strong: blur(25px);
+  
+  /* === Typography Scale === */
+  --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  
+  /* === Spacing Scale === */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  --space-3xl: 3rem;
+  
+  /* === Border Radius === */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  
+  /* === Shadows === */
+  --shadow-subtle: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-medium: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-large: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-glassmorphism: 0 8px 32px rgba(0, 0, 0, 0.1), 0 4px 16px rgba(0, 0, 0, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  
+  /* === Transitions === */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.3s ease;
+  --transition-slow: 0.5s ease;
+  --transition-bounce: 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  
+  /* === Z-Index Scale === */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal: 1040;
+  --z-popover: 1050;
+  --z-tooltip: 1060;
+  
+  /* === Color Semantic === */
+  --color-text-primary: #1f2937;
+  --color-text-secondary: #374151;
+  --color-text-muted: #6b7280;
+  --color-text-inverse: #ffffff;
+  
+  /* Navbar Text Colors */
+  --navbar-text-primary: #374151;
+  --navbar-text-hover: #1f2937;
+  --navbar-text-active: #667eea;
+  
+  --color-success: #059669;
+  --color-danger: #dc2626;
+  --color-warning: #d97706;
+  --color-info: #0284c7;
+}
+
+/* === Dark Mode Variables === */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    --glass-bg-light: rgba(15, 23, 42, 0.25);
+    --glass-bg-medium: rgba(15, 23, 42, 0.15);
+    --glass-bg-dark: rgba(15, 23, 42, 0.05);
+    --glass-border: rgba(156, 163, 175, 0.18);
+    
+    --color-text-primary: #f8fafc;
+    --color-text-secondary: #f1f5f9;
+    --color-text-muted: #d1d5db;
+    --color-text-inverse: #1f2937;
+  }
+}
