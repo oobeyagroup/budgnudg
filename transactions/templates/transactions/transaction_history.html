@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+{% load humanize %}
+
+{% block title %}Transaction History{% endblock %}
+
+{% block extra_head %}
+<style>
+    .date-section {
+        border-left: 4px solid #007bff;
+        margin-bottom: 1.5rem;
+    }
+    
+    .date-header {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .category-group {
+        border-left: 3px solid #28a745;
+        margin-left: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .category-header {
+        background: linear-gradient(135deg, #f1f8e9 0%, #e8f5e8 100%);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .category-header:hover {
+        background: linear-gradient(135deg, #e8f5e8 0%, #dcedc8 100%);
+    }
+    
+    .transaction-item {
+        border-left: 2px solid #6c757d;
+        transition: all 0.2s ease;
+    }
+    
+    .transaction-item:hover {
+        background-color: #f8f9fa;
+        border-left-color: #007bff;
+    }
+    
+    .amount-positive {
+        color: #28a745;
+        font-weight: 600;
+    }
+    
+    .amount-negative {
+        color: #dc3545;
+        font-weight: 600;
+    }
+    
+    .amount-neutral {
+        color: #6c757d;
+        font-weight: 600;
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+        border: 1px solid #e9ecef;
+    }
+    
+    .filter-section {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .collapse-icon {
+        transition: transform 0.2s ease;
+    }
+    
+    .collapse-icon.collapsed {
+        transform: rotate(-90deg);
+    }
+    
+    .description-text {
+        font-size: 0.9rem;
+        line-height: 1.3;
+    }
+    
+    .payoree-name {
+        font-weight: 500;
+        color: #495057;
+    }
+    
+    .transaction-meta {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h2 mb-0">
+                    <i class="fas fa-history me-2 text-primary"></i>
+                    Transaction History
+                </h1>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'transactions:transactions_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-list me-1"></i>List View
+                    </a>
+                    <a href="{% url 'transactions:collapsible_transaction_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-layer-group me-1"></i>Collapsible
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="filter-section">
+        <div class="row">
+            <div class="col-12">
+                <h6 class="mb-3">
+                    <i class="fas fa-filter me-2"></i>
+                    Filters & Search
+                    <button class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#filterControls">
+                        <i class="fas fa-chevron-down collapse-icon"></i>
+                    </button>
+                </h6>
+                
+                <div class="collapse show" id="filterControls">
+                    <form method="get" class="row g-3">
+                        <!-- Time Range -->
+                        <div class="col-md-2">
+                            <label class="form-label">Time Range</label>
+                            <select name="days" class="form-select form-select-sm">
+                                <option value="7" {% if current_filters.days == "7" %}selected{% endif %}>Last 7 days</option>
+                                <option value="30" {% if current_filters.days == "30" %}selected{% endif %}>Last 30 days</option>
+                                <option value="90" {% if current_filters.days == "90" %}selected{% endif %}>Last 90 days</option>
+                                <option value="180" {% if current_filters.days == "180" %}selected{% endif %}>Last 6 months</option>
+                                <option value="365" {% if current_filters.days == "365" %}selected{% endif %}>Last year</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Bank Account -->
+                        <div class="col-md-2">
+                            <label class="form-label">Bank Account</label>
+                            <select name="account" class="form-select form-select-sm">
+                                <option value="">All Accounts</option>
+                                {% for account in available_accounts %}
+                                    <option value="{{ account.name }}" {% if current_filters.account == account.name %}selected{% endif %}>
+                                        {{ account.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Transaction Type -->
+                        <div class="col-md-2">
+                            <label class="form-label">Type</label>
+                            <select name="type" class="form-select form-select-sm">
+                                <option value="">All Types</option>
+                                <option value="income" {% if current_filters.type == "income" %}selected{% endif %}>Income</option>
+                                <option value="expense" {% if current_filters.type == "expense" %}selected{% endif %}>Expenses</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Amount Range -->
+                        <div class="col-md-2">
+                            <label class="form-label">Min Amount</label>
+                            <input type="number" name="amount_min" class="form-control form-control-sm" 
+                                   placeholder="0.00" step="0.01" value="{{ current_filters.amount_min }}">
+                        </div>
+                        
+                        <div class="col-md-2">
+                            <label class="form-label">Max Amount</label>
+                            <input type="number" name="amount_max" class="form-control form-control-sm" 
+                                   placeholder="1000.00" step="0.01" value="{{ current_filters.amount_max }}">
+                        </div>
+                        
+                        <!-- Search -->
+                        <div class="col-md-2">
+                            <label class="form-label">Search</label>
+                            <input type="text" name="search" class="form-control form-control-sm" 
+                                   placeholder="Description, payoree..." value="{{ current_filters.search }}">
+                        </div>
+                        
+                        <!-- Category Filter -->
+                        <div class="col-md-3">
+                            <label class="form-label">Category</label>
+                            <input type="text" name="category" class="form-control form-control-sm" 
+                                   placeholder="Category name..." value="{{ current_filters.category }}">
+                        </div>
+                        
+                        <!-- Status Filter -->
+                        <div class="col-md-3">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select form-select-sm">
+                                <option value="">All Status</option>
+                                <option value="uncategorized" {% if current_filters.status == "uncategorized" %}selected{% endif %}>Uncategorized</option>
+                                <option value="no_payoree" {% if current_filters.status == "no_payoree" %}selected{% endif %}>No Payoree</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Action Buttons -->
+                        <div class="col-md-6">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="fas fa-search me-1"></i>Apply Filters
+                                </button>
+                                <a href="{% url 'transactions:transaction_history' %}" class="btn btn-outline-secondary btn-sm">
+                                    <i class="fas fa-times me-1"></i>Clear All
+                                </a>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Summary -->
+    <div class="row mb-4">
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stats-card p-3 text-center">
+                <div class="h4 mb-1 text-primary">{{ stats.total_transactions }}</div>
+                <div class="small text-muted">Transactions</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stats-card p-3 text-center">
+                <div class="h4 mb-1 amount-positive">${{ stats.total_income|floatformat:2 }}</div>
+                <div class="small text-muted">Total Income</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stats-card p-3 text-center">
+                <div class="h4 mb-1 amount-negative">${{ stats.total_expense|floatformat:2 }}</div>
+                <div class="small text-muted">Total Expenses</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stats-card p-3 text-center">
+                <div class="h4 mb-1 {% if stats.net_total >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
+                    ${{ stats.net_total|floatformat:2 }}
+                </div>
+                <div class="small text-muted">Net Total</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stats-card p-3 text-center">
+                <div class="h4 mb-1 text-info">{{ stats.unique_categories }}</div>
+                <div class="small text-muted">Categories</div>
+            </div>
+        </div>
+        <div class="col-md-2 col-sm-6 mb-3">
+            <div class="stats-card p-3 text-center">
+                <div class="h4 mb-1 text-info">{{ stats.unique_payorees }}</div>
+                <div class="small text-muted">Payorees</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Groups by Date -->
+    {% for date_key, day_data in grouped_transactions.items %}
+    <div class="date-section card mb-4">
+        <div class="date-header card-header py-2">
+            <div class="row align-items-center">
+                <div class="col-md-4">
+                    <h5 class="mb-0">
+                        <i class="fas fa-calendar-day me-2 text-primary"></i>
+                        {{ day_data.date|date:"F j, Y" }} 
+                        <span class="badge bg-secondary ms-2">{{ day_data.date|date:"l" }}</span>
+                        <strong>({{ day_data.transaction_count }})</strong>
+                    </h5>
+                </div>
+                <div class="col-md-8">
+                    <div class="row text-end">
+                        <div class="col-3">
+                            <small class="text-muted">Income:</small>
+                            <span class="amount-positive">${{ day_data.total_income|floatformat:2 }}</span>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-muted">Expenses:</small>
+                            <span class="amount-negative">${{ day_data.total_expense|floatformat:2 }}</span>
+                        </div>
+                        <div class="col-3">
+                            <small class="text-muted">Net:</small>
+                            <span class="{% if day_data.net_total >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
+                                ${{ day_data.net_total|floatformat:2 }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body p-0">
+            {% for category_name, category_data in day_data.categories.items %}
+            <div class="category-group">
+                <div class="category-header" data-bs-toggle="collapse" data-bs-target="#category-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                    <div class="row align-items-center">
+                        <div class="col-md-2">
+                            <h6 class="mb-0">
+                                <i class="fas fa-chevron-down collapse-icon me-2"></i>
+                                {% if category_data.category %}
+                                    <i class="fas fa-tag me-2 text-success"></i>
+                                    {{ category_data.category.name }} ({{ category_data.transaction_count }})
+                                    {% if category_data.category.type %}
+                                        <span class="badge bg-light text-dark ms-2">{{ category_data.category.type|capfirst }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <i class="fas fa-question-circle me-2 text-warning"></i>
+                                    Uncategorized ({{ category_data.transaction_count }})
+                                {% endif %}
+                            </h6>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="row text-end">
+                                <div class="col-4">
+                                    {% if category_data.income_amount > 0 %}
+                                        <small class="text-muted">Income:</small>
+                                        <span class="amount-positive">${{ category_data.income_amount|floatformat:2 }}</span>
+                                    {% elif category_data.expense_amount > 0 %}
+                                        <small class="text-muted">Expense:</small>
+                                        <span class="amount-negative">${{ category_data.expense_amount|floatformat:2 }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">Total:</small>
+                                    <span class="{% if category_data.total_amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
+                                        ${{ category_data.total_amount|floatformat:2 }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="collapse show" id="category-{{ forloop.parentloop.counter }}-{{ forloop.counter }}">
+                    {% for transaction in category_data.transactions %}
+                    <div class="transaction-item border-bottom">
+                        <div class="row align-items-center ps-5">
+                            <!-- <div class="col-md-4">
+                                <div class="description-text">{{ transaction.description }}</div>
+                                {% if transaction.memo %}
+                                    <div class="transaction-meta">
+                                        <i class="fas fa-sticky-note me-1"></i>{{ transaction.memo }}
+                                    </div>
+                                {% endif %}
+                            </div> -->
+                            <div class="col-md-2"> 
+                                {% if transaction.payoree %}
+                                    <span class="payoree-name">{{ transaction.payoree.name }}</span>
+                                {% else %}
+                                    <span class="text-muted fst-italic">No payoree</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-2">
+                                {% if transaction.subcategory %}
+                                    <span class="badge bg-info">{{ transaction.subcategory.name }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-2">
+                                {% if transaction.bank_account %}
+                                    <small class="text-muted">{{ transaction.bank_account.name }}</small>
+                                {% endif %}
+                                {% if transaction.check_num %}
+                                    <br><small class="transaction-meta">Check #{{ transaction.check_num }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-1">
+                                <span class="{% if transaction.amount >= 0 %}amount-positive{% else %}amount-negative{% endif %}">
+                                    ${{ transaction.amount|floatformat:2 }}
+                                </span>
+                            </div>
+                            <div class="col-md-1 text-end">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <a href="{% url 'transactions:edit_transaction' transaction.pk %}" 
+                                       class="btn  btn-sm" title="Edit">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'transactions:categorize_transaction' transaction.pk %}" 
+                                       class="btn  btn-sm" title="Categorize">
+                                        <i class="fas fa-tags"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if transaction.tags.all %}
+                        <div class="row mt-2">
+                            <div class="col-12">
+                                <div class="transaction-meta">
+                                    <i class="fas fa-hashtag me-1"></i>
+                                    {% for tag in transaction.tags.all %}
+                                        <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% empty %}
+    <div class="text-center py-5">
+        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+        <h4 class="text-muted">No transactions found</h4>
+        <p class="text-muted">Try adjusting your filters or date range to see more results.</p>
+        <a href="{% url 'transactions:transaction_history' %}" class="btn btn-outline-primary">
+            <i class="fas fa-times me-1"></i>Clear All Filters
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Handle collapse icon rotation
+    const collapseElements = document.querySelectorAll('.collapse');
+    collapseElements.forEach(function(collapseEl) {
+        collapseEl.addEventListener('show.bs.collapse', function() {
+            const trigger = document.querySelector(`[data-bs-target="#${collapseEl.id}"]`);
+            if (trigger) {
+                const icon = trigger.querySelector('.collapse-icon');
+                if (icon) icon.classList.remove('collapsed');
+            }
+        });
+        
+        collapseEl.addEventListener('hide.bs.collapse', function() {
+            const trigger = document.querySelector(`[data-bs-target="#${collapseEl.id}"]`);
+            if (trigger) {
+                const icon = trigger.querySelector('.collapse-icon');
+                if (icon) icon.classList.add('collapsed');
+            }
+        });
+    });
+    
+    // Auto-submit form on select changes for quick filtering
+    const quickFilterSelects = document.querySelectorAll('select[name="days"], select[name="account"], select[name="type"], select[name="status"]');
+    quickFilterSelects.forEach(function(select) {
+        select.addEventListener('change', function() {
+            this.closest('form').submit();
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -21,7 +21,117 @@
     </div>
     
     {% if budgets %}
-        <div class="row">
+        <!-- Filter Interface -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h6>
+                    </div>
+                    <div class="card-body">
+                        <!-- Time Period Quick Filters -->
+                        <div class="row mb-3">
+                            <div class="col-12">
+                                <label class="form-label small text-muted">Budget Periods:</label>
+                                <div class="btn-group flex-wrap" role="group">
+                                    <a href="?period=all" class="btn btn-sm {% if current_filters.period == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                        All ({{ period_stats.total }})
+                                    </a>
+                                    <a href="?period=2025-11" class="btn btn-sm {% if current_filters.period == '2025-11' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                        Nov 2025 ({{ period_stats.nov_2025 }})
+                                    </a>
+                                    <a href="?period=2025-12" class="btn btn-sm {% if current_filters.period == '2025-12' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                        Dec 2025 ({{ period_stats.dec_2025 }})
+                                    </a>
+                                    <a href="?period=2026-01" class="btn btn-sm {% if current_filters.period == '2026-01' %}btn-primary{% else %}btn-outline-primary{% endif %}">
+                                        Jan 2026 ({{ period_stats.jan_2026 }})
+                                    </a>
+                                    <a href="?period=other" class="btn btn-sm {% if current_filters.period == 'other' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
+                                        Other ({{ period_stats.other }})
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advanced Filters -->
+                        <form method="get" class="row g-3">
+                            <input type="hidden" name="period" value="{{ current_filters.period }}">
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted">Category:</label>
+                                <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="">All Categories</option>
+                                    {% for cat_stat in category_stats %}
+                                    <option value="{{ cat_stat.payoree__default_category__name }}" {% if current_filters.category == cat_stat.payoree__default_category__name %}selected{% endif %}>
+                                        {{ cat_stat.payoree__default_category__name }} ({{ cat_stat.count }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted">Amount Range:</label>
+                                <select name="amount" class="form-select form-select-sm" onchange="this.form.submit()">
+                                    <option value="">All Amounts</option>
+                                    <option value="0-100" {% if current_filters.amount == '0-100' %}selected{% endif %}>$0 - $100</option>
+                                    <option value="100-500" {% if current_filters.amount == '100-500' %}selected{% endif %}>$100 - $500</option>
+                                    <option value="500-1000" {% if current_filters.amount == '500-1000' %}selected{% endif %}>$500 - $1,000</option>
+                                    <option value="1000+" {% if current_filters.amount == '1000+' %}selected{% endif %}>$1,000+</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label small text-muted">Search:</label>
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="search" class="form-control" placeholder="Payoree or budget name..." value="{{ current_filters.search }}">
+                                    <button type="submit" class="btn btn-outline-secondary">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <!-- Clear Filters -->
+                        {% if current_filters.period != 'all' or current_filters.category or current_filters.amount or current_filters.search %}
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <a href="{% url 'budgets:list' %}" class="btn btn-sm btn-outline-dark">
+                                    <i class="fas fa-times me-1"></i>Clear All Filters
+                                </a>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Summary -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <p class="text-muted small">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Showing {{ budgets|length }} allocation{{ budgets|length|pluralize }} 
+                    {% if current_filters.period != 'all' or current_filters.category or current_filters.amount or current_filters.search %}
+                        (filtered)
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+
+        <!-- DataTable View Toggle -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button type="button" class="btn btn-outline-secondary active" id="cardViewBtn">
+                        <i class="fas fa-th-large me-1"></i>Card View
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="tableViewBtn">
+                        <i class="fas fa-table me-1"></i>Table View
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card View (Default) -->
+        <div class="row" id="cardView">
             {% for budget in budgets %}
                 <div class="col-lg-6 col-xl-4 mb-4">
                     <div class="card h-100">
@@ -44,7 +154,7 @@
                                     <i class="fas fa-ellipsis-v"></i>
                                 </button>
                                 <ul class="dropdown-menu">
-                                    <li><a class="dropdown-item" href="{% url 'budgets:detail' budget.year budget.month %}">
+                                    <li><a class="dropdown-item" href="{% url 'budgets:detail' budget.budget_plan.year budget.budget_plan.month %}">
                                         <i class="fas fa-eye"></i> View Details
                                     </a></li>
                                     <li><a class="dropdown-item" href="#">
@@ -58,18 +168,51 @@
                                 </ul>
                             </div>
                         </div>
+                                               <div class="card-footer bg-light">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <small class="text-muted">Start</small><br>
+                                    <small>{{ budget.budget_plan.start_date|date:"M Y" }}</small>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">End</small><br>
+                                    <small>{{ budget.budget_plan.end_date|date:"M Y" }}</small>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted">Status</small><br>
+                                    <span class="badge bg-{% if budget.budget_plan.is_active %}success{% else %}secondary{% endif %}">
+                                        {% if budget.budget_plan.is_active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="card-body">
                             <div class="row mb-3">
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="text-center">
                                         <h5 class="text-primary">${{ budget.amount|floatformat:2 }}</h5>
                                         <small class="text-muted">Allocated Amount</small>
                                     </div>
                                 </div>
-                                <div class="col-6">
+                                <div class="col-4">
                                     <div class="text-center">
                                         <h5 class="text-info">${{ budget.get_current_spent|floatformat:2 }}</h5>
                                         <small class="text-muted">Spent</small>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="text-center">
+                                        <!-- Remaining amount -->
+                                        {% with remaining=budget.get_remaining_amount %}
+                                            <h6 class="{% if remaining < 0 %}text-danger{% else %}text-success{% endif %}">
+                                                {% if remaining < 0 %}
+                                                    Over by ${{ remaining|floatformat:2|slice:"1:" }}
+                                                {% else %}
+                                                    ${{ remaining|floatformat:2 }} remaining
+                                                {% endif %}
+                                            </h6>
+                                        {% endwith %}
                                     </div>
                                 </div>
                             </div>
@@ -91,78 +234,101 @@
                                 </div>
                             {% endwith %}
                             
-                            <!-- Remaining amount -->
-                            {% with remaining=budget.get_remaining_amount %}
-                                <div class="row">
-                                    <div class="col-12">
-                                        <div class="text-center">
-                                            <h6 class="{% if remaining < 0 %}text-danger{% else %}text-success{% endif %}">
-                                                {% if remaining < 0 %}
-                                                    Over by ${{ remaining|floatformat:2|slice:"1:" }}
-                                                {% else %}
-                                                    ${{ remaining|floatformat:2 }} remaining
-                                                {% endif %}
-                                            </h6>
-                                        </div>
-                                    </div>
-                                </div>
-                            {% endwith %}
                         </div>
-                        <div class="card-footer bg-light">
-                            <div class="row text-center">
-                                <div class="col-4">
-                                    <small class="text-muted">Start</small><br>
-                                    <small>{{ budget.start_date|date:"M Y" }}</small>
-                                </div>
-                                <div class="col-4">
-                                    <small class="text-muted">End</small><br>
-                                    <small>{{ budget.end_date|date:"M Y" }}</small>
-                                </div>
-                                <div class="col-4">
-                                    <small class="text-muted">Status</small><br>
-                                    <span class="badge bg-{% if budget.is_active %}success{% else %}secondary{% endif %}">
-                                        {% if budget.is_active %}Active{% else %}Inactive{% endif %}
-                                    </span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                     </div>
                 </div>
             {% endfor %}
         </div>
-        
-        <!-- Pagination -->
-        {% if is_paginated %}
-            <div class="row">
-                <div class="col-12">
-                    <nav aria-label="Budget pagination">
-                        <ul class="pagination justify-content-center">
-                            {% if page_obj.has_previous %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=1">First</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
-                                </li>
-                            {% endif %}
-                            
-                            <li class="page-item active">
-                                <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
-                            </li>
-                            
-                            {% if page_obj.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
-                                </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
+
+        <!-- Table View (Hidden by default) -->
+        <div class="row d-none" id="tableView">
+            <div class="col-12">
+                <div class="table-responsive">
+                    <table id="budgetTable" class="table table-striped table-bordered table-sm" style="width:100%">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Period</th>
+                                <th>Payoree</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Spent</th>
+                                <th>Remaining</th>
+                                <th>Progress</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for budget in budgets %}
+                            <tr>
+                                <td data-order="{{ budget.budget_plan.year }}{{ budget.budget_plan.month|stringformat:"02d" }}">
+                                    {{ budget.budget_plan.year }}-{{ budget.budget_plan.month|stringformat:"02d" }}
+                                    <br>
+                                    <small class="text-muted">{{ budget.budget_plan.name }}</small>
+                                </td>
+                                <td>
+                                    {% if budget.payoree %}
+                                        <strong>{{ budget.payoree.name }}</strong>
+                                    {% else %}
+                                        <em class="text-muted">No payoree</em>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if budget.effective_category %}
+                                        {{ budget.effective_category.name }}
+                                        {% if budget.effective_subcategory %}
+                                            <br><small class="text-muted">{{ budget.effective_subcategory.name }}</small>
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td data-order="{{ budget.amount }}" class="text-end">
+                                    <span class="currency-positive">${{ budget.amount|floatformat:2 }}</span>
+                                </td>
+                                <td data-order="{{ budget.get_current_spent }}" class="text-end">
+                                    <span class="currency-info">${{ budget.get_current_spent|floatformat:2 }}</span>
+                                </td>
+                                <td data-order="{{ budget.get_remaining_amount }}" class="text-end">
+                                    {% with remaining=budget.get_remaining_amount %}
+                                    <span class="{% if remaining < 0 %}currency-negative{% else %}currency-positive{% endif %}">
+                                        {% if remaining < 0 %}
+                                            -${{ remaining|floatformat:2|slice:"1:" }}
+                                        {% else %}
+                                            ${{ remaining|floatformat:2 }}
+                                        {% endif %}
+                                    </span>
+                                    {% endwith %}
+                                </td>
+                                <td data-order="{{ budget.get_spent_percentage }}">
+                                    {% with spent_percentage=budget.get_spent_percentage %}
+                                    <div class="progress" style="height: 20px; min-width: 80px;">
+                                        <div class="progress-bar {% if spent_percentage > 100 %}bg-danger{% elif spent_percentage > 80 %}bg-warning{% else %}bg-success{% endif %}" 
+                                             role="progressbar" 
+                                             style="width: {% if spent_percentage > 100 %}100{% else %}{{ spent_percentage }}{% endif %}%">
+                                             <small>{{ spent_percentage|floatformat:0 }}%</small>
+                                        </div>
+                                    </div>
+                                    {% endwith %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'budgets:detail' budget.budget_plan.year budget.budget_plan.month %}" 
+                                           class="btn btn-outline-primary btn-sm" title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger btn-sm" 
+                                                onclick="showDeleteConfirmation({{ budget.pk }})" title="Delete">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
             </div>
-        {% endif %}
+        </div>
         
     {% else %}
         <!-- Empty state -->
@@ -426,6 +592,136 @@ function showMessage(type, message) {
         }
     }, 5000);
 }
+
+// View Toggle Functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const cardViewBtn = document.getElementById('cardViewBtn');
+    const tableViewBtn = document.getElementById('tableViewBtn');
+    const cardView = document.getElementById('cardView');
+    const tableView = document.getElementById('tableView');
+    
+    // Initialize DataTables for budget table
+    let budgetDataTable = null;
+    
+    function initDataTable() {
+        if (budgetDataTable) {
+            budgetDataTable.destroy();
+        }
+        
+        budgetDataTable = $('#budgetTable').DataTable({
+            responsive: true,
+            pageLength: 25,
+            lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+            order: [[0, 'desc']], // Sort by period (newest first)
+            columnDefs: [
+                {
+                    targets: [3, 4, 5], // Amount columns
+                    type: 'num',
+                    className: 'text-end'
+                },
+                {
+                    targets: [6], // Progress column
+                    orderable: true,
+                    searchable: false
+                },
+                {
+                    targets: [7], // Actions column
+                    orderable: false,
+                    searchable: false
+                }
+            ],
+            language: {
+                search: "Search allocations:",
+                lengthMenu: "Show _MENU_ allocations per page",
+                info: "Showing _START_ to _END_ of _TOTAL_ allocations",
+                emptyTable: "No budget allocations found"
+            },
+            dom: '<"row"<"col-sm-12 col-md-6"l><"col-sm-12 col-md-6"f>>' +
+                 '<"row"<"col-sm-12"tr>>' +
+                 '<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>',
+            stateSave: true
+        });
+    }
+    
+    // Card View Button
+    if (cardViewBtn) {
+        cardViewBtn.addEventListener('click', function() {
+            cardView.classList.remove('d-none');
+            tableView.classList.add('d-none');
+            cardViewBtn.classList.add('active');
+            tableViewBtn.classList.remove('active');
+            
+            // Store preference
+            localStorage.setItem('budgetListView', 'card');
+        });
+    }
+    
+    // Table View Button
+    if (tableViewBtn) {
+        tableViewBtn.addEventListener('click', function() {
+            cardView.classList.add('d-none');
+            tableView.classList.remove('d-none');
+            cardViewBtn.classList.remove('active');
+            tableViewBtn.classList.add('active');
+            
+            // Initialize DataTables when switching to table view
+            setTimeout(() => {
+                initDataTable();
+            }, 100);
+            
+            // Store preference
+            localStorage.setItem('budgetListView', 'table');
+        });
+    }
+    
+    // Restore user preference
+    const savedView = localStorage.getItem('budgetListView');
+    if (savedView === 'table' && tableViewBtn) {
+        tableViewBtn.click();
+    }
+    
+    // Enhanced search functionality for card view
+    const searchInput = document.querySelector('input[name="search"]');
+    if (searchInput) {
+        // Add real-time search for card view (optional)
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                // You can add client-side filtering here if desired
+            }, 300);
+        });
+    }
+    
+    // Period filter buttons with enhanced UX
+    const periodButtons = document.querySelectorAll('a[href*="period="]');
+    periodButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            // Add loading state
+            this.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>' + this.textContent;
+            this.classList.add('disabled');
+        });
+    });
+    
+    // Preserve filters in URLs
+    function preserveFilters(url) {
+        const currentParams = new URLSearchParams(window.location.search);
+        const newUrl = new URL(url, window.location.origin);
+        
+        // Preserve search and other filters when changing period
+        if (currentParams.get('search')) {
+            newUrl.searchParams.set('search', currentParams.get('search'));
+        }
+        if (currentParams.get('category')) {
+            newUrl.searchParams.set('category', currentParams.get('category'));
+        }
+        if (currentParams.get('amount')) {
+            newUrl.searchParams.set('amount', currentParams.get('amount'));
+        }
+        
+        return newUrl.toString();
+    }
+});
 </script>
 
 {% csrf_token %}

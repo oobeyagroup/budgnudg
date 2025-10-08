@@ -4,6 +4,7 @@ from django.urls import path
 # CBVs (import from submodules directly)
 from transactions.views.transactions_list import TransactionListView
 from transactions.views.collapsible_list import CollapsibleTransactionListView
+from transactions.views.transaction_history import TransactionHistoryView
 from transactions.views.needs_level_report import NeedsLevelReportView
 from transactions.views.dashboard import DashboardView
 from transactions.views.payorees import PayoreesListView, PayoreeEditView
@@ -127,6 +128,8 @@ urlpatterns = [
     ),
     # Transactions list (CBV)
     path("list/", TransactionListView.as_view(), name="transactions_list"),
+    # Transaction history grouped by date and category
+    path("history/", TransactionHistoryView.as_view(), name="transaction_history"),
     # Collapsible transaction list (CBV)
     path(
         "collapsible/",
