@@ -2,22 +2,141 @@
    Table & Data Display Components
    =============================================== */
 
-/* === DataTables Enhancements === */
-.table-dark {
-  --bs-table-bg: #744245;
-  --bs-table-color: #ffffff;
-}
-
-#transactionTable {
-  width: 100%;
-  table-layout: fixed;
-}
-
-#transactionTable td.truncate {
-  white-space: nowrap;
+/* === Modern Table Styling === */
+.modern-table {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: var(--radius-lg);
   overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
+  box-shadow: var(--shadow-soft);
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* === Unified Table Header Styling === */
+.modern-table thead,
+table.dataTable thead,
+#transactionTable thead,
+#budgetTable thead,
+#categoryTable thead,
+#payoreeTable thead {
+  position: relative;
+}
+
+.modern-table thead tr,
+table.dataTable thead tr,
+#transactionTable thead tr,
+#budgetTable thead tr,
+#categoryTable thead tr,
+#payoreeTable thead tr {
+  background: linear-gradient(135deg, 
+    rgba(102, 126, 234, 0.95) 0%, 
+    rgba(118, 75, 162, 0.9) 100%) !important;
+}
+
+.modern-table thead th,
+table.dataTable thead th,
+#transactionTable thead th,
+#budgetTable thead th,
+#categoryTable thead th,
+#payoreeTable thead th {
+  background: none !important; /* Remove individual cell backgrounds */
+  color: white !important;
+  font-weight: var(--font-weight-semibold) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2) !important;
+  border: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding: var(--space-md) var(--space-lg) !important;
+  position: relative;
+  font-size: 0.9rem;
+  letter-spacing: 0.02em;
+}
+
+.modern-table thead th:last-child,
+table.dataTable thead th:last-child,
+#transactionTable thead th:last-child,
+#budgetTable thead th:last-child,
+#categoryTable thead th:last-child,
+#payoreeTable thead th:last-child {
+  border-right: none !important;
+}
+
+/* Add subtle highlight line at bottom of header */
+.modern-table thead tr::after,
+table.dataTable thead tr::after,
+#transactionTable thead tr::after,
+#budgetTable thead tr::after,
+#categoryTable thead tr::after,
+#payoreeTable thead tr::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    rgba(255, 255, 255, 0.2) 0%, 
+    rgba(255, 255, 255, 0.8) 50%, 
+    rgba(255, 255, 255, 0.2) 100%);
+}
+
+/* === Transaction History Style Table Rows === */
+.modern-table tbody tr,
+table.dataTable tbody tr,
+#transactionTable tbody tr,
+#budgetTable tbody tr,
+#categoryTable tbody tr,
+#payoreeTable tbody tr {
+  transition: all var(--transition-fast) ease-in-out !important;
+  border: 1px solid transparent !important;
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.modern-table tbody tr:hover,
+table.dataTable tbody tr:hover,
+#transactionTable tbody tr:hover,
+#budgetTable tbody tr:hover,
+#categoryTable tbody tr:hover,
+#payoreeTable tbody tr:hover {
+  background: linear-gradient(135deg, 
+    rgba(102, 126, 234, 0.08) 0%, 
+    rgba(118, 75, 162, 0.06) 100%) !important;
+  border-color: rgba(102, 126, 234, 0.2) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.05),
+    0 4px 16px rgba(102, 126, 234, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.modern-table tbody td,
+table.dataTable tbody td,
+#transactionTable tbody td,
+#budgetTable tbody td,
+#categoryTable tbody td,
+#payoreeTable tbody td {
+  padding: var(--space-md) var(--space-lg) !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.03) !important;
+  vertical-align: middle !important;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+.modern-table tbody td:last-child,
+table.dataTable tbody td:last-child {
+  border-right: none !important;
+}
+
+/* === Table Container === */
+.table-container {
+  background: var(--glass-bg-light);
+  backdrop-filter: var(--blur-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-soft);
+  margin-bottom: var(--space-xl);
 }
 
 /* === Currency Formatting System === */
@@ -49,6 +168,84 @@
   color: var(--color-text-muted);
 }
 
+/* === DataTables Wrapper Enhancements === */
+.dataTables_wrapper {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: var(--space-lg) !important;
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+}
+
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter {
+  background: rgba(248, 250, 252, 0.8) !important;
+  border-radius: var(--radius-md) !important;
+  padding: var(--space-md) !important;
+  margin-bottom: var(--space-md) !important;
+}
+
+.dataTables_wrapper .dataTables_length select,
+.dataTables_wrapper .dataTables_filter input {
+  border: 1px solid rgba(102, 126, 234, 0.2) !important;
+  border-radius: var(--radius-sm) !important;
+  padding: var(--space-sm) !important;
+  background: white !important;
+  transition: var(--transition-fast) !important;
+}
+
+.dataTables_wrapper .dataTables_length select:focus,
+.dataTables_wrapper .dataTables_filter input:focus {
+  border-color: var(--navbar-text-active) !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+  outline: none !important;
+}
+
+/* === DataTables Pagination === */
+.dataTables_wrapper .dataTables_paginate {
+  background: rgba(248, 250, 252, 0.8) !important;
+  border-radius: var(--radius-lg) !important;
+  padding: var(--space-md) !important;
+  margin-top: var(--space-md) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border: 1px solid rgba(102, 126, 234, 0.2) !important;
+  color: var(--navbar-text-primary) !important;
+  border-radius: var(--radius-sm) !important;
+  margin: 0 2px !important;
+  padding: var(--space-xs) var(--space-sm) !important;
+  transition: var(--transition-fast) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background: var(--navbar-text-active) !important;
+  color: white !important;
+  border-color: var(--navbar-text-active) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+  background: var(--navbar-text-active) !important;
+  color: white !important;
+  border-color: var(--navbar-text-active) !important;
+  box-shadow: 
+    0 2px 8px rgba(102, 126, 234, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+
+.dataTables_wrapper .dataTables_info {
+  background: rgba(248, 250, 252, 0.8) !important;
+  border-radius: var(--radius-md) !important;
+  padding: var(--space-md) !important;
+  margin-top: var(--space-md) !important;
+  color: var(--color-text-secondary) !important;
+  font-weight: var(--font-weight-medium) !important;
+}
+
 /* Alternative: Explicit currency wrapper */
 .currency-wrapper {
   display: inline-flex;
@@ -74,9 +271,11 @@
 }
 
 .collapsible-header:hover {
-  background-color: rgba(102, 126, 234, 0.1);
+  background: linear-gradient(135deg, 
+    rgba(102, 126, 234, 0.08) 0%, 
+    rgba(118, 75, 162, 0.06) 100%) !important;
 }
 
 .collapsible-header:hover td {
-  background-color: rgba(102, 126, 234, 0.1) !important;
+  background: none !important;
 }

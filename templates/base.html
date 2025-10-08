@@ -119,6 +119,14 @@
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
 <!-- Init Scripts -->
+<!-- Component JS -->
+<script src="{% static 'js/components/datatables.js' %}"></script>
+<script src="{% static 'js/components/navbar.js' %}"></script>
+
+<!-- Page-specific JS (loaded conditionally) -->
+<script src="{% static 'js/pages/budgets.js' %}"></script>
+<script src="{% static 'js/pages/transactions.js' %}"></script>
+
 <!-- Main Application JS -->
 <script src="{% static 'js/main.js' %}"></script>
 

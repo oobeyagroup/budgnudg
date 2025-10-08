@@ -1,0 +1,226 @@
+/* ===============================================
+   Budget List & Reports Page Styles
+   =============================================== */
+
+/* === Budget List Table Enhancements === */
+.budget-table-container {
+  background: var(--glass-bg-light);
+  backdrop-filter: var(--blur-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Budget table styling moved to components/tables.css for consistency */
+
+/* === Budget Report Cards === */
+.budget-period-card {
+  background: linear-gradient(145deg, 
+    rgba(255, 255, 255, 0.95) 0%, 
+    rgba(248, 250, 252, 0.9) 100%);
+  backdrop-filter: var(--blur-medium);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: var(--transition-normal);
+}
+
+.budget-period-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 12px 35px rgba(0, 0, 0, 0.12),
+    0 4px 15px rgba(102, 126, 234, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.budget-period-header {
+  background: linear-gradient(135deg, 
+    rgba(102, 126, 234, 0.1) 0%, 
+    rgba(118, 75, 162, 0.08) 100%);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  margin-bottom: var(--space-md);
+  border-left: 4px solid var(--navbar-text-active);
+}
+
+/* === Budget Statistics Dashboard === */
+.budget-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.budget-stat-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: var(--blur-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: var(--transition-fast);
+}
+
+.budget-stat-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.budget-stat-value {
+  font-size: 2rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--navbar-text-active);
+  margin-bottom: var(--space-xs);
+}
+
+.budget-stat-label {
+  font-size: 0.9rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* === Progress Bars === */
+.budget-progress {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: var(--radius-sm);
+  height: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.budget-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, 
+    var(--navbar-text-active) 0%, 
+    #8b5cf6 100%);
+  border-radius: var(--radius-sm);
+  transition: width var(--transition-normal);
+  position: relative;
+}
+
+.budget-progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(45deg, 
+    transparent 25%, 
+    rgba(255, 255, 255, 0.1) 25%, 
+    rgba(255, 255, 255, 0.1) 50%, 
+    transparent 50%, 
+    transparent 75%, 
+    rgba(255, 255, 255, 0.1) 75%);
+  background-size: 20px 20px;
+  animation: progress-shimmer 2s linear infinite;
+}
+
+@keyframes progress-shimmer {
+  0% { background-position: -20px 0; }
+  100% { background-position: 20px 0; }
+}
+
+/* === Filter Controls === */
+.budget-filters {
+  background: linear-gradient(145deg, #fafbff 0%, #f1f5f9 100%);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  box-shadow: 
+    0 20px 50px rgba(0, 0, 0, 0.15),
+    0 8px 20px rgba(124, 58, 237, 0.2),
+    inset 0 3px 0 rgba(255, 255, 255, 0.8),
+    inset 0 -3px 0 rgba(124, 58, 237, 0.1);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.budget-filter-button {
+  background: rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  color: var(--navbar-text-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  font-weight: var(--font-weight-medium);
+  transition: var(--transition-fast);
+}
+
+.budget-filter-button:hover,
+.budget-filter-button.active {
+  background: var(--navbar-text-active);
+  color: white;
+  border-color: var(--navbar-text-active);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* === Currency Display === */
+.currency-positive {
+  color: #059669 !important;
+  font-weight: var(--font-weight-semibold);
+}
+
+.currency-negative {
+  color: #dc2626 !important;
+  font-weight: var(--font-weight-semibold);
+}
+
+.currency-warning {
+  color: #d97706 !important;
+  font-weight: var(--font-weight-semibold);
+}
+
+.currency-info {
+  color: #0284c7 !important;
+  font-weight: var(--font-weight-semibold);
+}
+
+/* === Budget Actions === */
+.budget-actions {
+  display: flex;
+  gap: var(--space-xs);
+  justify-content: flex-end;
+}
+
+.budget-action-btn {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(102, 126, 234, 0.2);
+  color: var(--navbar-text-primary);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.8rem;
+  transition: var(--transition-fast);
+}
+
+.budget-action-btn:hover {
+  background: var(--navbar-text-active);
+  color: white;
+  transform: scale(1.05);
+}
+
+/* === Responsive Design === */
+@media (max-width: 768px) {
+  .budget-stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .budget-period-card {
+    padding: var(--space-md);
+  }
+  
+  .budget-actions {
+    flex-direction: column;
+  }
+}

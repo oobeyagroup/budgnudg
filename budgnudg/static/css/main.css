@@ -14,6 +14,8 @@
 
 /* Import page-specific styles */
 @import url('./pages/transactions.css');
+@import url('./pages/budgets.css');
+@import url('./pages/lists.css');
 
 /* ===============================================
    Bootstrap Overrides - MUST come first

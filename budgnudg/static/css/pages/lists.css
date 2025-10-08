@@ -1,0 +1,159 @@
+/* ===============================================
+   Lists & Reports Page Styles
+   =============================================== */
+
+/* === General List View Enhancements === */
+.list-container {
+  background: var(--glass-bg-light);
+  backdrop-filter: var(--blur-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: var(--shadow-soft);
+}
+
+/* DataTables wrapper styling moved to components/tables.css for consistency */
+
+/* Table styling moved to components/tables.css for consistency */
+
+/* Pagination styling moved to components/tables.css for consistency */
+
+/* === Report Cards === */
+.report-card {
+  background: linear-gradient(145deg, 
+    rgba(255, 255, 255, 0.95) 0%, 
+    rgba(248, 250, 252, 0.9) 100%);
+  backdrop-filter: var(--blur-medium);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: var(--space-xl);
+  margin-bottom: var(--space-lg);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  transition: var(--transition-normal);
+}
+
+.report-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 15px 40px rgba(0, 0, 0, 0.12),
+    0 5px 20px rgba(102, 126, 234, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.report-card-header {
+  background: linear-gradient(135deg, 
+    rgba(102, 126, 234, 0.1) 0%, 
+    rgba(118, 75, 162, 0.08) 100%);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-lg);
+  border-left: 4px solid var(--navbar-text-active);
+}
+
+.report-card-title {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.report-card-subtitle {
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  margin-top: var(--space-xs);
+}
+
+/* === List Item Cards === */
+.list-item-card {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  transition: var(--transition-fast);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.list-item-card:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.08),
+    0 2px 10px rgba(102, 126, 234, 0.05);
+  border-color: rgba(102, 126, 234, 0.2);
+}
+
+/* === Summary Stats === */
+.summary-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.summary-stat {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: var(--blur-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 
+    0 4px 15px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  transition: var(--transition-fast);
+}
+
+.summary-stat:hover {
+  transform: translateY(-3px);
+  box-shadow: 
+    0 8px 25px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.summary-stat-value {
+  font-size: 1.8rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--navbar-text-active);
+  margin-bottom: var(--space-xs);
+}
+
+.summary-stat-label {
+  font-size: 0.9rem;
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* === Loading States === */
+.loading-skeleton {
+  background: linear-gradient(90deg, 
+    rgba(248, 250, 252, 0.8) 25%, 
+    rgba(255, 255, 255, 0.9) 50%, 
+    rgba(248, 250, 252, 0.8) 75%);
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+  border-radius: var(--radius-sm);
+  height: 1.2em;
+  margin: var(--space-xs) 0;
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* === Responsive Design === */
+@media (max-width: 768px) {
+  .summary-stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .list-item-card,
+  .report-card {
+    padding: var(--space-md);
+  }
+}
