@@ -128,8 +128,8 @@ urlpatterns = [
     ),
     # Transactions list (CBV)
     path("list/", TransactionListView.as_view(), name="transactions_list"),
-    # Transaction history grouped by date and category
-    path("history/", TransactionHistoryView.as_view(), name="transaction_history"),
+    # Transaction history grouped by date
+    path("history/", TransactionHistoryView.as_view(), name="transactions_history"),
     # Collapsible transaction list (CBV)
     path(
         "collapsible/",

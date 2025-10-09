@@ -4,7 +4,7 @@
 
 :root {
   /* === Color System === */
-  --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --primary-gradient: linear-gradient(135deg, #667eea 0%, #7e91e7 100%);
   --secondary-gradient: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
   --success-gradient: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
   --warning-gradient: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
@@ -101,5 +101,11 @@
     --color-text-secondary: #f1f5f9;
     --color-text-muted: #d1d5db;
     --color-text-inverse: #1f2937;
+    
+    /* Dark mode specific colors */
+    --dark-bg-primary: #1f2937;
+    --dark-bg-secondary: #111827;
+    --dark-border: #374151;
+    --color-info: #3b82f6;
   }
 }
