@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 class CollapsibleTransactionListView(TemplateView):
-    template_name = "transactions/budget_report.html"
+    template_name = "transactions/transaction_report.html"
 
     @method_decorator(trace)
     def dispatch(self, request, *args, **kwargs):

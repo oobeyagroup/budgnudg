@@ -76,10 +76,13 @@
                 Reports
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="{% url 'transactions:collapsible_transaction_list' %}"><i class="fas fa-chart-line me-1"></i>Transaction Report</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:clean_full_transaction_report' %}"><i class="fas fa-list-alt me-1"></i>Transaction Report</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:clean_transaction_report' %}"><i class="fas fa-chart-line me-1"></i>Category Summary (6 Month)</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:collapsible_transaction_list' %}"><i class="fas fa-table me-1"></i>Original Report (No Glass)</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:simple_transaction_report' %}"><i class="fas fa-table me-1"></i>Simple Glassmorphism Report</a></li>
                 <li><a class="dropdown-item" href="{% url 'budgets:report' %}"><i class="fas fa-chart-bar me-1"></i>Budget Report</a></li>
-                <li><a class="dropdown-item" href="{% url 'transactions:needs_level_report' %}"><i class="fas fa-chart-pie me-1"></i>Needs Level Report</a></li>
-                <li><a class="dropdown-item" href="{% url 'transactions:payoree_report' %}"><i class="fas fa-chart-line me-1"></i>Payor/ee Report</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:clean_needs_level_report' %}"><i class="fas fa-chart-pie me-1"></i>Needs Level Report</a></li>
+                <li><a class="dropdown-item" href="{% url 'transactions:clean_payoree_report' %}"><i class="fas fa-chart-line me-1"></i>Payor/ee Report</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:report_upcoming' %}"><i class="fas fa-calendar-week me-1"></i>Upcoming</a></li>
                 <li><a class="dropdown-item" href="{% url 'transactions:pivot_table' %}"><i class="fas fa-calendar-week me-1"></i>Pivot Table Report</a></li>
                 <li><hr class="dropdown-divider"></li>

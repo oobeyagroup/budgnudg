@@ -88,6 +88,60 @@
 }
 
 
+/* === Badge Contrast Enhancement === */
+.badge.bg-primary,
+.badge.bg-info,
+.badge.bg-secondary,
+.badge.bg-success,
+.badge.bg-warning,
+.badge.bg-danger {
+  color: white !important;
+  font-weight: var(--font-weight-medium);
+}
+
+/* Specific override for warning badges that need dark text */
+.badge.bg-warning {
+  color: var(--bs-dark) !important;
+}
+
+/* === Badge Background Fixes === */
+/* Force badge backgrounds to be solid regardless of table/card context */
+.table .badge.bg-primary,
+.card .badge.bg-primary {
+  background-color: var(--bs-primary) !important;
+  --bs-bg-opacity: 1 !important;
+}
+
+.table .badge.bg-secondary,
+.card .badge.bg-secondary {
+  background-color: var(--bs-secondary) !important;
+  --bs-bg-opacity: 1 !important;
+}
+
+.table .badge.bg-success,
+.card .badge.bg-success {
+  background-color: var(--bs-success) !important;
+  --bs-bg-opacity: 1 !important;
+}
+
+.table .badge.bg-info,
+.card .badge.bg-info {
+  background-color: var(--bs-info) !important;
+  --bs-bg-opacity: 1 !important;
+}
+
+.table .badge.bg-warning,
+.card .badge.bg-warning {
+  background-color: var(--bs-warning) !important;
+  --bs-bg-opacity: 1 !important;
+}
+
+.table .badge.bg-danger,
+.card .badge.bg-danger {
+  background-color: var(--bs-danger) !important;
+  --bs-bg-opacity: 1 !important;
+}
+
 /* === Transaction History Title === */
 .transaction-history-title {
   background: var(--primary-gradient);
@@ -155,12 +209,52 @@
 .badge {
   border-radius: var(--radius-sm);
   font-weight: var(--font-weight-semibold);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-xs) var(--space-sm);
+  font-size: 0.75rem;
   backdrop-filter: var(--blur-subtle);
+  /* Force solid backgrounds to override any transparency inheritance */
+  --bs-bg-opacity: 1 !important;
 }
+
+/* Global badge background enforcement */
+.badge.bg-primary { background-color: var(--bs-primary) !important; }
+.badge.bg-secondary { background-color: var(--bs-secondary) !important; }
+.badge.bg-success { background-color: var(--bs-success) !important; }
+.badge.bg-info { background-color: var(--bs-info) !important; }
+.badge.bg-warning { background-color: var(--bs-warning) !important; }
+.badge.bg-danger { background-color: var(--bs-danger) !important; }
 
 .bg-secondary {
   background: var(--secondary-gradient) !important;
+}
+
+/* === Resolve Transaction Page Styles === */
+.sticky-actions {
+  position: sticky;
+  top: var(--space-lg);
+  z-index: var(--z-sticky);
+}
+
+.transaction-form-container {
+  min-height: 100vh;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  transition: transform var(--transition-fast);
+}
+
+.progress-indicator {
+  height: 4px;
+  background: var(--success-gradient);
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 768px) {
+  .sticky-actions {
+    position: relative;
+    top: auto;
+  }
 }
 
 /* === Dark Mode Support === */
@@ -187,4 +281,242 @@
   .transaction-meta {
     color: var(--color-text-muted);
   }
+
+/* === Transaction Report Specific Styles === */
+/* Updated: 2025-10-10 for glassmorphism headers */
+.category-type-row {
+  background: var(--glass-bg-light) !important;
+  backdrop-filter: var(--blur-medium);
+  color: var(--color-text-primary);
+  font-weight: bold;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glassmorphism);
+}
+
+.category-row {
+  background: var(--glass-bg-medium) !important;
+  backdrop-filter: var(--blur-subtle);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+  border: 1px solid var(--glass-border);
+}
+
+.subcategory-row {
+  background: var(--glass-bg-dark) !important;
+  backdrop-filter: var(--blur-subtle);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  border: 1px solid var(--glass-border);
+}
+
+.transaction-row {
+  background-color: #f8f9fa;
+}
+
+.transaction-row:hover {
+  background-color: #e9ecef;
+}
+
+.collapsible-header {
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.collapsible-header:hover {
+  opacity: 0.9;
+}
+
+.collapse-icon {
+  transition: transform 0.3s ease;
+}
+
+.collapsed .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.sticky-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--glass-bg-light);
+  backdrop-filter: var(--blur-medium);
+  border-bottom: 1px solid var(--glass-border-strong);
+  box-shadow: var(--shadow-glassmorphism);
+}
+
+/* Transaction Report Glassmorphism Header Override */
+table.table thead.sticky-header.table-dark {
+  background: var(--glass-bg-medium) !important;
+  backdrop-filter: var(--blur-heavy) !important;
+  border: 1px solid var(--glass-border-strong) !important;
+  box-shadow: var(--shadow-glassmorphism) !important;
+}
+
+table.table thead.sticky-header.table-dark tr {
+  background: transparent !important;
+}
+
+table.table thead.sticky-header.table-dark th {
+  background: transparent !important;
+  color: var(--color-text-primary) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  text-shadow: none !important;
+  border-right: 1px solid var(--glass-border) !important;
+  backdrop-filter: inherit !important;
+}
+
+/* Force override any Bootstrap table-dark styling */
+.table-dark th, .table-dark td, .table-dark thead th, .table-dark tbody + tbody {
+  border-color: var(--glass-border) !important;
+}
+
+/* New glassmorphism table header class */
+.table-glassmorphism {
+  background: var(--glass-bg-medium) !important;
+  backdrop-filter: var(--blur-heavy) !important;
+  border: 1px solid var(--glass-border-strong) !important;
+  box-shadow: var(--shadow-glassmorphism) !important;
+}
+
+.table-glassmorphism tr {
+  background: transparent !important;
+}
+
+.table-glassmorphism th {
+  background: transparent !important;
+  color: var(--color-text-primary) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  text-shadow: none !important;
+  border-right: 1px solid var(--glass-border) !important;
+  backdrop-filter: inherit !important;
+  padding: var(--space-md) var(--space-lg) !important;
+}
+
+.horizontal-scroll {
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.month-header {
+  text-orientation: mixed;
+  font-weight: 600;
+  padding: 0.5rem 0.25rem;
+  min-width: 80px;
+}
+
+.description-cell {
+  min-width: 250px;
+  max-width: 300px;
+  position: sticky;
+  left: 0;
+  background: inherit;
+  z-index: 5;
+}
+
+.amount-cell {
+  min-width: 100px;
+  position: sticky;
+  left: 250px;
+  background: inherit;
+  z-index: 4;
+}
+
+.count-cell {
+  min-width: 80px;
+  position: sticky;
+  left: 350px;
+  background: inherit;
+  z-index: 3;
+}
+
+.monthly-column {
+  min-width: 80px;
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* Transaction Report Responsive Design */
+@media (max-width: 768px) {
+  .month-header {
+    min-width: 60px;
+    min-height: 80px;
+  }
+  
+  .description-cell {
+    min-width: 200px;
+  }
+  
+  .amount-cell {
+    left: 200px;
+  }
+  
+  .count-cell {
+    left: 300px;
+  }
+}
+
+/* === Clean Glassmorphism Table Styling === */
+.table-glassmorphism-clean {
+  background: transparent;
+  border: none;
+}
+
+.glassmorphism-header {
+  background: var(--glass-bg-medium) !important;
+  backdrop-filter: var(--blur-heavy) !important;
+  border: 1px solid var(--glass-border-strong) !important;
+  box-shadow: var(--shadow-glassmorphism) !important;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.glassmorphism-header th.glass-cell {
+  background: transparent !important;
+  color: var(--color-text-primary) !important;
+  font-weight: var(--font-weight-semibold) !important;
+  text-shadow: none !important;
+  border-right: 1px solid var(--glass-border) !important;
+  border-bottom: 1px solid var(--glass-border-strong) !important;
+  padding: var(--space-lg) var(--space-xl) !important;
+  backdrop-filter: inherit !important;
+}
+
+.glassmorphism-header th.glass-cell:last-child {
+  border-right: none !important;
+}
+
+.glassmorphism-body {
+  background: var(--glass-bg-light);
+  backdrop-filter: var(--blur-medium);
+}
+
+.glass-row {
+  border: none !important;
+  background: transparent !important;
+  transition: all var(--transition-fast) ease-in-out;
+}
+
+.glass-row:hover {
+  background: var(--glass-bg-medium) !important;
+  backdrop-filter: var(--blur-heavy) !important;
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-glassmorphism);
+}
+
+.glass-cell {
+  background: transparent !important;
+  border-right: 1px solid var(--glass-border) !important;
+  border-bottom: 1px solid var(--glass-border) !important;
+  padding: var(--space-md) var(--space-xl) !important;
+  color: var(--color-text-secondary) !important;
+  backdrop-filter: inherit !important;
+  vertical-align: middle !important;
+}
+
+.glass-cell:last-child {
+  border-right: none !important;
+}
+
+.glass-row:last-child .glass-cell {
+  border-bottom: none !important;
+}
 }

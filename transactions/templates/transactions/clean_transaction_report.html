@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+{% load dict_extras %}
+
+{% block title %}Clean Transaction Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <h2 class="mb-1">
+                    <i class="fas fa-chart-line me-2 text-primary"></i>
+                    Transaction Report - 6 Month Overview
+                </h2>
+                <p class="text-muted mb-0">
+                    Category breakdown with monthly spending patterns ({{ transaction_count }} transactions)
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clean Glassmorphism Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="glass-card p-0">
+                <div class="table-responsive">
+                    <table class="table-glassmorphism-clean mb-0">
+                        <thead class="glassmorphism-header">
+                            <tr>
+                                <th class="glass-cell">Category</th>
+                                <th class="glass-cell text-end">Total Amount</th>
+                                <th class="glass-cell text-center">Count</th>
+                                {% for month in months %}
+                                <th class="glass-cell text-end">{{ month.name }} '{{ month.year|slice:"2:" }}</th>
+                                {% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody class="glassmorphism-body">
+                            {% for category_name, data in category_data.items %}
+                            <tr class="glass-row">
+                                <td class="glass-cell">
+                                    <strong>{{ category_name }}</strong>
+                                </td>
+                                <td class="glass-cell text-end">
+                                    <span class="{% if data.total_amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
+                                        ${{ data.total_amount|floatformat:0|intcomma }}
+                                    </span>
+                                </td>
+                                <td class="glass-cell text-center">
+                                    <span class="badge bg-info text-white">{{ data.total_count }}</span>
+                                </td>
+                                {% for month in months %}
+                                    {% with amount=data.monthly_amounts|default_if_none:month.key %}
+                                    <td class="glass-cell text-end">
+                                        {% if month.key in data.monthly_amounts %}
+                                            <span class="{% if data.monthly_amounts|lookup:month.key >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                ${{ data.monthly_amounts|lookup:month.key|floatformat:0|intcomma }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    {% endwith %}
+                                {% endfor %}
+                            </tr>
+                            {% empty %}
+                            <tr class="glass-row">
+                                <td colspan="{{ months|length|add:3 }}" class="glass-cell text-center text-muted fst-italic">
+                                    No transactions found for the selected period
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            
+                            <!-- Totals Row -->
+                            <tr class="glass-row category-type-row">
+                                <td class="glass-cell">
+                                    <strong>TOTAL</strong>
+                                </td>
+                                <td class="glass-cell text-end">
+                                    <strong class="{% if grand_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ grand_total|floatformat:0|intcomma }}
+                                    </strong>
+                                </td>
+                                <td class="glass-cell text-center">
+                                    <strong class="badge bg-primary text-white">{{ grand_count }}</strong>
+                                </td>
+                                {% for month in months %}
+                                <td class="glass-cell text-end">
+                                    <strong>
+                                        {% if month.key in monthly_totals %}
+                                            <span class="{% if monthly_totals|lookup:month.key >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                ${{ monthly_totals|lookup:month.key|floatformat:0|intcomma }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </strong>
+                                </td>
+                                {% endfor %}
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mt-4">
+        <div class="col-md-4">
+            <div class="glass-card text-center">
+                <h5 class="text-primary">Total Transactions</h5>
+                <h2 class="mb-0">{{ grand_count|intcomma }}</h2>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card text-center">
+                <h5 class="text-primary">Net Amount</h5>
+                <h2 class="mb-0 {% if grand_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+                    ${{ grand_total|floatformat:0|intcomma }}
+                </h2>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="glass-card text-center">
+                <h5 class="text-primary">Categories</h5>
+                <h2 class="mb-0">{{ category_data|length }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">Quick Actions</h5>
+                        <p class="text-muted mb-0">Manage your transaction data</p>
+                    </div>
+                    <div>
+                        <a href="{% url 'transactions:transactions_list' %}" class="btn btn-outline-primary me-2">
+                            <i class="fas fa-list me-1"></i>View All Transactions
+                        </a>
+                        <a href="{% url 'transactions:simple_transaction_report' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-table me-1"></i>Simple Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

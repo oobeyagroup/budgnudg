@@ -5,125 +5,8 @@
 
 {% block title %}Transaction Report - Monthly Analysis{% endblock %}
 
-{% block extra_css %}
-<style>
-    .category-type-row {
-        background: none;
-        color: white;
-        font-weight: bold;
-    }
-    
-    .category-row {
-        background: none;
-        color: white;
-        font-weight: 600;
-    }
-    
-    .subcategory-row {
-        background: none;
-        color: white;
-        font-weight: 500;
-    }
-    
-    .transaction-row {
-        background-color: #f8f9fa;
-    }
-    
-    .transaction-row:hover {
-        background-color: #e9ecef;
-    }
-    
-    .collapsible-header {
-        cursor: pointer;
-        transition: background-color 0.2s ease;
-    }
-    
-    .collapsible-header:hover {
-        opacity: 0.9;
-    }
-    
-    .collapse-icon {
-        transition: transform 0.3s ease;
-    }
-    
-    .collapsed .collapse-icon {
-        transform: rotate(-90deg);
-    }
-    
-    .sticky-header {
-        position: sticky;
-        top: 0;
-        z-index: 10;
-        background: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    
-    .horizontal-scroll {
-        overflow-x: auto;
-        white-space: nowrap;
-    }
-    
-    .month-header {
-        text-orientation: mixed;
-        font-weight: 600;
-        padding: 0.5rem 0.25rem;    
-        min-width: 80px;
-    }
-    
-    .description-cell {
-        min-width: 250px;
-        max-width: 300px;
-        position: sticky;
-        left: 0;
-        background: inherit;
-        z-index: 5;
-    }
-    
-    .amount-cell {
-        min-width: 100px;
-        position: sticky;
-        left: 250px;
-        background: inherit;
-        z-index: 4;
-    }
-    
-    .count-cell {
-        min-width: 80px;
-        position: sticky;
-        left: 350px;
-        background: inherit;
-        z-index: 3;
-    }
-    
-    .monthly-column {
-        min-width: 80px;
-        text-align: right;
-        white-space: nowrap;
-    }
-    
-    @media (max-width: 768px) {
-        .month-header {
-            min-width: 60px;
-            min-height: 80px;
-        }
-        
-        .description-cell {
-            min-width: 200px;
-        }
-        
-        .amount-cell {
-            left: 200px;
-        }
-        
-        .count-cell {
-            left: 300px;
-        }
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid">
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-12">
@@ -165,22 +48,23 @@
     <!-- Transaction Report Table -->
     <div class="row">
         <div class="col-12">
-            <div class="horizontal-scroll border rounded">
-                <table class="table table-sm table-bordered table-hover small mb-0">
-                    <!-- Table Header -->
-                    <thead class="sticky-header table-dark">
+            <div class="glass-card p-0">
+                <div class="table-responsive">
+                    <table class="table-glassmorphism-clean mb-0">
+                        <!-- Table Header -->
+                        <thead class="glassmorphism-header">
                         <tr>
-                            <th class="description-cell">Category / Description</th>
-                            <th class="amount-cell text-end">Total</th>
-                            <th class="count-cell text-center">Count</th>
+                            <th class="glass-cell description-cell">Category / Description</th>
+                            <th class="glass-cell amount-cell text-end">Total</th>
+                            <th class="glass-cell count-cell text-center">Count</th>
                             {% for month in months %}
-                            <th class="monthly-column">
+                            <th class="glass-cell monthly-column">
                                 <div class="month-header small">{{ month.name }}</div>
                             </th>
                             {% endfor %}
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody class="glassmorphism-body">
                         {% for category_type in category_type_order %}
                             {% if category_type in organized_data %}
                                 {% with type_data=organized_data|lookup:category_type %}
@@ -189,21 +73,21 @@
                                     data-bs-toggle="collapse" 
                                     data-bs-target="#type-{{ category_type }}" 
                                     aria-expanded="true">
-                                    <td class="description-cell">
+                                    <td class="glass-cell glass-cell glass-cell description-cell">
                                         <i class="fas fa-chevron-down collapse-icon me-2"></i>
                                         <i class="fas fa-folder me-2"></i>
                                         <strong class="text-capitalize">{{ category_type }}</strong>
                                     </td>
-                                    <td class="amount-cell text-end">
+                                    <td class="glass-cell glass-cell glass-cell amount-cell text-end">
                                         <span class="fw-semibold currency {% if type_data.total_amount >= 0 %}currency-positive {% elif type_data.total_amount < 0 %}currency-negative{% else %}currency-zero{% endif %}">
                                             {{ type_data.total_amount|floatformat:2|intcomma|intcomma }}
                                         </span>
                                     </td>
-                                    <td class="count-cell text-center">{{ type_data.total_count }}</td>
+                                    <td class="glass-cell glass-cell glass-cell count-cell text-center">{{ type_data.total_count }}</td>
                                     {% for month in months %}
                                         {% with month_key=month.date|date:"Y-m" %}
                                             {% with amount=type_data.monthly_totals|lookup:month_key %}
-                                            <td class="monthly-column text-end">
+                                            <td class="glass-cell glass-cell glass-cell monthly-column text-end">
                                                 {% if amount != 0 %}
                                                     <span class="fw-semibold currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ amount|floatformat:2|intcomma }}</span>
                                                 {% else %}
@@ -223,19 +107,19 @@
                                         data-bs-toggle="collapse" 
                                         data-bs-target="#category-{{ category_type }}-{{ forloop.counter }}" 
                                         aria-expanded="false">
-                                        <td class="description-cell ps-4">
+                                        <td class="glass-cell glass-cell description-cell ps-4">
                                             <i class="fas fa-chevron-down collapse-icon me-2"></i>
                                             <i class="fas fa-tag me-2"></i>
                                             {{ category_name }}
                                         </td>
-                                        <td class="amount-cell text-end">
+                                        <td class="glass-cell glass-cell amount-cell text-end">
                                             <span class="currency {% if category_data.total_amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">{{ category_data.total_amount|floatformat:2|intcomma }}</span>
                                         </td>
-                                        <td class="count-cell text-center">{{ category_data.total_count }}</td>
+                                        <td class="glass-cell glass-cell count-cell text-center">{{ category_data.total_count }}</td>
                                         {% for month in months %}
                                             {% with month_key=month.date|date:"Y-m" %}
                                                 {% with amount=category_data.monthly_totals|lookup:month_key %}
-                                                <td class="monthly-column text-end">
+                                                <td class="glass-cell glass-cell monthly-column text-end">
                                                     {% if amount != 0 %}
                                                         <span class="currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
                                                             {{ amount|floatformat:2|intcomma }}
@@ -257,21 +141,21 @@
                                             data-bs-toggle="collapse" 
                                             data-bs-target="#subcategory-{{ category_type }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" 
                                             aria-expanded="false">
-                                            <td class="description-cell ps-5">
+                                            <td class="glass-cell glass-cell description-cell ps-5">
                                                 <i class="fas fa-chevron-down collapse-icon me-2"></i>
                                                 <i class="fas fa-tags me-2"></i>
                                                 {{ subcategory_name }}
                                             </td>
-                                            <td class="amount-cell text-end">
+                                            <td class="glass-cell glass-cell amount-cell text-end">
                                                 <span class="{% if subcategory_data.total_amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
                                                     ${{ subcategory_data.total_amount|floatformat:2|intcomma|intcomma }}
                                                 </span>
                                             </td>
-                                            <td class="count-cell text-center">{{ subcategory_data.count }}</td>
+                                            <td class="glass-cell glass-cell count-cell text-center">{{ subcategory_data.count }}</td>
                                             {% for month in months %}
                                                 {% with month_key=month.date|date:"Y-m" %}
                                                     {% with amount=subcategory_data.monthly_totals|lookup:month_key %}
-                                                    <td class="monthly-column text-end">
+                                                    <td class="glass-cell glass-cell monthly-column text-end">
                                                         {% if amount != 0 %}
                                                             <span class="currency {% if amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
                                                                 {{ amount|floatformat:2|intcomma }}
@@ -289,7 +173,7 @@
                                         {% for transaction_data in subcategory_data.transactions %}
                                             {% with transaction=transaction_data.transaction %}
                                             <tr class="transaction-row collapse" id="subcategory-{{ category_type }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}">
-                                                <td class="description-cell ps-5">
+                                                <td class="glass-cell glass-cell description-cell ps-5">
                                                     <a href="{% url 'transactions:categorize_transaction' transaction.pk %}" 
                                                        class="text-decoration-none small"
                                                        title="Click to resolve/edit this transaction">
@@ -297,16 +181,16 @@
                                                         {{ transaction.description|truncatechars:25 }}
                                                     </a>
                                                 </td>
-                                                <td class="amount-cell text-end">
+                                                <td class="glass-cell glass-cell amount-cell text-end">
                                                     <span class="currency {% if transaction.amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
                                                         ${{ transaction.amount|floatformat:2|intcomma }}
                                                     </span>
                                                 </td>
-                                                <td class="count-cell text-center">1</td>
+                                                <td class="glass-cell glass-cell count-cell text-center">1</td>
                                                 {% for month in months %}
                                                     {% with month_key=month.date|date:"Y-m" %}
                                                         {% with transaction_month=transaction.date|date:"Y-m" %}
-                                                        <td class="monthly-column text-end">
+                                                        <td class="glass-cell glass-cell monthly-column text-end">
                                                             {% if transaction_month == month_key %}
                                                                 <span class="currency {% if transaction.amount >= 0 %}currency-positive{% else %}currency-negative{% endif %}">
                                                                     {{ transaction.amount|floatformat:0|intcomma }}
@@ -330,17 +214,17 @@
                         
                         <!-- Grand Total Row -->
                         <tr class="table-dark fw-bold">
-                            <td class="description-cell"><strong>GRAND TOTAL</strong></td>
-                            <td class="amount-cell text-end">
+                            <td class="glass-cell glass-cell description-cell"><strong>GRAND TOTAL</strong></td>
+                            <td class="glass-cell glass-cell amount-cell text-end">
                                 <strong class="{% if grand_total_amount >= 0 %}text-success-subtle{% else %}text-danger-subtle{% endif %}">
                                     ${{ grand_total_amount|floatformat:2|intcomma|intcomma }}
                                 </strong>
                             </td>
-                            <td class="count-cell text-center"><strong>{{ grand_total_count }}</strong></td>
+                            <td class="glass-cell glass-cell count-cell text-center"><strong>{{ grand_total_count }}</strong></td>
                             {% for month in months %}
                                 {% with month_key=month.date|date:"Y-m" %}
                                     {% with amount=grand_monthly_totals|lookup:month_key %}
-                                    <td class="monthly-column text-end">
+                                    <td class="glass-cell glass-cell monthly-column text-end">
                                         <strong>
                                             {% if amount != 0 %}
                                                 <span class="{% if amount >= 0 %}text-success-subtle{% else %}text-danger-subtle{% endif %}">

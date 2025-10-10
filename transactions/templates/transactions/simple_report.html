@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% load static %}
+{% load humanize %}
+
+{% block title %}Simple Transaction Report{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <h2 class="mb-1">
+                    <i class="fas fa-table me-2 text-primary"></i>
+                    Simple Transaction Report
+                </h2>
+                <p class="text-muted mb-0">
+                    Recent 10 transactions with glassmorphism styling
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Glassmorphism Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="glass-card p-0">
+                <div class="table-responsive">
+                    <table class="table table-glassmorphism-clean mb-0">
+                        <thead class="glassmorphism-header">
+                            <tr>
+                                <th class="glass-cell">Date</th>
+                                <th class="glass-cell">Description</th>
+                                <th class="glass-cell">Amount</th>
+                                <th class="glass-cell">Category</th>
+                                <th class="glass-cell">Subcategory</th>
+                                <th class="glass-cell">Payoree</th>
+                            </tr>
+                        </thead>
+                        <tbody class="glassmorphism-body">
+                            {% for transaction in transactions %}
+                            <tr class="glass-row">
+                                <td class="glass-cell">
+                                    {{ transaction.date|date:"M j, Y" }}
+                                </td>
+                                <td class="glass-cell description-text">
+                                    {{ transaction.description|truncatechars:40 }}
+                                </td>
+                                <td class="glass-cell text-end">
+                                    <span class="{% if transaction.amount >= 0 %}text-success fw-semibold{% else %}text-danger fw-semibold{% endif %}">
+                                        ${{ transaction.amount|floatformat:2|intcomma }}
+                                    </span>
+                                </td>
+                                <td class="glass-cell">
+                                    {% if transaction.category %}
+                                        <span class="badge bg-info text-white">{{ transaction.category.name }}</span>
+                                    {% else %}
+                                        <span class="text-muted fst-italic">No category</span>
+                                    {% endif %}
+                                </td>
+                                <td class="glass-cell">
+                                    {% if transaction.subcategory %}
+                                        <span class="badge bg-secondary text-white">{{ transaction.subcategory.name }}</span>
+                                    {% else %}
+                                        <span class="text-muted fst-italic">No subcategory</span>
+                                    {% endif %}
+                                </td>
+                                <td class="glass-cell payoree-name">
+                                    {% if transaction.payoree %}
+                                        {{ transaction.payoree }}
+                                    {% else %}
+                                        <span class="text-muted fst-italic">No payoree</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr class="glass-row">
+                                <td colspan="6" class="glass-cell text-center text-muted fst-italic">
+                                    No transactions found
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Summary Card -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">Report Summary</h5>
+                        <p class="text-muted mb-0">Showing {{ transactions|length }} of recent transactions</p>
+                    </div>
+                    <div class="text-end">
+                        <a href="{% url 'transactions:transactions_list' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-list me-1"></i>View All Transactions
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

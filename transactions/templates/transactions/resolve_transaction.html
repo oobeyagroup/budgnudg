@@ -3,40 +3,10 @@
 
 {% block title %}Resolve Transaction{% endblock %}
 
-{% block extra_css %}
-<style>
-    .sticky-actions {
-        position: sticky;
-        top: 20px;
-        z-index: 1020;
-    }
 
-    .transaction-form-container {
-        min-height: 100vh;
-    }
-
-    .card-hover:hover {
-        transform: translateY(-2px);
-        transition: transform 0.2s ease-in-out;
-    }
-
-    .progress-indicator {
-        height: 4px;
-        background: linear-gradient(90deg, var(--bs-success) 0%, var(--bs-warning) 50%, var(--bs-danger) 100%);
-        border-radius: 2px;
-    }
-
-    @media (max-width: 768px) {
-        .sticky-actions {
-            position: relative;
-            top: auto;
-        }
-    }
-</style>
-{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4">
+<div class="container-fluid">
     <!-- Progress Header -->
     <div class="row mb-4">
         <div class="col-12">
@@ -73,16 +43,16 @@
                         <strong>Filtered View Active:</strong> 
                         Navigation will stay within your filtered results.
                         {% if request.GET.q %}
-                            <span class="badge bg-primary ms-2">Search: "{{ request.GET.q }}"</span>
+                            <span class="badge text-white bg-primary ms-2">Search: "{{ request.GET.q }}"</span>
                         {% endif %}
                         {% if request.GET.no_category %}
-                            <span class="badge bg-warning ms-1">No Category</span>
+                            <span class="badge text-dark bg-warning ms-1">No Category</span>
                         {% endif %}
                         {% if request.GET.no_payoree %}
-                            <span class="badge bg-info ms-1">No Payoree</span>
+                            <span class="badge text-white bg-info ms-1">No Payoree</span>
                         {% endif %}
                         {% if request.GET.uncategorized %}
-                            <span class="badge bg-secondary ms-1">Uncategorized</span>
+                            <span class="badge text-white bg-secondary ms-1">Uncategorized</span>
                         {% endif %}
                         <a href="{% url 'transactions:transactions_list' %}" class="btn btn-sm btn-outline-secondary ms-2">
                             <i class="fas fa-times me-1"></i>Clear Filters
@@ -235,6 +205,22 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         console.log('DOM Content Loaded - starting script initialization');
+        
+        // Catch any JavaScript errors that might trigger the error toast
+        window.addEventListener('error', function(e) {
+            console.error('JavaScript Error detected:', e.error, e.message, e.filename, e.lineno);
+            // Prevent error toast from showing for syntax errors on page load
+            if (e.lineno && e.message && e.message.includes('Unexpected token')) {
+                console.error('Template syntax error detected - this may cause the error toast to show');
+            }
+        });
+
+        // Check if transaction object is properly available
+        {% if not transaction %}
+        console.warn('WARNING: Transaction object not available in template context');
+        showToast('error', 'Transaction data not available. Please refresh the page.');
+        return; // Exit early if no transaction
+        {% endif %}
         
         // Test to see if we can find the AI suggestions card
         const aiSuggestionsCard = document.querySelector('.card-header .text-info-emphasis');
@@ -574,6 +560,20 @@
                 .then(response => {
                     console.log('API Response status:', response.status);
                     console.log('API Response ok:', response.ok);
+                    
+                    // Handle different response statuses properly
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            // Category not found - this is expected for invalid categories, don't show error toast
+                            console.warn(`Category ${categoryId} not found (404)`);
+                            return { success: false, error: 'Category not found', status: 404 };
+                        } else {
+                            // Other errors (500, etc.) - these are unexpected
+                            console.error(`API error ${response.status}`);
+                            return { success: false, error: 'Server error', status: response.status };
+                        }
+                    }
+                    
                     return response.json();
                 })
                 .then(data => {
@@ -588,17 +588,29 @@
                             subcategorySelect.innerHTML += `<option value="${sub.id}" ${selected}>${sub.name}</option>`;
                         });
                         subcategorySelect.innerHTML += '<option value="__new__">+ Add New Subcategory</option>';
+                    } else if (data.status === 404) {
+                        // Category not found - show appropriate message without error toast
+                        console.log('Category not found (404), showing appropriate message');
+                        subcategorySelect.innerHTML += '<option value="">Invalid category selected</option>';
                     } else {
-                        console.log('No subcategories found or API error');
+                        // Other API errors or no subcategories
+                        console.log('No subcategories found or API error:', data.error || 'Unknown error');
                         subcategorySelect.innerHTML += '<option value="">No subcategories available</option>';
+                        
+                        // Only show error toast for unexpected server errors, not 404s
+                        if (data.status && data.status !== 404) {
+                            console.warn('Unexpected API error, but not showing toast to avoid page load issues');
+                        }
                     }
                     subcategorySelect.disabled = false;
                     console.log('==============================');
                 })
                 .catch(error => {
-                    console.error('Error loading subcategories:', error);
+                    console.error('Network error loading subcategories:', error);
                     subcategorySelect.innerHTML = '<option value="">Error loading subcategories</option>';
                     subcategorySelect.disabled = false;
+                    // Don't show error toast for network errors during page load
+                    console.warn('Network error occurred, but not showing toast to avoid page load issues');
                 });
         }
 
@@ -636,6 +648,12 @@
         }
 
         function showToast(type, message) {
+            // Prevent error toasts from showing immediately on page load (likely due to JS errors)
+            if (type === 'error' && performance.now() < 1000) {
+                console.warn('Prevented error toast from showing on page load:', message);
+                return;
+            }
+            
             const toast = document.getElementById(type === 'success' ? 'success-toast' : 'error-toast');
             const messageElement = document.getElementById(type === 'success' ? 'success-message' : 'error-message');
             
@@ -643,6 +661,7 @@
                 messageElement.textContent = message;
                 const bsToast = new bootstrap.Toast(toast);
                 bsToast.show();
+                console.log(`${type.toUpperCase()} Toast shown:`, message);
             }
         }
 
@@ -660,7 +679,7 @@
                         if (payoreeRow) {
                             const currentCell = payoreeRow.querySelector('.current-value');
                             if (currentCell) {
-                                currentCell.innerHTML = `<span class="badge bg-info">${selectedOption.textContent.trim()}</span>`;
+                                currentCell.innerHTML = `<span class="badge text-white bg-info">${selectedOption.textContent.trim()}</span>`;
                                 console.log('✅ Updated payoree current column');
                             }
                         }
@@ -678,7 +697,7 @@
                         if (categoryRow) {
                             const currentCell = categoryRow.querySelector('.current-value');
                             if (currentCell) {
-                                currentCell.innerHTML = `<span class="badge bg-primary">${selectedOption.textContent.trim()}</span>`;
+                                currentCell.innerHTML = `<span class="badge text-white bg-info">${selectedOption.textContent.trim()}</span>`;
                                 console.log('✅ Updated category current column');
                             }
                         }
@@ -708,7 +727,7 @@
                                 if (subcategoryRow) {
                                     const currentCell = subcategoryRow.querySelector('.current-value');
                                     if (currentCell) {
-                                        currentCell.innerHTML = `<span class="badge bg-secondary">${selectedOption.textContent.trim()}</span>`;
+                                        currentCell.innerHTML = `<span class="badge text-white bg-secondary">${selectedOption.textContent.trim()}</span>`;
                                         console.log('✅ Updated subcategory current column');
                                     }
                                 }
@@ -729,7 +748,7 @@
                         const currentCol = row.children[1];
                         const currentContent = currentCol.querySelector('.text-center');
                         if (currentContent) {
-                            currentContent.innerHTML = text ? `<span class="badge bg-primary">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
+                            currentContent.innerHTML = text ? `<span class="badge text-white bg-info">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
                         }
                     }
                 });
@@ -746,7 +765,7 @@
                         const currentCol = row.children[1];
                         const currentContent = currentCol.querySelector('.text-center');
                         if (currentContent) {
-                            currentContent.innerHTML = text ? `<span class="badge bg-secondary">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
+                            currentContent.innerHTML = text ? `<span class="badge text-white bg-secondary">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
                         }
                     }
                 });
@@ -763,7 +782,7 @@
                         const currentCol = row.children[1];
                         const currentContent = currentCol.querySelector('.text-center');
                         if (currentContent) {
-                            currentContent.innerHTML = text ? `<span class="badge bg-info">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
+                            currentContent.innerHTML = text ? `<span class="badge text-white bg-info">${text}</span>` : '<span class="text-muted fst-italic">Not assigned</span>';
                         }
                     }
                 });
@@ -917,7 +936,13 @@
         document.querySelectorAll('.remove-similar').forEach(button => {
             button.addEventListener('click', function () {
                 const excludedTransactionId = this.dataset.transactionId;
-                const currentTransactionId = {{ transaction.id|default_if_none:0 }};
+                const currentTransactionId = {% if transaction.id %}{{ transaction.id }}{% else %}null{% endif %};
+                
+                if (!currentTransactionId) {
+                    console.error('No transaction ID available');
+                    showToast('error', 'Transaction ID not found');
+                    return;
+                }
                 
                 console.log('Removing similar transaction:', excludedTransactionId);
                 

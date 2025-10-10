@@ -75,7 +75,7 @@
                             {% endif %}
                             {% if pattern.suggested_subcategory %}
                                 <i class="fas fa-arrow-right mx-2"></i>
-                                <span class="badge bg-success">{{ pattern.suggested_subcategory }}</span>
+                                <span class="badge text-white bg-success">{{ pattern.suggested_subcategory }}</span>
                             {% endif %}
                         </div>
                         {% if pattern.reasoning %}
@@ -213,21 +213,21 @@
                             {% if existing_patterns.merchant %}
                                 <div><strong>Merchant:</strong> 
                                     {% for pattern in existing_patterns.merchant %}
-                                        <span class="badge bg-secondary me-1">{{ pattern.key }} → {{ pattern.subcategory_name }} ({{ pattern.count }}×)</span>
+                                        <span class="badge text-white bg-secondary me-1">{{ pattern.key }} → {{ pattern.subcategory_name }} ({{ pattern.count }}×)</span>
                                     {% endfor %}
                                 </div>
                             {% endif %}
                             {% if existing_patterns.description %}
                                 <div><strong>Description:</strong> 
                                     {% for pattern in existing_patterns.description %}
-                                        <span class="badge bg-secondary me-1">{{ pattern.key }} → {{ pattern.subcategory_name }} ({{ pattern.count }}×)</span>
+                                        <span class="badge text-white bg-secondary me-1">{{ pattern.key }} → {{ pattern.subcategory_name }} ({{ pattern.count }}×)</span>
                                     {% endfor %}
                                 </div>
                             {% endif %}
                             {% if existing_patterns.keywords %}
                                 <div><strong>Keywords:</strong> 
                                     {% for pattern in existing_patterns.keywords %}
-                                        <span class="badge bg-secondary me-1">"{{ pattern.keyword }}" → {{ pattern.category_name }}{% if pattern.subcategory_name %}/{{ pattern.subcategory_name }}{% endif %}</span>
+                                        <span class="badge text-white bg-secondary me-1">"{{ pattern.keyword }}" → {{ pattern.category_name }}{% if pattern.subcategory_name %}/{{ pattern.subcategory_name }}{% endif %}</span>
                                     {% endfor %}
                                 </div>
                             {% endif %}

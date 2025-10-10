@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% load static %}
+{% load dict_extras %}
+{% load humanize %}
+
+{% block title %}Full Transaction Report - BudgNudg{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/pages/transactions.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="glass-card">
+                <div class="d-flex justify-content-between align-items-center flex-wrap">
+                    <div>
+                        <h2 class="mb-1">
+                            <i class="fas fa-chart-line me-2 text-primary"></i>
+                            Transaction Report - Monthly Analysis
+                        </h2>
+                        <p class="text-muted mb-0">
+                            Category breakdown with 12-month spending patterns
+                        </p>
+                    </div>
+                    <div class="text-end">
+                        <div class="d-flex align-items-center gap-3 flex-wrap">
+                            <div class="text-muted">
+                                <strong>{{ grand_count }}</strong> transactions
+                            </div>
+                            <div class="text-muted">
+                                Total: <span class="{% if grand_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    ${{ grand_total|floatformat:2|intcomma }}
+                                </span>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-primary btn-sm me-2" onclick="expandAll()">
+                                    <i class="fas fa-expand-arrows-alt me-1"></i>Expand All
+                                </button>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="collapseAll()">
+                                    <i class="fas fa-compress-arrows-alt me-1"></i>Collapse All
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Transaction Report Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="glass-card p-0">
+                <div class="table-responsive">
+                    <table class="table-glassmorphism-clean mb-0">
+                        <!-- Table Header -->
+                        <thead class="glassmorphism-header">
+                        <tr>
+                            <th class="glass-cell description-cell">Category / Description</th>
+                            <th class="glass-cell amount-cell text-end">Total</th>
+                            <th class="glass-cell count-cell text-center">Count</th>
+                            {% for month in months %}
+                            <th class="glass-cell monthly-column">
+                                <div class="month-header small">{{ month.name }}</div>
+                            </th>
+                            {% endfor %}
+                        </tr>
+                        </thead>
+                        <tbody class="glassmorphism-body">
+                        {% for category_type in category_type_order %}
+                            {% if category_type in organized_data %}
+                                {% with type_data=organized_data|lookup:category_type %}
+                                <!-- Category Type Row -->
+                                <tr class="category-type-row collapsible-header" 
+                                    data-bs-toggle="collapse" 
+                                    data-bs-target="#type-{{ category_type }}" 
+                                    aria-expanded="true">
+                                    <td class="glass-cell description-cell">
+                                        <i class="fas fa-chevron-down collapse-icon me-2"></i>
+                                        <i class="fas fa-folder me-2"></i>
+                                        <strong class="text-capitalize">{{ category_type }}</strong>
+                                    </td>
+                                    <td class="glass-cell amount-cell text-end">
+                                        <span class="fw-semibold {% if type_data.total_amount >= 0 %}text-success{% elif type_data.total_amount < 0 %}text-danger{% else %}text-muted{% endif %}">
+                                            ${{ type_data.total_amount|floatformat:2|intcomma }}
+                                        </span>
+                                    </td>
+                                    <td class="glass-cell count-cell text-center">{{ type_data.total_count }}</td>
+                                    {% for month in months %}
+                                        {% with month_key=month.date|date:"Y-m" %}
+                                            {% with amount=type_data.monthly_totals|lookup:month_key %}
+                                            <td class="glass-cell monthly-column text-end">
+                                                {% if amount != 0 %}
+                                                    <span class="fw-semibold {% if amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                        ${{ amount|floatformat:2|intcomma }}
+                                                    </span>
+                                                {% else %}
+                                                    <span class="text-muted fst-italic">-</span>
+                                                {% endif %}
+                                            </td>
+                                            {% endwith %}
+                                        {% endwith %}
+                                    {% endfor %}
+                                </tr>
+                                
+                                <!-- Category Type Content -->
+                                <tbody class="collapse show" id="type-{{ category_type }}">
+                                    {% for category_name, category_data in type_data.categories.items %}
+                                    <!-- Category Row -->
+                                    <tr class="category-row collapsible-header" 
+                                        data-bs-toggle="collapse" 
+                                        data-bs-target="#category-{{ category_type }}-{{ forloop.counter }}" 
+                                        aria-expanded="false">
+                                        <td class="glass-cell description-cell ps-4">
+                                            <i class="fas fa-chevron-down collapse-icon me-2"></i>
+                                            <i class="fas fa-tag me-2"></i>
+                                            {{ category_name }}
+                                        </td>
+                                        <td class="glass-cell amount-cell text-end">
+                                            <span class="{% if category_data.total_amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                ${{ category_data.total_amount|floatformat:2|intcomma }}
+                                            </span>
+                                        </td>
+                                        <td class="glass-cell count-cell text-center">{{ category_data.total_count }}</td>
+                                        {% for month in months %}
+                                            {% with month_key=month.date|date:"Y-m" %}
+                                                {% with amount=category_data.monthly_totals|lookup:month_key %}
+                                                <td class="glass-cell monthly-column text-end">
+                                                    {% if amount != 0 %}
+                                                        <span class="{% if amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                            ${{ amount|floatformat:2|intcomma }}
+                                                        </span>
+                                                    {% else %}
+                                                        <span class="text-muted fst-italic">-</span>
+                                                    {% endif %}
+                                                </td>
+                                                {% endwith %}
+                                            {% endwith %}
+                                        {% endfor %}
+                                    </tr>
+                                    
+                                    <!-- Category Content (Subcategories) -->
+                                    {% for subcategory_name, subcategory_data in category_data.subcategories.items %}
+                                        <!-- Subcategory Row -->
+                                        <tr class="subcategory-row collapsible-header collapse" 
+                                            id="category-{{ category_type }}-{{ forloop.parentloop.counter }}"
+                                            data-bs-toggle="collapse" 
+                                            data-bs-target="#subcategory-{{ category_type }}-{{ forloop.parentloop.counter }}-{{ forloop.counter }}" 
+                                            aria-expanded="false">
+                                            <td class="glass-cell description-cell ps-5">
+                                                <i class="fas fa-chevron-down collapse-icon me-2"></i>
+                                                <i class="fas fa-tags me-2"></i>
+                                                {{ subcategory_name }}
+                                            </td>
+                                            <td class="glass-cell amount-cell text-end">
+                                                <span class="{% if subcategory_data.total_amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                    ${{ subcategory_data.total_amount|floatformat:2|intcomma }}
+                                                </span>
+                                            </td>
+                                            <td class="glass-cell count-cell text-center">{{ subcategory_data.count }}</td>
+                                            {% for month in months %}
+                                                {% with month_key=month.date|date:"Y-m" %}
+                                                    {% with amount=subcategory_data.monthly_totals|lookup:month_key %}
+                                                    <td class="glass-cell monthly-column text-end">
+                                                        {% if amount != 0 %}
+                                                            <span class="{% if amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                                ${{ amount|floatformat:2|intcomma }}
+                                                            </span>
+                                                        {% else %}
+                                                            <span class="text-muted fst-italic">-</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    {% endwith %}
+                                                {% endwith %}
+                                            {% endfor %}
+                                        </tr>
+                                        
+                                        <!-- Transactions List (collapsed by default) -->
+                                        {% for transaction_data in subcategory_data.transactions %}
+                                            {% with transaction=transaction_data.transaction %}
+                                            <tr class="transaction-row collapse" id="subcategory-{{ category_type }}-{{ forloop.parentloop.parentloop.counter }}-{{ forloop.parentloop.counter }}">
+                                                <td class="glass-cell description-cell ps-5">
+                                                    <i class="fas fa-receipt me-2 text-muted"></i>
+                                                    <span class="small">{{ transaction.description|truncatechars:40 }}</span>
+                                                </td>
+                                                <td class="glass-cell amount-cell text-end">
+                                                    <span class="{% if transaction.amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                        ${{ transaction.amount|floatformat:2|intcomma }}
+                                                    </span>
+                                                </td>
+                                                <td class="glass-cell count-cell text-center">1</td>
+                                                {% for month in months %}
+                                                    {% with month_key=month.date|date:"Y-m" %}
+                                                        {% with transaction_month=transaction.date|date:"Y-m" %}
+                                                        <td class="glass-cell monthly-column text-end">
+                                                            {% if transaction_month == month_key %}
+                                                                <span class="{% if transaction.amount >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                                                    ${{ transaction.amount|floatformat:0|intcomma }}
+                                                                </span>
+                                                            {% else %}
+                                                                <span class="text-muted fst-italic">-</span>
+                                                            {% endif %}
+                                                        </td>
+                                                        {% endwith %}
+                                                    {% endwith %}
+                                                {% endfor %}
+                                            </tr>
+                                            {% endwith %}
+                                        {% endfor %}
+                                    {% endfor %}
+                                {% endfor %}
+                                </tbody>
+                                {% endwith %}
+                            {% endif %}
+                        {% endfor %}
+                            
+                        
+                        <!-- Grand Total Row -->
+                        <tr class="table-dark fw-bold">
+                            <td class="glass-cell description-cell"><strong>GRAND TOTAL</strong></td>
+                            <td class="glass-cell amount-cell text-end">
+                                <strong class="{% if grand_total_amount >= 0 %}text-success-emphasis{% else %}text-danger-emphasis{% endif %}">
+                                    ${{ grand_total_amount|floatformat:2|intcomma }}
+                                </strong>
+                            </td>
+                            <td class="glass-cell count-cell text-center"><strong>{{ grand_total_count }}</strong></td>
+                            {% for month in months %}
+                                {% with month_key=month.date|date:"Y-m" %}
+                                    {% with amount=grand_monthly_totals|lookup:month_key %}
+                                    <td class="glass-cell monthly-column text-end">
+                                        <strong>
+                                            {% if amount != 0 %}
+                                                <span class="{% if amount >= 0 %}text-success-emphasis{% else %}text-danger-emphasis{% endif %}">
+                                                    ${{ amount|floatformat:2|intcomma }}
+                                                </span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </strong>
+                                    </td>
+                                    {% endwith %}
+                                {% endwith %}
+                            {% endfor %}
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function expandAll() {
+    const collapses = document.querySelectorAll('.collapse');
+    collapses.forEach(collapse => {
+        if (!collapse.classList.contains('show')) {
+            const bsCollapse = new bootstrap.Collapse(collapse, {show: true});
+        }
+    });
+    
+    const icons = document.querySelectorAll('.collapse-icon');
+    icons.forEach(icon => {
+        icon.classList.remove('fa-chevron-down');
+        icon.classList.add('fa-chevron-up');
+    });
+}
+
+function collapseAll() {
+    const collapses = document.querySelectorAll('.collapse');
+    collapses.forEach(collapse => {
+        if (collapse.classList.contains('show')) {
+            const bsCollapse = new bootstrap.Collapse(collapse, {hide: true});
+        }
+    });
+    
+    const icons = document.querySelectorAll('.collapse-icon');
+    icons.forEach(icon => {
+        icon.classList.remove('fa-chevron-up');
+        icon.classList.add('fa-chevron-down');
+    });
+}
+
+// Toggle chevron icons on collapse
+document.addEventListener('DOMContentLoaded', function() {
+    const collapseElements = document.querySelectorAll('.collapse');
+    
+    collapseElements.forEach(function(element) {
+        element.addEventListener('show.bs.collapse', function() {
+            const trigger = document.querySelector(`[data-bs-target="#${element.id}"]`);
+            if (trigger) {
+                const icon = trigger.querySelector('.collapse-icon');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-up');
+                }
+            }
+        });
+        
+        element.addEventListener('hide.bs.collapse', function() {
+            const trigger = document.querySelector(`[data-bs-target="#${element.id}"]`);
+            if (trigger) {
+                const icon = trigger.querySelector('.collapse-icon');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-up');
+                    icon.classList.add('fa-chevron-down');
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

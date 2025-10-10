@@ -4,6 +4,11 @@ from django.urls import path
 # CBVs (import from submodules directly)
 from transactions.views.transactions_list import TransactionListView
 from transactions.views.collapsible_list import CollapsibleTransactionListView
+from transactions.views.simple_report import SimpleTransactionReportView
+from transactions.views.clean_transaction_report import CleanTransactionReportView
+from transactions.views.clean_full_transaction_report import CleanFullTransactionReportView
+from transactions.views.clean_payoree_report import CleanPayoreeReportView
+from transactions.views.clean_needs_level_report import CleanNeedsLevelReportView
 from transactions.views.transaction_history import TransactionHistoryView
 from transactions.views.needs_level_report import NeedsLevelReportView
 from transactions.views.dashboard import DashboardView
@@ -61,8 +66,9 @@ urlpatterns = [
     path("search/", search_transactions, name="search"),
     # Dashboard
     path("", DashboardView.as_view(), name="dashboard"),
-    # Payoree Report
+    # Payoree Reports
     path("payoree-report/", PayoreeReportView.as_view(), name="payoree_report"),
+    path("clean-payoree-report/", CleanPayoreeReportView.as_view(), name="clean_payoree_report"),
     path(
         "payoree/<int:pk>/",
         __import__(
@@ -136,11 +142,34 @@ urlpatterns = [
         CollapsibleTransactionListView.as_view(),
         name="collapsible_transaction_list",
     ),
-    # Needs level report (CBV)
+    # Simple glassmorphism report (CBV)
+    path(
+        "simple-report/",
+        SimpleTransactionReportView.as_view(),
+        name="simple_transaction_report",
+    ),
+    # Clean transaction report (CBV)
+    path(
+        "clean-report/",
+        CleanTransactionReportView.as_view(),
+        name="clean_transaction_report",
+    ),
+    # Clean full transaction report (CBV) - detailed view with all transactions
+    path(
+        "clean-full-report/",
+        CleanFullTransactionReportView.as_view(),
+        name="clean_full_transaction_report",
+    ),
+    # Needs level reports (CBV)
     path(
         "needs-level-report/",
         NeedsLevelReportView.as_view(),
         name="needs_level_report",
+    ),
+    path(
+        "clean-needs-level-report/",
+        CleanNeedsLevelReportView.as_view(),
+        name="clean_needs_level_report",
     ),
     # Transaction edit
     path("edit/<int:pk>/", TransactionEditView.as_view(), name="edit_transaction"),

@@ -6,7 +6,7 @@
             <h6 class="mb-0">
                 <i class="fas fa-history me-2 text-primary"></i>Similar Transactions
             </h6>
-            <span class="badge bg-primary">{{ similar_transactions|length }} found</span>
+            <span class="badge text-white bg-primary">{{ similar_transactions|length }} found</span>
         </div>
     </div>
     
@@ -49,9 +49,9 @@
                         <td>
                             {% if transaction.category %}
                                 <div class="d-flex flex-column">
-                                    <span class="badge bg-primary mb-1">{{ transaction.category.name }}</span>
+                                    <span class="badge text-white bg-info mb-1">{{ transaction.category.name }}</span>
                                     {% if transaction.subcategory %}
-                                        <span class="badge bg-secondary">{{ transaction.subcategory.name }}</span>
+                                        <span class="badge text-white bg-secondary">{{ transaction.subcategory.name }}</span>
                                     {% endif %}
                                 </div>
                             {% else %}

@@ -29,9 +29,7 @@ table.dataTable thead tr,
 #budgetTable thead tr,
 #categoryTable thead tr,
 #payoreeTable thead tr {
-  background: linear-gradient(135deg, 
-    rgba(102, 126, 234, 0.95) 0%, 
-    rgba(118, 75, 162, 0.9) 100%) !important;
+  background: var(--primary-gradient) !important;
 }
 
 .modern-table thead th,

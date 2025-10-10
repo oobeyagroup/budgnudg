@@ -220,7 +220,7 @@
                     </div>
                     <div class="col-md-3">
                         {% if transaction.category %}
-                            <span class="badge bg-success">{{ transaction.category.name }}</span>
+                            <span class="badge text-white bg-success">{{ transaction.category.name }}</span>
                         {% else %}
                             <span class="badge bg-warning text-dark">Uncategorized</span>
                         {% endif %}
@@ -261,7 +261,7 @@
                                 <div class="transaction-meta">
                                     <i class="fas fa-hashtag me-1"></i>
                                     {% for tag in transaction.tags.all %}
-                                        <span class="badge bg-secondary me-1">{{ tag.name }}</span>
+                                        <span class="badge text-white bg-secondary me-1">{{ tag.name }}</span>
                                     {% endfor %}
                                 </div>
                             </div>

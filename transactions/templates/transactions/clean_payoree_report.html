@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load static %}
+{% load templatetags.dict_extras %}
+
+{% block title %}Clean Payoree Report - BudgNudg{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/pages/transactions.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="glass-card">
+                <h2>Payoree Report</h2>
+                <p class="text-muted">Transaction summary by payoree for the last 3 months</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="glass-card text-center">
+                <h4>${{ total_amount|floatformat:2 }}</h4>
+                <p class="text-muted mb-0">Total Amount</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card text-center">
+                <h4>{{ unique_payorees }}</h4>
+                <p class="text-muted mb-0">Unique Payorees</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card text-center">
+                <h4>{{ total_count }}</h4>
+                <p class="text-muted mb-0">Total Transactions</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="glass-card text-center">
+                <h4>${{ total_amount|div:total_count|floatformat:2 }}</h4>
+                <p class="text-muted mb-0">Average Transaction</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payoree Data Table -->
+    <div class="row">
+        <div class="col-12">
+            <div class="glass-card">
+                <div class="table-responsive">
+                    <table class="table table-glassmorphism-clean">
+                        <thead>
+                            <tr class="glassmorphism-header">
+                                <th>Payoree</th>
+                                <th class="text-end">Total Amount</th>
+                                <th class="text-end">Transaction Count</th>
+                                <th class="text-end">Average Amount</th>
+                                <th>Categories</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for payoree_name, data in payoree_data.items %}
+                            <tr class="glass-row">
+                                <td class="glass-cell">
+                                    <strong>{{ payoree_name }}</strong>
+                                </td>
+                                <td class="glass-cell text-end">
+                                    <span class="{% if data.total_amount < 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ data.total_amount|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td class="glass-cell text-end">
+                                    {{ data.total_count }}
+                                </td>
+                                <td class="glass-cell text-end">
+                                    <span class="{% if data.avg_amount < 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ data.avg_amount|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td class="glass-cell">
+                                    {% for category in data.categories %}
+                                        <span class="badge bg-light text-dark me-1">{{ category }}</span>
+                                    {% empty %}
+                                        <span class="text-muted">No categories</span>
+                                    {% endfor %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted">
+                                    No payoree data available
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

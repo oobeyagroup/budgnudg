@@ -26,7 +26,18 @@ class SubcategoriesAPIView(View):
     @method_decorator(trace)
     def get(self, request, category_id):
         try:
-            category = get_object_or_404(Category, id=category_id, parent=None)
+            # Check if category exists first
+            try:
+                category = Category.objects.get(id=category_id, parent=None)
+            except Category.DoesNotExist:
+                return JsonResponse(
+                    {
+                        "success": False,
+                        "error": f"Category with ID {category_id} not found",
+                    },
+                    status=404,
+                )
+
             subcategories = category.subcategories.all().order_by("name")
 
             data = {
