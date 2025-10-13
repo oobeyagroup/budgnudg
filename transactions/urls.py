@@ -6,7 +6,9 @@ from transactions.views.transactions_list import TransactionListView
 from transactions.views.collapsible_list import CollapsibleTransactionListView
 from transactions.views.simple_report import SimpleTransactionReportView
 from transactions.views.clean_transaction_report import CleanTransactionReportView
-from transactions.views.clean_full_transaction_report import CleanFullTransactionReportView
+from transactions.views.clean_full_transaction_report import (
+    CleanFullTransactionReportView,
+)
 from transactions.views.clean_payoree_report import CleanPayoreeReportView
 from transactions.views.clean_needs_level_report import CleanNeedsLevelReportView
 from transactions.views.transaction_history import TransactionHistoryView
@@ -68,7 +70,11 @@ urlpatterns = [
     path("", DashboardView.as_view(), name="dashboard"),
     # Payoree Reports
     path("payoree-report/", PayoreeReportView.as_view(), name="payoree_report"),
-    path("clean-payoree-report/", CleanPayoreeReportView.as_view(), name="clean_payoree_report"),
+    path(
+        "clean-payoree-report/",
+        CleanPayoreeReportView.as_view(),
+        name="clean_payoree_report",
+    ),
     path(
         "payoree/<int:pk>/",
         __import__(

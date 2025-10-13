@@ -171,6 +171,20 @@ class CategorizeTransactionView(TemplateView):
                     payoree_suggestion = Payoree.objects.filter(
                         name__icontains=suggested_payoree
                     ).first()
+                
+                # If we found a payoree with default categories, use them to override AI suggestions
+                if payoree_suggestion:
+                    if payoree_suggestion.default_category:
+                        category_suggestion = payoree_suggestion.default_category
+                        logger.debug(f"Using payoree default category: {category_suggestion.name}")
+                    
+                    if payoree_suggestion.default_subcategory:
+                        subcategory_suggestion = payoree_suggestion.default_subcategory
+                        logger.debug(f"Using payoree default subcategory: {subcategory_suggestion.name}")
+                        
+                        # Update AI reasoning to reflect that we're using payoree defaults
+                        if payoree_suggestion.default_category or payoree_suggestion.default_subcategory:
+                            ai_reasoning = f"Using default category assignment for payoree '{payoree_suggestion.name}'"
 
         except Exception as e:
             logger.warning(f"Error getting AI suggestions for transaction {pk}: {e}")
@@ -248,6 +262,12 @@ class CategorizeTransactionView(TemplateView):
         except Exception as e:
             logger.warning(f"Error finding similar transactions: {e}")
 
+        # Debug logging to verify what's being passed to template
+        logger.debug(f"Context values before template:")
+        logger.debug(f"  category_suggestion: {category_suggestion.name if category_suggestion else 'None'}")
+        logger.debug(f"  subcategory_suggestion: {subcategory_suggestion.name if subcategory_suggestion else 'None'}")
+        logger.debug(f"  payoree_suggestion: {payoree_suggestion.name if payoree_suggestion else 'None'}")
+        
         context.update(
             {
                 "transaction": transaction,

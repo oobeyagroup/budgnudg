@@ -405,8 +405,8 @@ table.table thead.sticky-header.table-dark th {
 }
 
 .description-cell {
-  min-width: 250px;
-  max-width: 300px;
+  min-width: 400px !important;
+  max-width: 500px;
   position: sticky;
   left: 0;
   background: inherit;
@@ -414,7 +414,7 @@ table.table thead.sticky-header.table-dark th {
 }
 
 .amount-cell {
-  min-width: 100px;
+  min-width: 120px;
   position: sticky;
   left: 250px;
   background: inherit;
@@ -443,7 +443,7 @@ table.table thead.sticky-header.table-dark th {
   }
   
   .description-cell {
-    min-width: 200px;
+    min-width: 400px  !important;
   }
   
   .amount-cell {

@@ -169,17 +169,17 @@
 /* === Currency Display === */
 .currency-positive {
   color: #059669 !important;
-  font-weight: var(--font-weight-semibold);
+  /* font-weight: var(--font-weight-semibold); */
 }
 
 .currency-negative {
   color: #dc2626 !important;
-  font-weight: var(--font-weight-semibold);
+  /* font-weight: var(--font-weight-semibold); */
 }
 
 .currency-warning {
   color: #d97706 !important;
-  font-weight: var(--font-weight-semibold);
+  /* font-weight: var(--font-weight-semibold);                                 */
 }
 
 .currency-info {
